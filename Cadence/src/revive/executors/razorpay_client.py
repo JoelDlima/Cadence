@@ -1,12 +1,22 @@
 """Razorpay client boundary: live HTTP client + deterministic keyless simulator.
 
-The simulator keeps demos and tests offline-deterministic (no keys required);
+The simulator keeps demos and tests offline-deterministic (no keys required).
 `LiveRazorpayClient` speaks real test-mode API when keys are configured. Mandate
 retries on the live side are NOT an HTTP call we can make: debit retries happen
 on NPCI rails from Razorpay's dashboard/route logic. Our live recovery
-instrument is therefore the Payment Link API; calling `simulate_mandate_retry`
+instrument is therefore the Payment Link API + real customer creation + real
+payment.fetch for outcome verification; calling `simulate_mandate_retry`
 on the live client fails fast with a RuntimeError so a mis-wired dispatcher
 cannot silently pretend to retry.
+
+PHASE 1 additions (Aug 2026): the live client now exposes
+  - create_customer           (Razorpay /v1/customers)
+  - create_subscription       (Razorpay /v1/subscriptions, plan_id required)
+  - create_registration_link  (Razorpay /v1/subscriptions/registration_link)
+  - fetch_payment             (Razorpay /v1/payments/{id})
+  - cancel_payment_link       (Razorpay /v1/payment_links/{id}/cancel)
+  - create_refund             (Razorpay /v1/payments/{id}/refund)
+PHASE 2: payment.fetch becomes the single source of truth for outcome check.
 """
 
 from __future__ import annotations
@@ -54,6 +64,19 @@ class SimulatedRazorpayClient:
 
     mode: str = "simulated"
 
+    def create_customer(
+        self, *, name: str, email: str, contact: str, lookup_first: bool = True
+    ) -> dict:
+        """Deterministic stand-in. Returns a stable id keyed on email+contact."""
+        seed = f"{email}:{contact}"
+        return {
+            "id": f"cust_sim_{_sha1_hex(seed)[:10]}",
+            "name": name,
+            "email": email,
+            "contact": contact,
+            "simulated": True,
+        }
+
     def create_payment_link(
         self,
         *,
@@ -70,12 +93,63 @@ class SimulatedRazorpayClient:
             "simulated": True,
         }
 
+    def fetch_payment(self, *, payment_id: str) -> dict:
+        """Simulated payment status. Stable for known IDs; otherwise random."""
+        seed = _sha1_hex(payment_id)
+        # deterministic 50/50 captured/failed by parity of the second hex digit
+        status = "captured" if int(seed[1], 16) % 2 == 0 else "failed"
+        return {
+            "id": payment_id,
+            "status": status,
+            "amount": 49900,
+            "currency": "INR",
+            "method": "upi",
+            "simulated": True,
+        }
+
     def simulate_mandate_retry(
         self, *, subscription_id: str, amount_minor: int, seed: str
     ) -> dict:
         return {
             "id": f"pay_sim_{_sha1_hex(seed)[:12]}",
             "status": "simulated",
+            "simulated": True,
+        }
+
+    def create_subscription(
+        self, *, plan_id: str, customer_id: str, total_count: int = 12
+    ) -> dict:
+        seed = _sha1_hex(f"{plan_id}:{customer_id}")
+        return {
+            "id": f"sub_sim_{seed[:12]}",
+            "customer_id": customer_id,
+            "plan_id": plan_id,
+            "status": "created",
+            "simulated": True,
+        }
+
+    def create_registration_link(
+        self, *, customer: dict, amount_minor: int, currency: str = "INR", description: str = "Subscription"
+    ) -> dict:
+        seed = _sha1_hex(f"{customer.get('id','')}:{amount_minor}")
+        return {
+            "id": f"reglink_sim_{seed[:12]}",
+            "short_url": f"https://rzp.io/i/sim_{seed[:8]}",
+            "simulated": True,
+        }
+
+    def create_refund(self, *, payment_id: str, amount_minor: int | None = None) -> dict:
+        return {
+            "id": f"rfnd_sim_{_sha1_hex(payment_id)[:10]}",
+            "payment_id": payment_id,
+            "amount": amount_minor,
+            "simulated": True,
+        }
+
+    def cancel_payment_link(self, *, payment_link_id: str) -> dict:
+        return {
+            "id": payment_link_id,
+            "cancelled": True,
             "simulated": True,
         }
 
@@ -93,6 +167,39 @@ class LiveRazorpayClient:
     transport: httpx.Client | None = None
     mode: str = "live"
 
+    def create_customer(
+        self, *, name: str, email: str, contact: str, lookup_first: bool = True
+    ) -> dict:
+        """Create a Razorpay test-mode customer.
+
+        If ``lookup_first`` (default), query /v1/customers first and return
+        the first one whose ``contact`` matches exactly. Otherwise POST
+        directly and accept whatever Razorpay returns (which may be a 400
+        "already exists" error if the contact is taken).
+        """
+        if lookup_first:
+            existing = self._list_customers_by_contact(contact=contact)
+            if existing:
+                return existing[0]
+        body = {"name": name, "email": email, "contact": contact}
+        request = httpx.Request("POST", f"{_BASE_URL}/customers", json=body)
+        response = self._send(request)
+        response.raise_for_status()
+        return dict(response.json())
+
+    def _list_customers_by_contact(self, *, contact: str) -> list[dict]:
+        request = httpx.Request(
+            "GET", f"{_BASE_URL}/customers", params={"count": 50}
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        items = response.json().get("items", [])
+        return [
+            item
+            for item in items
+            if isinstance(item, dict) and item.get("contact", "").endswith(contact[-10:])
+        ]
+
     def create_payment_link(
         self,
         *,
@@ -107,6 +214,7 @@ class LiveRazorpayClient:
             "currency": currency,
             "reference_id": reference_id,
             "description": description,
+            "customer": {"id": customer_id},
             "notes": {"journey_ref": reference_id},
         }
         request = httpx.Request("POST", f"{_BASE_URL}/payment_links", json=body)
@@ -114,23 +222,14 @@ class LiveRazorpayClient:
         response.raise_for_status()
         return dict(response.json())
 
-    def payment_captured_for(self, *, reference_id: str) -> bool:
-        """True when a payment with this reference_id has status 'captured'.
-
-        The outcome-check resolver uses this to turn a real Razorpay payment
-        (typically a paid Payment Link) into a RECOVERED journey. Deliberately
-        absent from the simulator: offline, outcomes come from the injectable
-        OutcomeFn instead, never from a fabricated probe.
-        """
+    def fetch_payment(self, *, payment_id: str) -> dict:
+        """Fetch a specific payment from Razorpay. Source of truth for outcome."""
         request = httpx.Request(
-            "GET",
-            f"{_BASE_URL}/payments",
-            params={"reference_id": reference_id, "count": 10},
+            "GET", f"{_BASE_URL}/payments/{payment_id}"
         )
         response = self._send(request)
         response.raise_for_status()
-        items = response.json().get("items", [])
-        return any(item.get("status") == "captured" for item in items if isinstance(item, dict))
+        return dict(response.json())
 
     def simulate_mandate_retry(
         self, *, subscription_id: str, amount_minor: int, seed: str
@@ -145,6 +244,76 @@ class LiveRazorpayClient:
         raise RuntimeError(
             "live mandate retries occur on NPCI rails; recovery instrument is Payment Links"
         )
+
+    def create_subscription(
+        self, *, plan_id: str, customer_id: str, total_count: int = 12
+    ) -> dict:
+        body = {
+            "plan_id": plan_id,
+            "customer_id": customer_id,
+            "total_count": total_count,
+        }
+        request = httpx.Request("POST", f"{_BASE_URL}/subscriptions", json=body)
+        response = self._send(request)
+        response.raise_for_status()
+        return dict(response.json())
+
+    def create_registration_link(
+        self, *, customer: dict, amount_minor: int, currency: str = "INR", description: str = "Subscription"
+    ) -> dict:
+        body = {
+            "customer": customer,
+            "amount": amount_minor,
+            "currency": currency,
+            "description": description,
+            "type": "link",
+        }
+        request = httpx.Request(
+            "POST", f"{_BASE_URL}/subscriptions/registration_link", json=body
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        return dict(response.json())
+
+    def create_refund(self, *, payment_id: str, amount_minor: int | None = None) -> dict:
+        body: dict = {"payment_id": payment_id}
+        if amount_minor is not None:
+            body["amount"] = amount_minor
+        request = httpx.Request(
+            "POST", f"{_BASE_URL}/payments/{payment_id}/refund", json=body
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        return dict(response.json())
+
+    def cancel_payment_link(self, *, payment_link_id: str) -> dict:
+        request = httpx.Request(
+            "POST", f"{_BASE_URL}/payment_links/{payment_link_id}/cancel"
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        return dict(response.json())
+
+    def payment_captured_for(self, *, reference_id: str) -> bool:
+        """True when a payment with this reference_id has status 'captured'.
+
+        The outcome-check resolver uses this to turn a real Razorpay payment
+        (typically a paid Payment Link) into a RECOVERED journey. Deliberately
+        absent from the simulator: offline, outcomes come from the injectable
+        OutcomeFn instead, never from a fabricated probe.
+
+        PHASE 2: this remains the fast path. For thoroughness prefer
+        fetch_payment(payment_id) when you have the payment_id.
+        """
+        request = httpx.Request(
+            "GET",
+            f"{_BASE_URL}/payments",
+            params={"reference_id": reference_id, "count": 10},
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        items = response.json().get("items", [])
+        return any(item.get("status") == "captured" for item in items if isinstance(item, dict))
 
     def _send(self, request: httpx.Request) -> httpx.Response:
         token = base64.b64encode(

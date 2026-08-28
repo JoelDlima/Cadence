@@ -1,0 +1,185 @@
+{
+  "cohort": [
+    {
+      "customer_id": "cust_TVIexH7nloS6wz",
+      "name": "Demo Customer 0001",
+      "email": "cadence.demo.user0001@example.invalid",
+      "contact": "+919876543211",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIexH7nloS6wz",
+      "created_at": 1787944758
+    },
+    {
+      "customer_id": "cust_TVIdHVVcwfYobj",
+      "name": "Demo Customer 0002",
+      "email": "cadence.demo.user0002@example.invalid",
+      "contact": "+919876543212",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIdHVVcwfYobj",
+      "created_at": 1787944758
+    },
+    {
+      "customer_id": "cust_TVIdHcW6TuwLoo",
+      "name": "Demo Customer 0003",
+      "email": "cadence.demo.user0003@example.invalid",
+      "contact": "+919876543213",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIdHcW6TuwLoo",
+      "created_at": 1787944758
+    },
+    {
+      "customer_id": "cust_TVIdHjObJ7qnfi",
+      "name": "Demo Customer 0004",
+      "email": "cadence.demo.user0004@example.invalid",
+      "contact": "+919876543214",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIdHjObJ7qnfi",
+      "created_at": 1787944759
+    },
+    {
+      "customer_id": "cust_TVIdHqNOVdiF01",
+      "name": "Demo Customer 0005",
+      "email": "cadence.demo.user0005@example.invalid",
+      "contact": "+919876543215",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIdHqNOVdiF01",
+      "created_at": 1787944759
+    },
+    {
+      "customer_id": "cust_TVIpLJmCysgdXd",
+      "name": "Demo Customer 0006",
+      "email": "cadence.demo.user0006@example.invalid",
+      "contact": "+919876543216",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpLJmCysgdXd",
+      "created_at": 1787944759
+    },
+    {
+      "customer_id": "cust_TVIpLUaFvdQD1w",
+      "name": "Demo Customer 0007",
+      "email": "cadence.demo.user0007@example.invalid",
+      "contact": "+919876543217",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpLUaFvdQD1w",
+      "created_at": 1787944759
+    },
+    {
+      "customer_id": "cust_TVIpLesYpHNlZw",
+      "name": "Demo Customer 0008",
+      "email": "cadence.demo.user0008@example.invalid",
+      "contact": "+919876543218",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpLesYpHNlZw",
+      "created_at": 1787944759
+    },
+    {
+      "customer_id": "cust_TVIexBABMgKYX8",
+      "name": "Demo Customer 0009",
+      "email": "cadence.demo.user0009@example.invalid",
+      "contact": "+919876543219",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIexBABMgKYX8",
+      "created_at": 1787944759
+    },
+    {
+      "customer_id": "cust_TVIpLxZR5AWuXX",
+      "name": "Demo Customer 0010",
+      "email": "cadence.demo.user0010@example.invalid",
+      "contact": "+919876543210",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpLxZR5AWuXX",
+      "created_at": 1787944759
+    },
+    {
+      "customer_id": "cust_TVIexH7nloS6wz",
+      "name": "Demo Customer 0011",
+      "email": "cadence.demo.user0011@example.invalid",
+      "contact": "+919876543211",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIexH7nloS6wz",
+      "created_at": 1787944760
+    },
+    {
+      "customer_id": "cust_TVIdHVVcwfYobj",
+      "name": "Demo Customer 0012",
+      "email": "cadence.demo.user0012@example.invalid",
+      "contact": "+919876543212",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIdHVVcwfYobj",
+      "created_at": 1787944760
+    },
+    {
+      "customer_id": "cust_TVIdHcW6TuwLoo",
+      "name": "Demo Customer 0013",
+      "email": "cadence.demo.user0013@example.invalid",
+      "contact": "+919876543213",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIdHcW6TuwLoo",
+      "created_at": 1787944760
+    },
+    {
+      "customer_id": "cust_TVIpMW7PAa4qq3",
+      "name": "Demo Customer 0014",
+      "email": "cadence.demo.user0014@example.invalid",
+      "contact": "+919876543214",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpMW7PAa4qq3",
+      "created_at": 1787944760
+    },
+    {
+      "customer_id": "cust_TVIpMj8t2ChB2y",
+      "name": "Demo Customer 0015",
+      "email": "cadence.demo.user0015@example.invalid",
+      "contact": "+919876543215",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpMj8t2ChB2y",
+      "created_at": 1787944760
+    },
+    {
+      "customer_id": "cust_TVIpLJmCysgdXd",
+      "name": "Demo Customer 0016",
+      "email": "cadence.demo.user0016@example.invalid",
+      "contact": "+919876543216",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpLJmCysgdXd",
+      "created_at": 1787944761
+    },
+    {
+      "customer_id": "cust_TVIpLUaFvdQD1w",
+      "name": "Demo Customer 0017",
+      "email": "cadence.demo.user0017@example.invalid",
+      "contact": "+919876543217",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpLUaFvdQD1w",
+      "created_at": 1787944761
+    },
+    {
+      "customer_id": "cust_TVIpLesYpHNlZw",
+      "name": "Demo Customer 0018",
+      "email": "cadence.demo.user0018@example.invalid",
+      "contact": "+919876543218",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpLesYpHNlZw",
+      "created_at": 1787944761
+    },
+    {
+      "customer_id": "cust_TVIexBABMgKYX8",
+      "name": "Demo Customer 0019",
+      "email": "cadence.demo.user0019@example.invalid",
+      "contact": "+919876543219",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIexBABMgKYX8",
+      "created_at": 1787944761
+    },
+    {
+      "customer_id": "cust_TVIpNdKBnHVLBb",
+      "name": "Demo Customer 0020",
+      "email": "cadence.demo.user0020@example.invalid",
+      "contact": "+919876543220",
+      "amount_minor": 49900,
+      "subscription_id": "sub_local_cust_TVIpNdKBnHVLBb",
+      "created_at": 1787944761
+    }
+  ],
+  "n": 20
+}
