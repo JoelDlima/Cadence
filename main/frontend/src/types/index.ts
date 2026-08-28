@@ -157,3 +157,13 @@ export interface CloudStatus {
   supabase_url_configured: boolean;
   service_key_configured: boolean;
 }
+
+export interface BanditRanking {
+  occurred_at: string;
+  cause: string;
+  top: string;
+  ranked: string[];
+  scores: Record<string, number>;
+  reason: string[];
+  feature_importances: Record<string, Record<string, number>>;
+}

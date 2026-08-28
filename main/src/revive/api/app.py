@@ -999,6 +999,36 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             "traces": recent_traces(limit=limit),
         }
 
+    @app.get("/api/bandit/ranked")
+    def get_bandit_ranked(limit: int = 25) -> dict[str, Any]:
+        """Return the most recent Adaptive Recovery Brain ranking events.
+
+        Each event payload carries the full ranked list, the top choice, the
+        per-cause scores, the human-readable reason string, and the
+        FEATURE_IMPORTANCES dict. The SPA's Recovery Brain tab shows this
+        as a live stream of the engine's "why I chose this action"
+        reasoning.
+        """
+        rows = db.conn.execute(
+            "SELECT payload, occurred_at FROM events "
+            "WHERE type = ? "
+            "ORDER BY seq DESC LIMIT ?",
+            ("bandit.ranked", limit),
+        ).fetchall()
+        rankings = [
+            {
+                "occurred_at": r[1],
+                "cause": r[0].get("cause"),
+                "top": r[0].get("top"),
+                "ranked": r[0].get("ranked", []),
+                "scores": r[0].get("scores", {}),
+                "reason": r[0].get("reason", []),
+                "feature_importances": r[0].get("feature_importances", {}),
+            }
+            for r in rows
+        ]
+        return {"rankings": rankings, "count": len(rankings)}
+
     # ------------------------------------------------------------------
     # Phase 9d: RBI / NPCI circular ingestion
     # ------------------------------------------------------------------

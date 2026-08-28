@@ -13,6 +13,7 @@ import {
   ChaosResult,
   PayLink,
   CloudStatus,
+  BanditRanking,
   InjectRequest,
   InjectResponse,
 } from '../types';
@@ -84,6 +85,12 @@ export const api = {
 
   async getAuditVerify(): Promise<AuditVerify> {
     return jsonFetch<AuditVerify>('/api/audit/verify');
+  },
+
+  async getBanditRanked(limit: number = 25): Promise<{ rankings: BanditRanking[]; count: number }> {
+    return jsonFetch<{ rankings: BanditRanking[]; count: number }>(
+      `/api/bandit/ranked?limit=${limit}`,
+    );
   },
 
   async getLlmSpend(): Promise<LlmSpend> {
