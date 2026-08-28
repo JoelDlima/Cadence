@@ -1160,6 +1160,37 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
     from revive.mandate.api import register_routes as _register_mandate
     _register_mandate(app, db=db, clock=clock)
 
+    # Phase voice: Hinglish / Indic voice TTS preview
+    @app.get("/api/voice/preview")
+    def get_voice_preview(
+        language: str = "hinglish",
+        amount_minor: int = 49900,
+        link_url: str | None = None,
+    ) -> dict[str, Any]:
+        """Render the Hinglish / Indic nudge and its TTS WAV payload.
+
+        The TTS path is keyed off `SARVAM_API_KEY`; without it,
+        the deterministic silent-WAV stub is returned. The SPA
+        shows a play button that points at the data URL of the
+        returned base64-encoded WAV.
+        """
+        from revive.policy.nudge_templates import nudge_for_language as _nudge
+        from revive.policy.voice_tts import synthesize as _synth
+        text = _nudge(language, amount_minor, link_url)
+        sarvam_key = getattr(config.llm, "sarvam_api_key", "")
+        tts = _synth(language=language, text=text, sarvam_api_key=sarvam_key or None)
+        return {
+            "language": tts.language,
+            "text": tts.text,
+            "amount_minor": amount_minor,
+            "link_url": link_url,
+            "sample_rate": tts.sample_rate,
+            "duration_seconds": tts.duration_seconds,
+            "pcm_payload_b64": tts.pcm_payload_b64,
+            "is_stub": tts.is_stub,
+            "reason": tts.reason,
+        }
+
     return app
 
 
