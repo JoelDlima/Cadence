@@ -53,7 +53,7 @@ export const RecoveryBrainView: React.FC = () => {
   if (loading && rankings.length === 0) {
     return (
       <EmptyState
-        title="Waiting for the Adaptive Recovery Brain to fire..."
+        title="Waiting for the Recovery Brain to fire..."
         description="Inject a webhook from the Testbench tab to see the engine pick its first action and emit its first bandit.ranked event."
       />
     );
@@ -77,7 +77,7 @@ export const RecoveryBrainView: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Adaptive Recovery Brain"
+        title="Recovery Brain"
         description="Deterministic, auditable bandit that picks the next action for every (cause, context) tuple. Trained weights on amount tier, touch fatigue, attempts, cause prior, outage flag, peak-hold flag. The Guardian gates; the Phantom-Failure Guard still floors the schedule."
         action={
           <Badge tone={rankings.length > 0 ? 'info' : 'neutral'}>

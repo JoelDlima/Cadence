@@ -8,6 +8,11 @@ frontend_backup_*.zip
 .opencode/
 graphify-out/
 
+# Private (author's reference) docs - not for public repo / judges
+private/
+main/private/
+main/docs/private/
+
 # Python
 __pycache__/
 *.py[cod]

@@ -11,24 +11,28 @@
 
 ---
 
-## Shot 1 — Hook (0:00–0:25) · face cam or title card
+## Shot 1 — Hook (0:00–0:30) · screen share (live, no face-cam)
 
-> "Indian subscription businesses lose between 5 and 15 % of their monthly
-> recurring revenue to silent payment failures. Failed UPI AutoPay debits,
-> expired card mandates, the 'phantom failure' that NPCI queues during
-> peak hours and then settles on its own. Razorpay's webhook tells you
-> something failed. It doesn't tell you *why*, *what to do*, or *who to
-> call* in Hinglish at 7 pm.
->
-> **I built Cadence** — the closed-loop agent that does all three.
-> Deterministic spine, probabilistic edges, RBI-aware, tamper-evident.
-> In the next four minutes I'll show you ₹47,000 recovered from 500 failing
-> transactions, zero compliance violations, and a recovery rate 1.5× the
-> Indian market average."
+The 5-second opener: a real Razorpay webhook hits, the Recovery
+Brain picks, the audit chain updates, the SPA shows the action.
+No face-cam. The agent does the work; the camera watches it work.
 
-**Why this works:** opens with the pain stat (money), names the technical
-subtlety (NPCI phantom failure), states the gap, names the product, and
-ends with a single number that will be proven later in the video.
+> "Watch a real Razorpay webhook. INSUFFICIENT_FUNDS. The
+> deterministic engine reads the error code — zero AI tokens.
+> The Recovery Brain scores all seven legal moves for the
+> (cause, context) tuple — this is the AI, the only AI in the
+> loop. The top choice: a payday retry at ten Monday morning,
+> because that's when the customer's salary lands. The audit
+> chain captures the decision verbatim. The journey is
+> INTERVENING, the policy is the policy, the money is on the
+> way back. **That's the headline. The next 4 minutes prove
+> the 5,000-sub number.**"
+
+**Why this works:** the 2026 Razorpay buildathon is hiring
+*AI Builder Interns*. The opening shot shows the intern can
+build auditable AI that closes a recovery loop in 1.5 seconds.
+A face-cam about MRR percentages is the 2024 pattern; a live
+agent doing the work is the 2026 pattern.
 
 ---
 

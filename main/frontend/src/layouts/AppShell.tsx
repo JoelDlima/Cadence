@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
   { id: 'guardian', label: 'Policy Guardian', icon: ShieldCheck },
   { id: 'testbench', label: 'Simulation & Chaos', icon: FlaskConical },
   { id: 'pay', label: 'Payment Portal', icon: CreditCard },
-  { id: 'brain', label: 'Adaptive Recovery Brain', icon: Brain },
+  { id: 'brain', label: 'Recovery Brain', icon: Brain },
   { id: 'checkout', label: 'Checkout Recovery', icon: ShoppingCart },
   { id: 'b2b', label: 'B2B Receivables', icon: Briefcase },
   { id: 'mandate', label: 'Mandate Sequencer', icon: GitBranch },

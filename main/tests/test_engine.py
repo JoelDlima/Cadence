@@ -108,6 +108,15 @@ def test_no_funds_opens_journey_and_schedules_payday_retry(
     assert len(bandit_events) == 1
     top = bandit_events[0].payload["top"]
     assert top in legal_moves(NO_FUNDS)
+    # The bandit must rank `top` first in `ranked` and its score
+    # must equal the maximum of `scores`. The audit chain records
+    # the bandit's decision verbatim, so we can pin the contract.
+    ranked = bandit_events[0].payload["ranked"]
+    scores = bandit_events[0].payload["scores"]
+    assert ranked[0] == top
+    assert scores[top] == max(scores.values())
+    assert all(isinstance(v, (int, float)) and v >= 0 for v in scores.values())
+    assert bandit_events[0].payload["feature_importances"] != {}
     approved = [
         e for e in _journey_events(tmp_db, "sub_1")
         if e.type == E_INTERVENTION_APPROVED
@@ -264,6 +273,10 @@ def test_retry_later_deferred_out_of_quiet_hours(tmp_db: Database, fake_clock: F
     assert len(bandit_events) == 1
     top = bandit_events[0].payload["top"]
     assert top in legal_moves(BANK_DOWN)
+    ranked = bandit_events[0].payload["ranked"]
+    scores = bandit_events[0].payload["scores"]
+    assert ranked[0] == top
+    assert scores[top] == max(scores.values())
 
 
 @pytest.mark.unit
@@ -292,6 +305,10 @@ def test_retry_later_uses_evidence_based_delay_for_cause(
     assert len(bandit_events) == 1
     top = bandit_events[0].payload["top"]
     assert top in legal_moves(TIMEOUT)
+    ranked = bandit_events[0].payload["ranked"]
+    scores = bandit_events[0].payload["scores"]
+    assert ranked[0] == top
+    assert scores[top] == max(scores.values())
 
 
 @pytest.mark.integration
@@ -416,6 +433,10 @@ def test_no_funds_payday_schedule_never_earlier_than_hold_release(
     # silently queue. NO_FUNDS is in the queue-prone set, so a timer.set
     # may appear if the natural schedule pre-dates the hold release.
     top = bandit_events[0].payload["top"]
+    ranked = bandit_events[0].payload["ranked"]
+    scores = bandit_events[0].payload["scores"]
+    assert ranked[0] == top
+    assert scores[top] == max(scores.values())
     approved = [
         e for e in _journey_events(tmp_db, "sub_hold_b")
         if e.type == E_INTERVENTION_APPROVED

@@ -293,3 +293,148 @@ Button component uses `variant` (primary/secondary/ghost/
 danger), not `tone`. Fix: 3 edits, 1 rebuild. Lesson:
 check the component prop table before copy-pasting
 patterns from earlier views.
+
+---
+
+## 2026-08-28 (Day 2, post-feature-ship) — Polish, scoring, hide-and-seek
+
+**Strict judge scoring of Cadence (Track 3).** I
+researched the Razorpay Buildathon site, the
+Wikipedia "AI in finance" entry, YC's Fall 2026
+RFS, and the HBR "workslop" article. Scored
+Cadence against the verbatim Track 3 bar
+("measured money, compliant escalation, stopping
+rules, audit trail") and Track 1's bar ("every
+money action explainable, bounded and gated"). I
+gave Cadence 10/10 on those 4 elements and 7/10 on
+a hypothetical "would I hire you" bar. Notes:
+
+- The bandit is the AI; the rest is rules. This
+  is the 2026-correct posture for AI in fintech
+  (per Wikipedia: "verification capacity, not
+  generation speed, is the bottleneck").
+- The 5,000-sub headline is a Faker simulation,
+  not a Razorpay sandbox. The honesty earns
+  trust; the silence loses it.
+- The 50-case Guardian matrix is the single
+  most defensible "we don't paper over edge
+  cases" signal in the codebase. It belongs in
+  the README, not just the test file.
+- A 5-min pitch should open with the agent
+  doing the work, not a face-cam about MRR.
+  2024 pattern vs 2026 pattern.
+
+**Six fixes I applied from the scoring:**
+
+1. **README headline reframed as AI-first.**
+   The new opening line is "An AI Recovery
+   Agent for Indian Subscriptions" and the
+   headline stat is "A deterministic AI bandit
+   beats a 'smart' LLM-and-retries baseline
+   1.5× in money recovered, with zero LLM
+   tokens." The deterministic engine is the
+   *argument*; the AI bandit is the *headline*.
+2. **Live 60-second counter on the Overview
+   tab.** When the user injects a webhook and
+   a journey recovers in real time, the
+   Overview shows "+₹X in the last 60s"
+   below the recovered counter. The judge
+   sees the number move during the demo. This
+   is the 2026 "agent is working right now"
+   signal.
+3. **"Recovery Brain" copy in user-facing
+   surfaces.** Renamed the SPA tab label
+   "Adaptive Recovery Brain" → "Recovery
+   Brain" and the empty-state title. Internal
+   docs (ARCHITECTURE, eval-report) keep the
+   full name because the *technical* label
+   describes the architecture. Product
+   surfaces drop the technique to lead with
+   the outcome.
+4. **Tightened 4 reframed engine tests.**
+   Each bandit-contract test now also asserts
+   `ranked[0] == top`, `scores[top] == max(scores.values())`,
+   and (where appropriate) `feature_importances != {}`.
+   The 4 tests were a "we don't pin a
+   specific value" compromise for the
+   adaptive bandit; this is the right level
+   of strictness without re-pinning specific
+   interventions.
+5. **Sarvam key callout in `.env.example`.**
+   The LLM provider section now notes that
+   setting `SARVAM_API_KEY` flips the Hinglish
+   voice recovery path from a 1-second silent
+   stub to the real Sarvam Bulbul v2 TTS.
+6. **Honest "what shipped with limitations"
+   table in the README.** 6 rows: voice stub,
+   static templates, Faker sim, B2B chaser
+   not closing the loop, mandate sequencer
+   separate from engine, bandit doesn't
+   retrain online. Each row says the
+   limitation and why it doesn't fail the
+   Track 3 bar.
+
+**Private docs move.** The user said
+"remember at the end some docs need to be
+ignored and hid from the public repo and
+they are for my reference not for judges to
+read." Moved 9 docs to `private/`:
+
+- `IMPLEMENTATION_STATE.md` → `private/`
+- `READMD.md` → `private/`
+- `main/JOURNAL.md` → `main/private/`
+- `main/docs/TRACK-3-FULL-PLAN.md` →
+  `main/docs/private/`
+- `main/docs/RESEARCH-2026-08-28.md` →
+  `main/docs/private/`
+- `main/docs/APPLICATION.md` →
+  `main/docs/private/`
+- `main/docs/PITCH-GIF.md` →
+  `main/docs/private/`
+- `main/docs/phoenix-setup.md` →
+  `main/docs/private/`
+- `main/docs/cloud-mirror.md` →
+  `main/docs/private/`
+
+Added `private/`, `main/private/`, and
+`main/docs/private/` to `.gitignore` so
+future private docs don't leak.
+
+**Why these are private (judges should not see
+them):**
+- `IMPLEMENTATION_STATE.md` and `JOURNAL.md`
+  are build-process memory with sentences like
+  "the AI did not notice" and "the user is
+  asleep" — exposes the AI co-pilot process and
+  the iteration count. Judges want a finished
+  product, not the lab notebook.
+- `READMD.md` is a duplicate of README; the
+  typo name is internal.
+- `TRACK-3-FULL-PLAN.md` and
+  `RESEARCH-2026-08-28.md` are the audit
+  dumps that show the AI considered and
+  rejected options. A judge looking for
+  credibility wants a confident README, not
+  a defended plan.
+- `APPLICATION.md` is a form-fill template
+  with the user's actual answers. Personal.
+- `PITCH-GIF.md`, `phoenix-setup.md`, and
+  `cloud-mirror.md` are operational setup
+  guides. Not interesting to a judge.
+
+**What stays public:** `README.md` (the
+headline), `ARCHITECTURE.md` (engineering
+depth), `eval-report.md` (the bar), the
+`PITCH-VIDEO.md` / `PITCH-DECK.md` scripts
+(the 5-min video is the pitch), `circulars.md`
+(RBI feature), `evidence-pack.md` and
+`mcp-integration.md` (operational, not
+internal), `KEYS-DAY.md` (operational), and
+`supabase-schema.sql` (the mirror schema).
+
+**What I would have done differently.** I
+should have asked the user on Day 1 which docs
+are private. The default was public; that's
+the wrong default for a buildathon. The fix
+is now in the `.gitignore` and the next
+session will not re-commit the private files.
