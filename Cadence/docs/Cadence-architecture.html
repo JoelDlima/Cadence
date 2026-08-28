@@ -2,632 +2,688 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Cadence - Complete Architecture Flow (Track 3)</title>
+<title>Cadence - Architecture Flow</title>
 <style>
   :root {
-    --ink: #111418;
-    --ink-muted: #4a5158;
-    --ink-soft: #6c757d;
+    --ink: #111;
+    --ink-muted: #555;
+    --line: #888;
     --paper: #fafaf7;
-    --paper-2: #f1f0eb;
-    --line: #c8c6bf;
-    --line-strong: #8a8780;
-    --accent: #0a6e4e;       /* recovery green */
-    --accent-soft: #d4ecdf;
-    --warn: #a3530a;         /* razorpay orange */
-    --warn-soft: #f8e6cd;
-    --info: #1d4f8a;         /* deep blue */
-    --info-soft: #d9e6f5;
-    --local: #5a1a8c;        /* local-process purple */
-    --local-soft: #e6d8f4;
-    --external: #6b3010;     /* external */
-    --external-soft: #f0dcc8;
-    --ai: #8a0a4a;           /* AI/bandit pink */
-    --ai-soft: #f8d4e3;
-    --audit: #2a2a2a;        /* audit chain */
-    --audit-soft: #d0d0d0;
+    --external: #6b3010;
+    --external-fill: #f6e5d2;
+    --local: #3a2d8c;
+    --local-fill: #e3deef;
+    --audit: #1a1a1a;
+    --audit-fill: #d4d4d4;
+    --ai: #8a0a4a;
+    --ai-fill: #f7d4e3;
+    --accent: #0a6e4e;
+    --accent-fill: #d2ebde;
+    --info: #1d4f8a;
+    --info-fill: #d9e6f5;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-  .page { max-width: 1280px; margin: 0 auto; padding: 28px 36px 80px; }
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .page { max-width: 1380px; margin: 0 auto; padding: 18px 24px 60px; }
   h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
-  .subtitle { color: var(--ink-muted); font-size: 13px; margin-bottom: 18px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 16px; font-size: 11px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-muted); }
-  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block;
-    border: 1px solid var(--line-strong); }
-  .legend i.ext      { background: var(--external-soft); border-color: var(--external); }
-  .legend i.local    { background: var(--local-soft);   border-color: var(--local);   }
-  .legend i.api      { background: var(--info-soft);     border-color: var(--info);     }
-  .legend i.ai       { background: var(--ai-soft);       border-color: var(--ai);       }
-  .legend i.audit    { background: var(--audit-soft);    border-color: var(--audit);    }
-  .legend i.recover  { background: var(--accent-soft);   border-color: var(--accent);   }
-  svg { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line);
-    border-radius: 6px; }
-  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; font-size: 11px; }
-  .meta div { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
-  .meta b { color: var(--ink); display: block; font-size: 12px; margin-bottom: 4px; }
+  .subtitle { color: var(--ink-muted); font-size: 12px; margin-bottom: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 10px; font-size: 11px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-muted); }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--line); }
+  .legend i.ext     { background: var(--external-fill); border-color: var(--external); }
+  .legend i.local   { background: var(--local-fill);   border-color: var(--local);   }
+  .legend i.audit   { background: var(--audit-fill);   border-color: var(--audit);   }
+  .legend i.ai      { background: var(--ai-fill);      border-color: var(--ai);      }
+  .legend i.accent  { background: var(--accent-fill);  border-color: var(--accent);  }
+  .legend i.info    { background: var(--info-fill);    border-color: var(--info);    }
+  svg { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; font-size: 10.5px; }
+  .meta div { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .meta b { color: var(--ink); display: block; font-size: 11px; margin-bottom: 3px; }
   .meta span { color: var(--ink-muted); }
-  .notes { margin-top: 24px; font-size: 11.5px; color: var(--ink-muted);
-    border-top: 1px solid var(--line); padding-top: 14px; line-height: 1.55; }
+  .notes { margin-top: 16px; font-size: 11px; color: var(--ink-muted);
+    border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; }
   .notes b { color: var(--ink); }
-  .print-only { display: none; }
   @media print {
-    .page { padding: 12px; }
+    .page { padding: 6px; }
     svg { border: 1px solid #999; }
-    .print-only { display: block; font-size: 10px; color: #999; margin-top: 8px; }
   }
 </style>
 </head>
 <body>
 <div class="page">
-  <h1>Cadence - Complete Architecture Flow (Razorpay Track 3, AI Revenue Recovery)</h1>
-  <div class="subtitle">One-page reference of every box, every connection, and what runs locally vs. over the Razorpay network. Open in any browser; print to PDF from there. No CDN, no external dependencies.</div>
+  <h1>Cadence - Architecture Flow (Razorpay Track 3, AI Revenue Recovery)</h1>
+  <div class="subtitle">Self-contained: open in any browser, no CDN. Print to PDF via Ctrl+P (A3 landscape). One box, one machine: SQLite is the queue, the event store, the projections, the audit chain.</div>
 
   <div class="legend">
-    <span><i class="ext"></i> External / Razorpay network</span>
-    <span><i class="local"></i> Local process (one box, one machine)</span>
-    <span><i class="api"></i> FastAPI surface (REST endpoints)</span>
-    <span><i class="ai"></i> AI / Recovery Brain (deterministic bandit)</span>
-    <span><i class="audit"></i> Audit chain (hash-linked SQLite ledger)</span>
-    <span><i class="recover"></i> Recovery executor / channel</span>
+    <span><i class="ext"></i> External / Razorpay</span>
+    <span><i class="local"></i> Local process</span>
+    <span><i class="audit"></i> Audit chain</span>
+    <span><i class="ai"></i> AI / Recovery Brain</span>
+    <span><i class="accent"></i> Recovery executor / channel</span>
+    <span><i class="info"></i> Read-only surface</span>
   </div>
 
-<svg viewBox="0 0 1240 1660" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="12">
+<!--
+  GRID
+  - Lanes (boxes live here):
+      Lane 1: y 50-130  (Razorpay, Customer)              height 80
+      Lane 2: y 160-240 (Supabase EF, Ingest gateway)      height 80
+      Lane 3: y 270-370 (Queue, Event store, Projections, 4 machines)  height 100
+      Lane 4: y 400-560 (Journey engine band)             height 160
+      Lane 5: y 600-720 (Policy Guardian band)            height 120
+      Lane 6: y 740-910 (Executors + Channels bands)      height 170
+      Lane 7: y 930-1050 (Customer pays/replies, LLM chain) height 120
+      Lane 8: y 1070-1260 (SPA, MCP, Cloud mirror)        height 190
+  - Channel rows (arrows run here, between lanes):
+      y=140, 255, 385, 580, 730, 920, 1060
+  - All arrows are pure Manhattan (H + V).
+  - Arrow labels have a white background rect behind them so
+    they remain readable when an arrow line passes nearby.
+-->
+<svg viewBox="0 0 1340 2000" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="11.5">
 
-  <!-- ============== DEFS: arrowheads ============== -->
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
     </marker>
-    <marker id="arrowInfo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1d4f8a" />
-    </marker>
-    <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="aAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#0a6e4e" />
     </marker>
-    <marker id="arrowAudit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2a2a2a" />
+    <marker id="aAudit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1a1a1a" />
     </marker>
-    <marker id="arrowAi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="aAi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a0a4a" />
     </marker>
-    <marker id="arrowExt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="aExt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b3010" />
+    </marker>
+    <marker id="aInfo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1d4f8a" />
     </marker>
   </defs>
 
-  <!-- ============== TITLE / LANE LABELS ============== -->
-  <g font-size="10" font-weight="700" letter-spacing="0.06em" fill="#6c757d">
-    <text x="40"   y="36">ROW 1 - RAZORPAY NETWORK (EXTERNAL)</text>
-    <text x="40"   y="240">ROW 2 - INGRESS (LOCAL)</text>
-    <text x="40"   y="420">ROW 3 - DURABLE QUEUE + EVENT STORE (LOCAL, SQLITE)</text>
-    <text x="40"   y="580">ROW 4 - JOURNEY ENGINE (LOCAL, EVENT-SOURCED)</text>
-    <text x="40"   y="950">ROW 5 - GUARDIAN + BANDIT (LOCAL, PURE-CODE GATES)</text>
-    <text x="40"   y="1100">ROW 6 - EXECUTORS + CHANNELS (LOCAL, OUTBOUND)</text>
-    <text x="40"   y="1290">ROW 7 - CUSTOMER + LLM PROVIDERS (EXTERNAL)</text>
-    <text x="40"   y="1450">ROW 8 - SPA + MCP + CLOUD MIRROR (LOCAL READ-ONLY + ONE-WAY PROJ)</text>
+  <!-- LANE HEADERS strip at the very top -->
+  <g font-size="9.5" font-weight="700" letter-spacing="0.05em" fill="#666">
+    <rect x="0" y="0" width="1340" height="24" fill="#f3f1ea" stroke="none"/>
+    <text x="20"   y="16">1 - RAZORPAY NETWORK</text>
+    <text x="180"  y="16">2 - INGRESS</text>
+    <text x="270"  y="16">3 - QUEUE + EVENT STORE</text>
+    <text x="450"  y="16">4 - JOURNEY ENGINE</text>
+    <text x="600"  y="16">5 - POLICY GUARDIAN</text>
+    <text x="745"  y="16">6 - EXECUTORS + CHANNELS</text>
+    <text x="930"  y="16">7 - CUSTOMER + LLM</text>
+    <text x="1080" y="16">8 - SPA + MCP + MIRROR</text>
   </g>
 
-  <!-- horizontal lane dividers (very light) -->
-  <g stroke="#e6e3d8" stroke-dasharray="3 4" stroke-width="1">
-    <line x1="20" y1="200" x2="1220" y2="200" />
-    <line x1="20" y1="400" x2="1220" y2="400" />
-    <line x1="20" y1="560" x2="1220" y2="560" />
-    <line x1="20" y1="930" x2="1220" y2="930" />
-    <line x1="20" y1="1080" x2="1220" y2="1080" />
-    <line x1="20" y1="1270" x2="1220" y2="1270" />
-    <line x1="20" y1="1430" x2="1220" y2="1430" />
-  </g>
-
-  <!-- ============== ROW 1: RAZORPAY (EXTERNAL) ============== -->
-  <!-- Razorpay Webhook / API box -->
+  <!-- LANE 1: RAZORPAY + CUSTOMER -->
   <g>
-    <rect x="60" y="60" width="260" height="100" rx="8" fill="var(--external-soft)" stroke="var(--external)" stroke-width="1.5"/>
-    <text x="190" y="86" text-anchor="middle" font-weight="700" font-size="13">Razorpay (test mode)</text>
-    <text x="190" y="106" text-anchor="middle" fill="var(--external)">subs · invoices · mandates · payment_links</text>
-    <text x="190" y="124" text-anchor="middle" fill="var(--ink-muted)" font-size="11">webhooks + REST API (subscriptions, payment_link.*, invoice.*, mandate.*)</text>
-    <text x="190" y="142" text-anchor="middle" fill="var(--ink-muted)" font-size="11">+ Razorpay SDK: razorpay.Client(KEY_ID, KEY_SECRET)</text>
+    <rect x="60"  y="50" width="220" height="80" rx="6" fill="var(--external-fill)" stroke="var(--external)" stroke-width="1.4"/>
+    <text x="170" y="76"  text-anchor="middle" font-weight="700" font-size="12">Razorpay (test mode)</text>
+    <text x="170" y="93"  text-anchor="middle" fill="var(--external)" font-size="10">webhooks + REST API</text>
+    <text x="170" y="108" text-anchor="middle" fill="var(--ink-muted)" font-size="10">subscriptions, invoices,</text>
+    <text x="170" y="121" text-anchor="middle" fill="var(--ink-muted)" font-size="10">mandates, payment_links</text>
   </g>
-
-  <!-- Customer phone (WhatsApp) -->
   <g>
-    <rect x="920" y="60" width="260" height="100" rx="8" fill="var(--external-soft)" stroke="var(--external)" stroke-width="1.5"/>
-    <text x="1050" y="86" text-anchor="middle" font-weight="700" font-size="13">Customer</text>
-    <text x="1050" y="106" text-anchor="middle" fill="var(--external)">WhatsApp + SMS + UPI app</text>
-    <text x="1050" y="124" text-anchor="middle" fill="var(--ink-muted)" font-size="11">receives Hinglish / Hindi / Tamil / Telugu</text>
-    <text x="1050" y="142" text-anchor="middle" fill="var(--ink-muted)" font-size="11">/ Bengali / Marathi / Gujarati nudge</text>
+    <rect x="1080" y="50" width="220" height="80" rx="6" fill="var(--external-fill)" stroke="var(--external)" stroke-width="1.4"/>
+    <text x="1190" y="76"  text-anchor="middle" font-weight="700" font-size="12">Customer</text>
+    <text x="1190" y="93"  text-anchor="middle" fill="var(--external)" font-size="10">WhatsApp / SMS / UPI app</text>
+    <text x="1190" y="108" text-anchor="middle" fill="var(--ink-muted)" font-size="10">receives nudge in 6 Indic</text>
+    <text x="1190" y="121" text-anchor="middle" fill="var(--ink-muted)" font-size="10">languages + Hinglish</text>
   </g>
 
-  <!-- ============== ROW 2: INGRESS (LOCAL) ============== -->
-  <!-- Supabase Edge Function -->
+  <!-- LANE 2: INGRESS -->
   <g>
-    <rect x="60" y="260" width="220" height="100" rx="8" fill="var(--local-soft)" stroke="var(--local)" stroke-width="1.5"/>
-    <text x="170" y="284" text-anchor="middle" font-weight="700" font-size="12">Supabase Edge Function</text>
-    <text x="170" y="302" text-anchor="middle" fill="var(--local)">revive-ingest</text>
-    <text x="170" y="320" text-anchor="middle" fill="var(--ink-muted)" font-size="11">public HMAC ingress</text>
-    <text x="170" y="338" text-anchor="middle" fill="var(--ink-muted)" font-size="11">(laptop-behind-NAT path)</text>
+    <rect x="60"   y="160" width="180" height="80" rx="6" fill="var(--local-fill)" stroke="var(--local)" stroke-width="1.4"/>
+    <text x="150"  y="186" text-anchor="middle" font-weight="700" font-size="11">Supabase Edge Fn</text>
+    <text x="150"  y="203" text-anchor="middle" fill="var(--local)" font-size="10">revive-ingest</text>
+    <text x="150"  y="218" text-anchor="middle" fill="var(--ink-muted)" font-size="10">public HMAC ingress</text>
+    <text x="150"  y="232" text-anchor="middle" fill="var(--ink-soft)" font-size="9">(laptop-behind-NAT path)</text>
   </g>
-
-  <!-- Ingest gateway (local FastAPI handler) -->
   <g>
-    <rect x="340" y="260" width="260" height="100" rx="8" fill="var(--local-soft)" stroke="var(--local)" stroke-width="1.5"/>
-    <text x="470" y="284" text-anchor="middle" font-weight="700" font-size="12">Ingest gateway</text>
-    <text x="470" y="302" text-anchor="middle" fill="var(--local)">Cadence/src/revive/journey/engine.py: gateway()</text>
-    <text x="470" y="320" text-anchor="middle" fill="var(--ink-muted)" font-size="11">HMAC verify + dedupe + append</text>
-    <text x="470" y="338" text-anchor="middle" fill="var(--ink-muted)" font-size="11">event_store.append(prev_hash, payload)</text>
+    <rect x="320"  y="160" width="240" height="80" rx="6" fill="var(--local-fill)" stroke="var(--local)" stroke-width="1.4"/>
+    <text x="440"  y="186" text-anchor="middle" font-weight="700" font-size="11">Ingest gateway (local)</text>
+    <text x="440"  y="203" text-anchor="middle" fill="var(--local)" font-size="10">engine.gateway()</text>
+    <text x="440"  y="218" text-anchor="middle" fill="var(--ink-muted)" font-size="10">HMAC verify + dedupe + append</text>
+    <text x="440"  y="232" text-anchor="middle" fill="var(--ink-soft)" font-size="9">event_store.append(prev_hash, payload)</text>
   </g>
 
-  <!-- Direct local path label -->
-  <g font-size="10" fill="var(--ink-soft)">
-    <text x="40" y="220">[ Razorpay posts directly to local gateway when laptop is public; via Supabase EF when behind NAT ]</text>
-  </g>
-
-  <!-- ============== ROW 3: QUEUE + EVENT STORE ============== -->
-  <!-- Durable task queue -->
+  <!-- LANE 3: QUEUE + EVENT STORE + 4 MACHINES -->
   <g>
-    <rect x="60" y="450" width="240" height="80" rx="8" fill="var(--audit-soft)" stroke="var(--audit)" stroke-width="1.5"/>
-    <text x="180" y="474" text-anchor="middle" font-weight="700" font-size="12">Durable task queue</text>
-    <text x="180" y="492" text-anchor="middle" fill="var(--audit)">SQLite table: queue (SQLite-as-queue)</text>
-    <text x="180" y="510" text-anchor="middle" fill="var(--ink-muted)" font-size="11">future available_at rows = timers</text>
-    <text x="180" y="528" text-anchor="middle" fill="var(--ink-muted)" font-size="11">idempotency_key dedupe</text>
+    <rect x="60"   y="270" width="220" height="100" rx="6" fill="var(--audit-fill)" stroke="var(--audit)" stroke-width="1.4"/>
+    <text x="170"  y="294" text-anchor="middle" font-weight="700" font-size="12">Durable task queue</text>
+    <text x="170"  y="310" text-anchor="middle" fill="var(--audit)" font-size="10">SQLite: queue</text>
+    <text x="170"  y="326" text-anchor="middle" fill="var(--ink-muted)" font-size="10">future rows = timers</text>
+    <text x="170"  y="340" text-anchor="middle" fill="var(--ink-muted)" font-size="10">idempotency_key dedupe</text>
+    <text x="170"  y="358" text-anchor="middle" fill="var(--ink-soft)" font-size="9">store/queue_repo.py</text>
+  </g>
+  <g>
+    <rect x="360"  y="270" width="220" height="100" rx="6" fill="var(--audit-fill)" stroke="var(--audit)" stroke-width="1.4"/>
+    <text x="470"  y="294" text-anchor="middle" font-weight="700" font-size="12">Event store</text>
+    <text x="470"  y="310" text-anchor="middle" fill="var(--audit)" font-size="10">SQLite: events</text>
+    <text x="470"  y="326" text-anchor="middle" fill="var(--ink-muted)" font-size="10">SHA-256 prev_hash chain</text>
+    <text x="470"  y="340" text-anchor="middle" fill="var(--ink-muted)" font-size="10">/api/audit/verify replays</text>
+    <text x="470"  y="358" text-anchor="middle" fill="var(--ink-soft)" font-size="9">store/event_store.py</text>
+  </g>
+  <g>
+    <rect x="660"  y="270" width="220" height="100" rx="6" fill="#fff" stroke="var(--line)" stroke-width="1"/>
+    <text x="770"  y="294" text-anchor="middle" font-weight="700" font-size="11">Projections (read models)</text>
+    <text x="770"  y="310" text-anchor="middle" fill="var(--ink-muted)" font-size="10">journey_repo (FSM)</text>
+    <text x="770"  y="326" text-anchor="middle" fill="var(--ink-muted)" font-size="10">preferences</text>
+    <text x="770"  y="340" text-anchor="middle" fill="var(--ink-muted)" font-size="10">policy_circulars</text>
+    <text x="770"  y="358" text-anchor="middle" fill="var(--ink-soft)" font-size="9">built from the event stream</text>
+  </g>
+  <g>
+    <rect x="960"  y="270" width="340" height="100" rx="6" fill="var(--accent-fill)" fill-opacity="0.5" stroke="var(--accent)" stroke-width="1.4"/>
+    <text x="1130" y="294" text-anchor="middle" font-weight="700" font-size="11" fill="var(--accent)">4 parallel recovery state machines</text>
+    <text x="1130" y="312" text-anchor="middle" fill="var(--ink-muted)" font-size="10">checkout.recovery  - 3 nudges, 14d EXPIRE</text>
+    <text x="1130" y="328" text-anchor="middle" fill="var(--ink-muted)" font-size="10">b2b.chaser        - 5 rungs (T-3 .. T+45)</text>
+    <text x="1130" y="344" text-anchor="middle" fill="var(--ink-muted)" font-size="10">mandate.sequencer - RETRY_NOW / 24H / OUTREACH / SWITCH</text>
+    <text x="1130" y="362" text-anchor="middle" fill="var(--ink-soft)" font-size="9">emit checkout.* / b2b.* / mandate.* events into the chain</text>
   </g>
 
-  <!-- Event store -->
+  <!-- LANE 4: JOURNEY ENGINE -->
   <g>
-    <rect x="360" y="450" width="240" height="80" rx="8" fill="var(--audit-soft)" stroke="var(--audit)" stroke-width="1.5"/>
-    <text x="480" y="474" text-anchor="middle" font-weight="700" font-size="12">Event store</text>
-    <text x="480" y="492" text-anchor="middle" fill="var(--audit)">SQLite table: events (append-only)</text>
-    <text x="480" y="510" text-anchor="middle" fill="var(--ink-muted)" font-size="11">SHA-256 prev_hash &#8594; hash chain</text>
-    <text x="480" y="528" text-anchor="middle" fill="var(--ink-muted)" font-size="11">/api/audit/verify endpoint replays the chain</text>
+    <rect x="40"  y="400" width="1260" height="160" rx="10" fill="#fafaf7" stroke="var(--local)" stroke-width="1.4"/>
+    <text x="50"  y="420" font-weight="700" font-size="12" fill="var(--local)">Journey engine (event-sourced, hash-chained) - deterministic fast path; LLM ladder is the only probabilistic edge</text>
+  </g>
+  <g>
+    <rect x="60"   y="436" width="180" height="116" rx="6" fill="var(--info-fill)" stroke="var(--info)" stroke-width="1.2"/>
+    <text x="150" y="462" text-anchor="middle" font-weight="700" font-size="11">Classifier</text>
+    <text x="150" y="480" text-anchor="middle" fill="var(--ink-muted)" font-size="10">Razorpay / UPI error</text>
+    <text x="150" y="494" text-anchor="middle" fill="var(--ink-muted)" font-size="10">code -&gt; cause</text>
+    <text x="150" y="512" text-anchor="middle" fill="var(--ink-muted)" font-size="10">~100% standard: 0 LLM</text>
+    <text x="150" y="530" text-anchor="middle" fill="var(--ink-soft)" font-size="9">classify/taxonomy.py</text>
+  </g>
+  <g>
+    <rect x="270"  y="436" width="180" height="116" rx="6" fill="var(--ai-fill)" stroke="var(--ai)" stroke-width="1.4"/>
+    <text x="360" y="462" text-anchor="middle" font-weight="700" font-size="11">Recovery Brain</text>
+    <text x="360" y="480" text-anchor="middle" fill="var(--ai)" font-size="10">deterministic bandit</text>
+    <text x="360" y="494" text-anchor="middle" fill="var(--ink-muted)" font-size="10">scores 7 legal moves</text>
+    <text x="360" y="508" text-anchor="middle" fill="var(--ink-muted)" font-size="10">per (cause, ctx)</text>
+    <text x="360" y="530" text-anchor="middle" fill="var(--ink-soft)" font-size="9">policy/bandit.py</text>
+  </g>
+  <g>
+    <rect x="480"  y="436" width="180" height="116" rx="6" fill="#fff" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 2"/>
+    <text x="570" y="462" text-anchor="middle" font-weight="700" font-size="11">Unknown ladder</text>
+    <text x="570" y="480" text-anchor="middle" fill="var(--ink-muted)" font-size="10">sticky -&gt; LLM -&gt; human</text>
+    <text x="570" y="494" text-anchor="middle" fill="var(--ink-muted)" font-size="10">taxonomy-bounded JSON</text>
+    <text x="570" y="508" text-anchor="middle" fill="var(--ink-muted)" font-size="10">Guardian re-vetoes any pick</text>
+    <text x="570" y="530" text-anchor="middle" fill="var(--ink-soft)" font-size="9">agents/planner.py</text>
+  </g>
+  <g>
+    <rect x="690"  y="436" width="180" height="116" rx="6" fill="#fff" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 2"/>
+    <text x="780" y="462" text-anchor="middle" font-weight="700" font-size="11">Phantom-failure</text>
+    <text x="780" y="480" text-anchor="middle" fill="var(--ink-muted)" font-size="10">NPCI peak-hold release</text>
+    <text x="780" y="494" text-anchor="middle" fill="var(--ink-muted)" font-size="10">schedule never earlier</text>
+    <text x="780" y="508" text-anchor="middle" fill="var(--ink-muted)" font-size="10">than hold_release_at</text>
+    <text x="780" y="530" text-anchor="middle" fill="var(--ink-soft)" font-size="9">policy/timing.py</text>
+  </g>
+  <g>
+    <rect x="900"  y="436" width="180" height="116" rx="6" fill="var(--accent-fill)" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="990" y="462" text-anchor="middle" font-weight="700" font-size="11">Save-offer</text>
+    <text x="990" y="480" text-anchor="middle" fill="var(--accent)" font-size="10">7-day grace, two-strike</text>
+    <text x="990" y="494" text-anchor="middle" fill="var(--ink-muted)" font-size="10">GRACE_OFFER -&gt;</text>
+    <text x="990" y="508" text-anchor="middle" fill="var(--ink-muted)" font-size="10">RETRY_PAYDAY</text>
+    <text x="990" y="530" text-anchor="middle" fill="var(--ink-soft)" font-size="9">journey/fsm.py</text>
+  </g>
+  <g>
+    <rect x="1110" y="436" width="180" height="116" rx="6" fill="var(--ai-fill)" stroke="var(--ai)" stroke-width="1.2"/>
+    <text x="1200" y="462" text-anchor="middle" font-weight="700" font-size="11">Reply + Voice TTS</text>
+    <text x="1200" y="480" text-anchor="middle" fill="var(--ai)" font-size="10">PTP parser (Hinglish)</text>
+    <text x="1200" y="494" text-anchor="middle" fill="var(--ink-muted)" font-size="10">Sarvam Bulbul v2 TTS</text>
+    <text x="1200" y="508" text-anchor="middle" fill="var(--ink-soft)" font-size="9">agents/ptp_parser.py</text>
+    <text x="1200" y="524" text-anchor="middle" fill="var(--ink-soft)" font-size="9">policy/voice_tts.py</text>
+    <text x="1200" y="540" text-anchor="middle" fill="var(--ink-soft)" font-size="9">(deterministic 1s stub)</text>
   </g>
 
-  <!-- Preferences + circulars + flag tables -->
+  <!-- LANE 5: POLICY GUARDIAN -->
   <g>
-    <rect x="660" y="450" width="200" height="80" rx="8" fill="#fff" stroke="var(--line-strong)" stroke-width="1"/>
-    <text x="760" y="472" text-anchor="middle" font-weight="700" font-size="11">Projections</text>
-    <text x="760" y="490" text-anchor="middle" fill="var(--ink-muted)" font-size="10">journey_repo (FSM read model)</text>
-    <text x="760" y="506" text-anchor="middle" fill="var(--ink-muted)" font-size="10">preferences, policy_circulars,</text>
-    <text x="760" y="522" text-anchor="middle" fill="var(--ink-muted)" font-size="10">checkout_sessions, b2b_invoices</text>
+    <rect x="40"  y="600" width="1260" height="120" rx="10" fill="var(--accent-fill)" fill-opacity="0.3" stroke="var(--accent)" stroke-width="1.4"/>
+    <text x="50"  y="620" font-weight="700" font-size="12" fill="var(--accent)">Policy Guardian - 8 hard-veto rules + 1 defer rule (pure-code, run after every proposal)</text>
+    <text x="50"  y="635" fill="var(--ink-muted)" font-size="10">pinned by tests/test_adversarial_guardian.py (50/50 cases, every reason reachable)</text>
+  </g>
+  <g>
+    <rect x="60"   y="650" width="148" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="134"  y="670" text-anchor="middle" font-weight="600" font-size="10">touch_cap_per_window</text>
+    <text x="134"  y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">3 per 14 days</text>
+    <text x="134"  y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">touch_cap_reached</text>
+  </g>
+  <g>
+    <rect x="220"  y="650" width="148" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="294"  y="670" text-anchor="middle" font-weight="600" font-size="10">quiet_hours</text>
+    <text x="294"  y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">21:00 - 09:00 IST</text>
+    <text x="294"  y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">quiet_hours_deferred</text>
+  </g>
+  <g>
+    <rect x="380"  y="650" width="148" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="454"  y="670" text-anchor="middle" font-weight="600" font-size="10">hard_decline_stop</text>
+    <text x="454"  y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">no recovery, ever</text>
+    <text x="454"  y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">hard_decline_stop</text>
+  </g>
+  <g>
+    <rect x="540"  y="650" width="148" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="614"  y="670" text-anchor="middle" font-weight="600" font-size="10">RBI 24h pre-debit</text>
+    <text x="614"  y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">notice before retry</text>
+    <text x="614"  y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">rbi_24h_violation</text>
+  </g>
+  <g>
+    <rect x="700"  y="650" width="148" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="774"  y="670" text-anchor="middle" font-weight="600" font-size="10">DND-listed</text>
+    <text x="774"  y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">customer opt-out</text>
+    <text x="774"  y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">dnd_listed</text>
+  </g>
+  <g>
+    <rect x="860"  y="650" width="148" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="934"  y="670" text-anchor="middle" font-weight="600" font-size="10">kill_switch</text>
+    <text x="934"  y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">global pause</text>
+    <text x="934"  y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">kill_switch</text>
+  </g>
+  <g>
+    <rect x="1020" y="650" width="130" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="1085" y="670" text-anchor="middle" font-weight="600" font-size="10">cost_ceiling</text>
+    <text x="1085" y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">amount-tier</text>
+    <text x="1085" y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">cost_ceiling</text>
+  </g>
+  <g>
+    <rect x="1160" y="650" width="130" height="60" rx="5" fill="#fff" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="1225" y="670" text-anchor="middle" font-weight="600" font-size="10">attempts</text>
+    <text x="1225" y="685" text-anchor="middle" font-size="9" fill="var(--ink-muted)">max_retry</text>
+    <text x="1225" y="700" text-anchor="middle" font-size="9" fill="var(--ink-soft)">attempts_exhausted</text>
   </g>
 
-  <!-- 4 new state machines (this session) -->
+  <!-- LANE 6: EXECUTORS + CHANNELS -->
   <g>
-    <rect x="900" y="450" width="280" height="80" rx="8" fill="var(--recover)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/>
-    <text x="1040" y="472" text-anchor="middle" font-weight="700" font-size="11" fill="var(--accent)">4 parallel recovery state machines</text>
-    <text x="1040" y="490" text-anchor="middle" fill="var(--ink-muted)" font-size="10">revive.checkout.recovery   (OPEN &#8594; NUDGED &#8594; RECOVERED)</text>
-    <text x="1040" y="506" text-anchor="middle" fill="var(--ink-muted)" font-size="10">revive.b2b.chaser         (issued &#8594; overdue ladder 5 rungs)</text>
-    <text x="1040" y="522" text-anchor="middle" fill="var(--ink-muted)" font-size="10">revive.mandate.sequencer  (RETRY_NOW / 24H / OUTREACH / SWITCH)</text>
+    <rect x="40"  y="740" width="620" height="170" rx="10" fill="var(--accent-fill)" fill-opacity="0.3" stroke="var(--accent)" stroke-width="1.4"/>
+    <text x="50"  y="760" font-weight="700" font-size="12" fill="var(--accent)">Executors - executors/dispatcher.py</text>
   </g>
-
-  <!-- ============== ROW 4: JOURNEY ENGINE (LOCAL) ============== -->
   <g>
-    <rect x="60" y="600" width="1120" height="300" rx="10" fill="#fff" stroke="var(--line-strong)" stroke-width="1.5"/>
-    <text x="70" y="624" font-weight="700" font-size="13" fill="var(--local)">Journey engine - Cadence/src/revive/journey/engine.py (event-sourced, hash-chained)</text>
-    <text x="70" y="642" fill="var(--ink-muted)" font-size="11">rehydrate from event store on every claim; deterministic fast path; LLM ladder is the only probabilistic edge</text>
-
-    <!-- inner boxes -->
-    <g>
-      <rect x="80"  y="660" width="220" height="80" rx="6" fill="var(--info-soft)" stroke="var(--info)" stroke-width="1"/>
-      <text x="190" y="682" text-anchor="middle" font-weight="700" font-size="12">Classifier</text>
-      <text x="190" y="700" text-anchor="middle" fill="var(--ink-muted)" font-size="11">real Razorpay / UPI error code</text>
-      <text x="190" y="716" text-anchor="middle" fill="var(--ink-muted)" font-size="11">&#8594; cause (NO_FUNDS, BANK_DOWN...)</text>
-      <text x="190" y="732" text-anchor="middle" fill="var(--ink-soft)" font-size="10">~100% standard codes: 0 LLM tokens</text>
-    </g>
-
-    <g>
-      <rect x="320" y="660" width="200" height="80" rx="6" fill="var(--ai-soft)" stroke="var(--ai)" stroke-width="1.5"/>
-      <text x="420" y="682" text-anchor="middle" font-weight="700" font-size="12">Recovery Brain</text>
-      <text x="420" y="700" text-anchor="middle" fill="var(--ai)">deterministic contextual bandit</text>
-      <text x="420" y="716" text-anchor="middle" fill="var(--ink-muted)" font-size="11">scores 7 legal moves per (cause, ctx)</text>
-      <text x="420" y="732" text-anchor="middle" fill="var(--ink-soft)" font-size="10">weights in source; emits bandit.ranked</text>
-    </g>
-
-    <g>
-      <rect x="540" y="660" width="200" height="80" rx="6" fill="#fff" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="3 3"/>
-      <text x="640" y="682" text-anchor="middle" font-weight="700" font-size="12">Unknown ladder</text>
-      <text x="640" y="700" text-anchor="middle" fill="var(--ink-muted)" font-size="11">sticky diagnosis &#8594; LLM &#8594; human</text>
-      <text x="640" y="716" text-anchor="middle" fill="var(--ink-muted)" font-size="11">taxonomy-bounded JSON menu</text>
-      <text x="640" y="732" text-anchor="middle" fill="var(--ink-soft)" font-size="10">Guardian re-vetoes any LLM pick</text>
-    </g>
-
-    <g>
-      <rect x="760" y="660" width="180" height="80" rx="6" fill="#fff" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="3 3"/>
-      <text x="850" y="682" text-anchor="middle" font-weight="700" font-size="12">Phantom-failure guard</text>
-      <text x="850" y="700" text-anchor="middle" fill="var(--ink-muted)" font-size="11">NPCI peak-hold release</text>
-      <text x="850" y="716" text-anchor="middle" fill="var(--ink-muted)" font-size="11">schedule never earlier than</text>
-      <text x="850" y="732" text-anchor="middle" fill="var(--ink-soft)" font-size="10">hold_release_at</text>
-    </g>
-
-    <g>
-      <rect x="960" y="660" width="200" height="80" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
-      <text x="1060" y="682" text-anchor="middle" font-weight="700" font-size="12">Save-offer ladder</text>
-      <text x="1060" y="700" text-anchor="middle" fill="var(--accent)">7-day grace, two-strike close</text>
-      <text x="1060" y="716" text-anchor="middle" fill="var(--ink-muted)" font-size="11">GRACE_OFFER &#8594; RETRY_PAYDAY</text>
-      <text x="1060" y="732" text-anchor="middle" fill="var(--ink-soft)" font-size="10">unpaid offers loop back as failures</text>
-    </g>
-
-    <!-- inner engine band: Promise-to-Pay (PTP) and PTP reply handling -->
-    <g>
-      <rect x="80" y="760" width="540" height="60" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1" fill-opacity="0.5"/>
-      <text x="350" y="780" text-anchor="middle" font-weight="700" font-size="11" fill="var(--accent)">Reply handling - Cadence/src/revive/agents/ptp_parser.py</text>
-      <text x="350" y="800" text-anchor="middle" fill="var(--ink-muted)" font-size="10">deterministic multi-lingual parser; dates / durations / vague / refusal; one RETRY_PAYDAY on the promised date</text>
-    </g>
-
-    <g>
-      <rect x="640" y="760" width="520" height="60" rx="6" fill="var(--ai-soft)" stroke="var(--ai)" stroke-width="1" fill-opacity="0.5"/>
-      <text x="900" y="780" text-anchor="middle" font-weight="700" font-size="11" fill="var(--ai)">Hinglish / Indic voice TTS - Cadence/src/revive/policy/voice_tts.py</text>
-      <text x="900" y="800" text-anchor="middle" fill="var(--ink-muted)" font-size="10">Sarvam Bulbul v2 (when SARVAM_API_KEY set); deterministic 1-sec silent WAV stub otherwise</text>
-    </g>
-
-    <!-- arrows inside the engine band -->
-    <g stroke="#666" stroke-width="1.2" fill="none" marker-end="url(#arrow)">
-      <path d="M 300 700 L 320 700" />
-      <path d="M 520 700 L 540 700" />
-      <path d="M 740 700 L 760 700" />
-      <path d="M 940 700 L 960 700" />
-    </g>
+    <rect x="60"   y="778" width="180" height="58" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="150"  y="798" text-anchor="middle" font-size="11" font-weight="600">PaymentLink</text>
+    <text x="150"  y="813" text-anchor="middle" font-size="9" fill="var(--ink-muted)">razorpay.payment_link</text>
+    <text x="150"  y="825" text-anchor="middle" font-size="9" fill="var(--ink-soft)">create / fetch / notify</text>
   </g>
-
-  <!-- ============== ROW 5: GUARDIAN + AUDIT ============== -->
   <g>
-    <rect x="60" y="950" width="1120" height="120" rx="10" fill="var(--accent-soft)" fill-opacity="0.4" stroke="var(--accent)" stroke-width="1.5"/>
-    <text x="70" y="974" font-weight="700" font-size="13" fill="var(--accent)">Policy Guardian - Cadence/src/revive/policy/guardian.py  (pure-code veto, run after every proposal)</text>
-    <text x="70" y="992" fill="var(--ink-muted)" font-size="11">8 hard-veto rules + 1 defer rule; pinned by tests/test_adversarial_guardian.py (50/50 adversarial cases, every reason reachable)</text>
-
-    <g>
-      <rect x="80"  y="1010" width="160" height="46" rx="5" fill="#fff" stroke="var(--accent)"/>
-      <text x="160" y="1028" text-anchor="middle" font-size="11" font-weight="600">touch_cap_per_window</text>
-      <text x="160" y="1044" text-anchor="middle" font-size="10" fill="var(--ink-muted)">3 per 14d</text>
-    </g>
-    <g>
-      <rect x="250" y="1010" width="160" height="46" rx="5" fill="#fff" stroke="var(--accent)"/>
-      <text x="330" y="1028" text-anchor="middle" font-size="11" font-weight="600">quiet_hours</text>
-      <text x="330" y="1044" text-anchor="middle" font-size="10" fill="var(--ink-muted)">21:00 - 09:00 IST</text>
-    </g>
-    <g>
-      <rect x="420" y="1010" width="160" height="46" rx="5" fill="#fff" stroke="var(--accent)"/>
-      <text x="500" y="1028" text-anchor="middle" font-size="11" font-weight="600">hard_decline_stop</text>
-      <text x="500" y="1044" text-anchor="middle" font-size="10" fill="var(--ink-muted)">no recovery, ever</text>
-    </g>
-    <g>
-      <rect x="590" y="1010" width="160" height="46" rx="5" fill="#fff" stroke="var(--accent)"/>
-      <text x="670" y="1028" text-anchor="middle" font-size="11" font-weight="600">RBI 24h pre-debit</text>
-      <text x="670" y="1044" text-anchor="middle" font-size="10" fill="var(--ink-muted)">notice before retry</text>
-    </g>
-    <g>
-      <rect x="760" y="1010" width="160" height="46" rx="5" fill="#fff" stroke="var(--accent)"/>
-      <text x="840" y="1028" text-anchor="middle" font-size="11" font-weight="600">DND-listed</text>
-      <text x="840" y="1044" text-anchor="middle" font-size="10" fill="var(--ink-muted)">per-customer opt-out</text>
-    </g>
-    <g>
-      <rect x="930" y="1010" width="120" height="46" rx="5" fill="#fff" stroke="var(--accent)"/>
-      <text x="990" y="1028" text-anchor="middle" font-size="11" font-weight="600">kill_switch</text>
-      <text x="990" y="1044" text-anchor="middle" font-size="10" fill="var(--ink-muted)">global pause</text>
-    </g>
-    <g>
-      <rect x="1060" y="1010" width="110" height="46" rx="5" fill="#fff" stroke="var(--accent)"/>
-      <text x="1115" y="1028" text-anchor="middle" font-size="11" font-weight="600">cost_ceiling</text>
-      <text x="1115" y="1044" text-anchor="middle" font-size="10" fill="var(--ink-muted)">amount-tier</text>
-    </g>
+    <rect x="250"  y="778" width="180" height="58" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="340"  y="798" text-anchor="middle" font-size="11" font-weight="600">MandateRetry</text>
+    <text x="340"  y="813" text-anchor="middle" font-size="9" fill="var(--ink-muted)">simulated NPCI</text>
+    <text x="340"  y="825" text-anchor="middle" font-size="9" fill="var(--ink-soft)">no public merchant API</text>
   </g>
-
-  <!-- ============== ROW 6: EXECUTORS + CHANNELS ============== -->
   <g>
-    <rect x="60" y="1100" width="500" height="160" rx="10" fill="var(--recover)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/>
-    <text x="70" y="1124" font-weight="700" font-size="13" fill="var(--accent)">Executors - Cadence/src/revive/executors/dispatcher.py</text>
-    <g>
-      <rect x="80"  y="1140" width="140" height="50" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="150" y="1158" text-anchor="middle" font-size="11" font-weight="600">PaymentLink</text>
-      <text x="150" y="1174" text-anchor="middle" font-size="10" fill="var(--ink-muted)">razorpay.payment_link</text>
-    </g>
-    <g>
-      <rect x="230" y="1140" width="140" height="50" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="300" y="1158" text-anchor="middle" font-size="11" font-weight="600">MandateRetry</text>
-      <text x="300" y="1174" text-anchor="middle" font-size="10" fill="var(--ink-muted)">simulated NPCI</text>
-    </g>
-    <g>
-      <rect x="380" y="1140" width="160" height="50" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="460" y="1158" text-anchor="middle" font-size="11" font-weight="600">SaveOffer + Grace</text>
-      <text x="460" y="1174" text-anchor="middle" font-size="10" fill="var(--ink-muted)">7d, two-strike</text>
-    </g>
-    <g>
-      <rect x="80"  y="1200" width="460" height="46" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="310" y="1218" text-anchor="middle" font-size="11" font-weight="600">Outcome check - did the customer pay?</text>
-      <text x="310" y="1234" text-anchor="middle" font-size="10" fill="var(--ink-muted)">poll payment_link / query razorpay.payment.fetch; on payment.captured webhook close journey RECOVERED</text>
-    </g>
+    <rect x="440"  y="778" width="200" height="58" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="540"  y="798" text-anchor="middle" font-size="11" font-weight="600">SaveOffer + Grace</text>
+    <text x="540"  y="813" text-anchor="middle" font-size="9" fill="var(--ink-muted)">7d, two-strike</text>
+    <text x="540"  y="825" text-anchor="middle" font-size="9" fill="var(--ink-soft)">SAVE_OFFER scheduler</text>
   </g>
-
-  <!-- Channels -->
   <g>
-    <rect x="600" y="1100" width="580" height="160" rx="10" fill="var(--recover)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/>
-    <text x="610" y="1124" font-weight="700" font-size="13" fill="var(--accent)">Channels - Cadence/src/revive/executors/channels.py</text>
-    <g>
-      <rect x="620" y="1140" width="170" height="50" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="705" y="1158" text-anchor="middle" font-size="11" font-weight="600">MockWhatsApp</text>
-      <text x="705" y="1174" text-anchor="middle" font-size="10" fill="var(--ink-muted)">deterministic offline stub</text>
-    </g>
-    <g>
-      <rect x="800" y="1140" width="170" height="50" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="885" y="1158" text-anchor="middle" font-size="11" font-weight="600">Email (Resend)</text>
-      <text x="885" y="1174" text-anchor="middle" font-size="10" fill="var(--ink-muted)">live when RESEND_API_KEY set</text>
-    </g>
-    <g>
-      <rect x="980" y="1140" width="180" height="50" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="1070" y="1158" text-anchor="middle" font-size="11" font-weight="600">Nudge templates</text>
-      <text x="1070" y="1174" text-anchor="middle" font-size="10" fill="var(--ink-muted)">7 languages (6 Indic + Hinglish)</text>
-    </g>
-    <g>
-      <rect x="620" y="1200" width="540" height="46" rx="6" fill="#fff" stroke="var(--accent)"/>
-      <text x="890" y="1218" text-anchor="middle" font-size="11" font-weight="600">Self-service /pay/{journey_id} page</text>
-      <text x="890" y="1234" text-anchor="middle" font-size="10" fill="var(--ink-muted)">customer lands here from the WhatsApp / email link; pays via Razorpay hosted checkout</text>
-    </g>
-  </g>
-
-  <!-- ============== ROW 7: CUSTOMER + LLM ============== -->
-  <g>
-    <rect x="60" y="1290" width="540" height="120" rx="10" fill="var(--external-soft)" stroke="var(--external)" stroke-width="1.5"/>
-    <text x="70" y="1314" font-weight="700" font-size="13" fill="var(--external)">Customer pays (or not)</text>
-    <g>
-      <rect x="80"  y="1330" width="220" height="60" rx="6" fill="#fff" stroke="var(--external)"/>
-      <text x="190" y="1348" text-anchor="middle" font-size="11" font-weight="600">Pays link</text>
-      <text x="190" y="1364" text-anchor="middle" font-size="10" fill="var(--ink-muted)">UPI / card / netbanking</text>
-      <text x="190" y="1378" text-anchor="middle" font-size="10" fill="var(--ink-muted)">via Razorpay hosted checkout</text>
-    </g>
-    <g>
-      <rect x="320" y="1330" width="260" height="60" rx="6" fill="#fff" stroke="var(--external)"/>
-      <text x="450" y="1348" text-anchor="middle" font-size="11" font-weight="600">Replies to nudge</text>
-      <text x="450" y="1364" text-anchor="middle" font-size="10" fill="var(--ink-muted)">"5 tarikh pay kar dunga"</text>
-      <text x="450" y="1378" text-anchor="middle" font-size="10" fill="var(--ink-muted)">&#8594; PTP parser &#8594; RETRY_PAYDAY</text>
-    </g>
+    <rect x="60"   y="848" width="580" height="48" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="350"  y="868" text-anchor="middle" font-size="11" font-weight="600">Outcome check - did the customer pay?</text>
+    <text x="350"  y="884" text-anchor="middle" font-size="9" fill="var(--ink-muted)">poll payment_link; on payment.captured webhook -&gt; close journey RECOVERED</text>
   </g>
 
   <g>
-    <rect x="640" y="1290" width="540" height="120" rx="10" fill="var(--external-soft)" stroke="var(--external)" stroke-width="1.5"/>
-    <text x="650" y="1314" font-weight="700" font-size="13" fill="var(--external)">LLM provider chain (the only probabilistic edge)</text>
+    <rect x="680"  y="740" width="620" height="170" rx="10" fill="var(--accent-fill)" fill-opacity="0.3" stroke="var(--accent)" stroke-width="1.4"/>
+    <text x="690"  y="760" font-weight="700" font-size="12" fill="var(--accent)">Channels - executors/channels.py</text>
+  </g>
+  <g>
+    <rect x="700"  y="778" width="180" height="58" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="790"  y="798" text-anchor="middle" font-size="11" font-weight="600">MockWhatsApp</text>
+    <text x="790"  y="813" text-anchor="middle" font-size="9" fill="var(--ink-muted)">deterministic stub</text>
+    <text x="790"  y="825" text-anchor="middle" font-size="9" fill="var(--ink-soft)">keyless default</text>
+  </g>
+  <g>
+    <rect x="890"  y="778" width="180" height="58" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="980"  y="798" text-anchor="middle" font-size="11" font-weight="600">Email (Resend)</text>
+    <text x="980"  y="813" text-anchor="middle" font-size="9" fill="var(--ink-muted)">live when key set</text>
+    <text x="980"  y="825" text-anchor="middle" font-size="9" fill="var(--ink-soft)">RESEND_API_KEY</text>
+  </g>
+  <g>
+    <rect x="1080" y="778" width="200" height="58" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="1180" y="798" text-anchor="middle" font-size="11" font-weight="600">Nudge templates</text>
+    <text x="1180" y="813" text-anchor="middle" font-size="9" fill="var(--ink-muted)">7 languages</text>
+    <text x="1180" y="825" text-anchor="middle" font-size="9" fill="var(--ink-soft)">6 Indic + Hinglish</text>
+  </g>
+  <g>
+    <rect x="700"  y="848" width="580" height="48" rx="5" fill="#fff" stroke="var(--accent)"/>
+    <text x="990"  y="868" text-anchor="middle" font-size="11" font-weight="600">Self-service /pay/{journey_id} page</text>
+    <text x="990"  y="884" text-anchor="middle" font-size="9" fill="var(--ink-muted)">customer lands here from the WhatsApp / email link; pays via Razorpay hosted checkout</text>
+  </g>
+
+  <!-- LANE 7: CUSTOMER + LLM -->
+  <g>
+    <rect x="60"   y="930" width="220" height="120" rx="6" fill="var(--external-fill)" stroke="var(--external)" stroke-width="1.4"/>
+    <text x="170"  y="956" text-anchor="middle" font-weight="700" font-size="12">Customer pays (or not)</text>
+    <text x="170"  y="974" text-anchor="middle" fill="var(--external)" font-size="10">UPI / card / netbanking</text>
+    <text x="170"  y="988" text-anchor="middle" fill="var(--ink-muted)" font-size="10">via Razorpay hosted</text>
+    <text x="170"  y="1002" text-anchor="middle" fill="var(--ink-muted)" font-size="10">checkout, or no payment</text>
+    <text x="170"  y="1024" text-anchor="middle" fill="var(--ink-soft)" font-size="9">OUTCOME CHECK</text>
+  </g>
+  <g>
+    <rect x="320"  y="930" width="220" height="120" rx="6" fill="var(--external-fill)" stroke="var(--external)" stroke-width="1.4"/>
+    <text x="430"  y="956" text-anchor="middle" font-weight="700" font-size="12">Customer replies</text>
+    <text x="430"  y="974" text-anchor="middle" fill="var(--external)" font-size="10">"5 tarikh pay kar dunga"</text>
+    <text x="430"  y="988" text-anchor="middle" fill="var(--ink-muted)" font-size="10">PTP parser reads Hinglish +</text>
+    <text x="430"  y="1002" text-anchor="middle" fill="var(--ink-muted)" font-size="10">English; one RETRY_PAYDAY</text>
+    <text x="430"  y="1024" text-anchor="middle" fill="var(--ink-soft)" font-size="9">on the promised date</text>
+  </g>
+  <g>
+    <rect x="580"  y="930" width="720" height="120" rx="6" fill="var(--external-fill)" stroke="var(--external)" stroke-width="1.4"/>
+    <text x="940"  y="954" text-anchor="middle" font-weight="700" font-size="12">LLM provider chain (only probabilistic edge)</text>
+    <text x="940"  y="972" text-anchor="middle" fill="var(--ink-muted)" font-size="10">called only on unclassifiable causes; taxonomy-bounded JSON; Guardian re-vetoes</text>
     <g>
-      <rect x="660" y="1330" width="100" height="60" rx="6" fill="#fff" stroke="var(--external)"/>
-      <text x="710" y="1352" text-anchor="middle" font-size="11" font-weight="600">Gemini</text>
-      <text x="710" y="1368" text-anchor="middle" font-size="9" fill="var(--ink-muted)">free</text>
+      <rect x="600"  y="985" width="100" height="50" rx="4" fill="#fff" stroke="var(--external)"/>
+      <text x="650"  y="1004" text-anchor="middle" font-size="10" font-weight="600">Gemini</text>
+      <text x="650"  y="1018" text-anchor="middle" font-size="9" fill="var(--ink-muted)">free</text>
+      <text x="650"  y="1030" text-anchor="middle" font-size="8" fill="var(--ink-soft)">gemini-2.0-flash</text>
     </g>
     <g>
-      <rect x="770" y="1330" width="100" height="60" rx="6" fill="#fff" stroke="var(--external)"/>
-      <text x="820" y="1352" text-anchor="middle" font-size="11" font-weight="600">Groq</text>
-      <text x="820" y="1368" text-anchor="middle" font-size="9" fill="var(--ink-muted)">free</text>
+      <rect x="710"  y="985" width="100" height="50" rx="4" fill="#fff" stroke="var(--external)"/>
+      <text x="760"  y="1004" text-anchor="middle" font-size="10" font-weight="600">Groq</text>
+      <text x="760"  y="1018" text-anchor="middle" font-size="9" fill="var(--ink-muted)">free</text>
+      <text x="760"  y="1030" text-anchor="middle" font-size="8" fill="var(--ink-soft)">llama-3.3-70b</text>
     </g>
     <g>
-      <rect x="880" y="1330" width="110" height="60" rx="6" fill="#fff" stroke="var(--external)"/>
-      <text x="935" y="1352" text-anchor="middle" font-size="11" font-weight="600">OpenRouter</text>
-      <text x="935" y="1368" text-anchor="middle" font-size="9" fill="var(--ink-muted)">free</text>
+      <rect x="820"  y="985" width="110" height="50" rx="4" fill="#fff" stroke="var(--external)"/>
+      <text x="875"  y="1004" text-anchor="middle" font-size="10" font-weight="600">OpenRouter</text>
+      <text x="875"  y="1018" text-anchor="middle" font-size="9" fill="var(--ink-muted)">free</text>
+      <text x="875"  y="1030" text-anchor="middle" font-size="8" fill="var(--ink-soft)">meta-llama</text>
     </g>
     <g>
-      <rect x="1000" y="1330" width="170" height="60" rx="6" fill="var(--ai-soft)" stroke="var(--ai)" stroke-width="1"/>
-      <text x="1085" y="1352" text-anchor="middle" font-size="11" font-weight="600">Sarvam AI</text>
-      <text x="1085" y="1368" text-anchor="middle" font-size="9" fill="var(--ink-muted)">Indian-first, 22 langs</text>
+      <rect x="940"  y="985" width="170" height="50" rx="4" fill="var(--ai-fill)" stroke="var(--ai)"/>
+      <text x="1025" y="1004" text-anchor="middle" font-size="10" font-weight="600">Sarvam AI</text>
+      <text x="1025" y="1018" text-anchor="middle" font-size="9" fill="var(--ink-muted)">22 langs, Indian-first</text>
+      <text x="1025" y="1030" text-anchor="middle" font-size="8" fill="var(--ink-soft)">sarvam-m</text>
+    </g>
+    <g>
+      <rect x="1120" y="985" width="160" height="50" rx="4" fill="#fff" stroke="var(--external)"/>
+      <text x="1200" y="1004" text-anchor="middle" font-size="10" font-weight="600">Ollama</text>
+      <text x="1200" y="1018" text-anchor="middle" font-size="9" fill="var(--ink-muted)">local, llama3.1</text>
     </g>
   </g>
 
-  <!-- ============== ROW 8: SPA + MCP + CLOUD MIRROR ============== -->
+  <!-- LANE 8: SPA + MCP + CLOUD MIRROR -->
   <g>
-    <rect x="60" y="1450" width="540" height="160" rx="10" fill="var(--local-soft)" stroke="var(--local)" stroke-width="1.5"/>
-    <text x="70" y="1474" font-weight="700" font-size="13" fill="var(--local)">SPA control room (React + Vite, 9 tabs)</text>
-    <g>
-      <rect x="80"  y="1490" width="160" height="30" rx="4" fill="#fff" stroke="var(--local)"/>
-      <text x="160" y="1510" text-anchor="middle" font-size="10">Overview (live counters)</text>
-    </g>
-    <g>
-      <rect x="250" y="1490" width="160" height="30" rx="4" fill="#fff" stroke="var(--local)"/>
-      <text x="330" y="1510" text-anchor="middle" font-size="10">Journeys &amp; Audit</text>
-    </g>
-    <g>
-      <rect x="420" y="1490" width="160" height="30" rx="4" fill="#fff" stroke="var(--local)"/>
-      <text x="500" y="1510" text-anchor="middle" font-size="10">Policy Guardian</text>
-    </g>
-    <g>
-      <rect x="80"  y="1530" width="160" height="30" rx="4" fill="#fff" stroke="var(--local)"/>
-      <text x="160" y="1550" text-anchor="middle" font-size="10">Simulation &amp; Chaos</text>
-    </g>
-    <g>
-      <rect x="250" y="1530" width="160" height="30" rx="4" fill="#fff" stroke="var(--local)"/>
-      <text x="330" y="1550" text-anchor="middle" font-size="10">Payment Portal</text>
-    </g>
-    <g>
-      <rect x="420" y="1530" width="160" height="30" rx="4" fill="var(--ai-soft)" stroke="var(--ai)"/>
-      <text x="500" y="1550" text-anchor="middle" font-size="10" font-weight="600">Recovery Brain</text>
-    </g>
-    <g>
-      <rect x="80"  y="1570" width="160" height="30" rx="4" fill="#fff" stroke="var(--accent)"/>
-      <text x="160" y="1590" text-anchor="middle" font-size="10">Checkout Recovery</text>
-    </g>
-    <g>
-      <rect x="250" y="1570" width="160" height="30" rx="4" fill="#fff" stroke="var(--accent)"/>
-      <text x="330" y="1590" text-anchor="middle" font-size="10">B2B Receivables</text>
-    </g>
-    <g>
-      <rect x="420" y="1570" width="160" height="30" rx="4" fill="#fff" stroke="var(--accent)"/>
-      <text x="500" y="1590" text-anchor="middle" font-size="10">Mandate Sequencer</text>
-    </g>
+    <rect x="40"   y="1070" width="640" height="190" rx="10" fill="var(--local-fill)" fill-opacity="0.4" stroke="var(--local)" stroke-width="1.4"/>
+    <text x="50"   y="1090" font-weight="700" font-size="12" fill="var(--local)">SPA control room (React + Vite, 9 tabs)</text>
+  </g>
+  <g>
+    <rect x="60"   y="1108" width="190" height="40" rx="5" fill="#fff" stroke="var(--local)"/>
+    <text x="155"  y="1132" text-anchor="middle" font-size="10">Overview (live counters)</text>
+  </g>
+  <g>
+    <rect x="260"  y="1108" width="190" height="40" rx="5" fill="#fff" stroke="var(--local)"/>
+    <text x="355"  y="1132" text-anchor="middle" font-size="10">Journeys &amp; Audit</text>
+  </g>
+  <g>
+    <rect x="460"  y="1108" width="200" height="40" rx="5" fill="#fff" stroke="var(--local)"/>
+    <text x="560"  y="1132" text-anchor="middle" font-size="10">Policy Guardian</text>
+  </g>
+  <g>
+    <rect x="60"   y="1156" width="190" height="40" rx="5" fill="#fff" stroke="var(--local)"/>
+    <text x="155"  y="1180" text-anchor="middle" font-size="10">Simulation &amp; Chaos</text>
+  </g>
+  <g>
+    <rect x="260"  y="1156" width="190" height="40" rx="5" fill="#fff" stroke="var(--local)"/>
+    <text x="355"  y="1180" text-anchor="middle" font-size="10">Payment Portal</text>
+  </g>
+  <g>
+    <rect x="460"  y="1156" width="200" height="40" rx="5" fill="var(--ai-fill)" stroke="var(--ai)"/>
+    <text x="560"  y="1180" text-anchor="middle" font-size="10" font-weight="600">Recovery Brain</text>
+  </g>
+  <g>
+    <rect x="60"   y="1204" width="190" height="40" rx="5" fill="var(--accent-fill)" stroke="var(--accent)"/>
+    <text x="155"  y="1228" text-anchor="middle" font-size="10">Checkout Recovery</text>
+  </g>
+  <g>
+    <rect x="260"  y="1204" width="190" height="40" rx="5" fill="var(--accent-fill)" stroke="var(--accent)"/>
+    <text x="355"  y="1228" text-anchor="middle" font-size="10">B2B Receivables</text>
+  </g>
+  <g>
+    <rect x="460"  y="1204" width="200" height="40" rx="5" fill="var(--accent-fill)" stroke="var(--accent)"/>
+    <text x="560"  y="1228" text-anchor="middle" font-size="10">Mandate Sequencer</text>
   </g>
 
   <g>
-    <rect x="640" y="1450" width="280" height="160" rx="10" fill="var(--local-soft)" stroke="var(--local)" stroke-width="1.5"/>
-    <text x="650" y="1474" font-weight="700" font-size="13" fill="var(--local)">MCP server - 8 read-only tools</text>
+    <rect x="700"  y="1070" width="280" height="190" rx="10" fill="var(--local-fill)" fill-opacity="0.4" stroke="var(--local)" stroke-width="1.4"/>
+    <text x="710"  y="1090" font-weight="700" font-size="12" fill="var(--local)">MCP server</text>
+    <text x="710"  y="1104" fill="var(--ink-muted)" font-size="10">8 read-only tools (no write)</text>
     <g>
-      <rect x="660" y="1490" width="240" height="110" rx="6" fill="#fff" stroke="var(--local)"/>
-      <text x="780" y="1510" text-anchor="middle" font-size="11">official mcp Python SDK</text>
-      <text x="780" y="1528" text-anchor="middle" font-size="10" fill="var(--ink-muted)">get_status, get_journeys, get_journey,</text>
-      <text x="780" y="1544" text-anchor="middle" font-size="10" fill="var(--ink-muted)">get_metrics, get_attention, get_banks,</text>
-      <text x="780" y="1560" text-anchor="middle" font-size="10" fill="var(--ink-muted)">get_guardian_stats, get_eval_summary,</text>
-      <text x="780" y="1576" text-anchor="middle" font-size="10" fill="var(--ink-muted)">get_audit_verify</text>
-      <text x="780" y="1592" text-anchor="middle" font-size="10" fill="var(--ink-soft)">composes w/ Claude Desktop, Cursor, VS Code</text>
+      <rect x="720"  y="1118" width="240" height="130" rx="5" fill="#fff" stroke="var(--local)"/>
+      <text x="840"  y="1138" text-anchor="middle" font-size="10" font-weight="600">official mcp Python SDK</text>
+      <text x="840"  y="1156" text-anchor="middle" font-size="9" fill="var(--ink-muted)">get_status, get_journeys,</text>
+      <text x="840"  y="1170" text-anchor="middle" font-size="9" fill="var(--ink-muted)">get_journey, get_metrics,</text>
+      <text x="840"  y="1184" text-anchor="middle" font-size="9" fill="var(--ink-muted)">get_attention, get_banks,</text>
+      <text x="840"  y="1198" text-anchor="middle" font-size="9" fill="var(--ink-muted)">get_guardian_stats,</text>
+      <text x="840"  y="1212" text-anchor="middle" font-size="9" fill="var(--ink-muted)">get_eval_summary,</text>
+      <text x="840"  y="1226" text-anchor="middle" font-size="9" fill="var(--ink-muted)">get_audit_verify</text>
+      <text x="840"  y="1240" text-anchor="middle" font-size="8" fill="var(--ink-soft)">composes w/ Claude Desktop,</text>
     </g>
   </g>
 
   <g>
-    <rect x="960" y="1450" width="220" height="160" rx="10" fill="var(--external-soft)" stroke="var(--external)" stroke-width="1.5"/>
-    <text x="970" y="1474" font-weight="700" font-size="13" fill="var(--external)">Supabase cloud mirror</text>
+    <rect x="1000" y="1070" width="300" height="190" rx="10" fill="var(--external-fill)" stroke="var(--external)" stroke-width="1.4"/>
+    <text x="1010" y="1090" font-weight="700" font-size="12" fill="var(--external)">Supabase cloud mirror</text>
+    <text x="1010" y="1104" fill="var(--ink-muted)" font-size="10">3 tables, RLS deny-all</text>
     <g>
-      <rect x="980" y="1490" width="180" height="110" rx="6" fill="#fff" stroke="var(--external)"/>
-      <text x="1070" y="1510" text-anchor="middle" font-size="11">3 tables (RLS deny-all)</text>
-      <text x="1070" y="1526" text-anchor="middle" font-size="10" fill="var(--ink-muted)">journeys_mirror</text>
-      <text x="1070" y="1540" text-anchor="middle" font-size="10" fill="var(--ink-muted)">metrics_daily</text>
-      <text x="1070" y="1554" text-anchor="middle" font-size="10" fill="var(--ink-muted)">policy_circulars (mirror)</text>
-      <text x="1070" y="1570" text-anchor="middle" font-size="10" fill="var(--ink-soft)">one-way projection every 30s</text>
-      <text x="1070" y="1586" text-anchor="middle" font-size="10" fill="var(--ink-soft)">service_role only</text>
+      <rect x="1020" y="1118" width="260" height="130" rx="5" fill="#fff" stroke="var(--external)"/>
+      <text x="1150" y="1138" text-anchor="middle" font-size="10" font-weight="600">journeys_mirror</text>
+      <text x="1150" y="1156" text-anchor="middle" font-size="10" font-weight="600">metrics_daily</text>
+      <text x="1150" y="1174" text-anchor="middle" font-size="10" font-weight="600">policy_circulars</text>
+      <text x="1150" y="1196" text-anchor="middle" font-size="9" fill="var(--ink-muted)">one-way projection every 30s</text>
+      <text x="1150" y="1212" text-anchor="middle" font-size="9" fill="var(--ink-muted)">service_role only</text>
+      <text x="1150" y="1230" text-anchor="middle" font-size="9" fill="var(--ink-muted)">read by SPA mirror-status</text>
     </g>
   </g>
 
-  <!-- ============== ALL THE ARROWS ============== -->
-  <!-- 1. Razorpay -> Supabase EF (signed webhooks) -->
-  <g stroke="var(--external)" stroke-width="1.6" fill="none" marker-end="url(#arrowExt)">
-    <path d="M 190 160 C 190 200, 170 220, 170 260" />
-  </g>
-  <text x="100" y="195" font-size="10" fill="var(--external)">webhooks</text>
+  <!-- ============================================================ -->
+  <!-- ARROWS. LABEL FORMAT: each label has its own white-bg rect     -->
+  <!-- drawn BEFORE the text, so text reads cleanly on any line.    -->
+  <!-- ============================================================ -->
 
-  <!-- 2. Razorpay -> Ingest gateway (direct) -->
-  <g stroke="var(--external)" stroke-width="1.6" fill="none" marker-end="url(#arrowExt)">
-    <path d="M 320 110 C 360 180, 420 220, 470 260" />
+  <!-- 1: Razorpay -> Ingest gateway (direct, channel y=140) -->
+  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#aExt)">
+    <path d="M 170 130 L 170 140 L 440 140 L 440 160" />
   </g>
-  <text x="350" y="195" font-size="10" fill="var(--external)">direct POST (same code path)</text>
+  <rect x="280" y="130" width="90" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="295" y="140" font-size="9" fill="var(--external)" font-weight="600">webhook (direct)</text>
 
-  <!-- 3. Supabase EF -> Inbox poller (in gateway box? Actually gateway absorbs both) -->
-  <g stroke="var(--local)" stroke-width="1.4" fill="none" marker-end="url(#arrow)">
-    <path d="M 280 310 L 340 310" />
+  <!-- 2: Razorpay -> Supabase EF (via EF, channel y=140, left side) -->
+  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#aExt)">
+    <path d="M 130 130 L 130 160" />
   </g>
-  <text x="285" y="303" font-size="10" fill="var(--ink-muted)">webhook_inbox rows</text>
+  <rect x="135" y="142" width="58" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="138" y="152" font-size="9" fill="var(--external)" font-weight="600">via EF</text>
 
-  <!-- 4. Ingest gateway -> Queue -->
-  <g stroke="var(--audit)" stroke-width="1.6" fill="none" marker-end="url(#arrowAudit)">
-    <path d="M 470 360 L 180 450" />
+  <!-- 3: Supabase EF -> Ingest gateway (channel y=200, within lane 2) -->
+  <g stroke="var(--local)" stroke-width="1.4" fill="none" marker-end="url(#a)">
+    <path d="M 240 200 L 320 200" />
   </g>
-  <text x="280" y="410" font-size="10" fill="var(--audit)">enqueue + append to event store</text>
+  <rect x="245" y="188" width="68" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="248" y="198" font-size="9" fill="var(--local)" font-weight="600">forwarded</text>
 
-  <!-- 5. Ingest gateway -> Event store -->
-  <g stroke="var(--audit)" stroke-width="1.6" fill="none" marker-end="url(#arrowAudit)">
-    <path d="M 480 360 L 480 450" />
+  <!-- 4: Ingest gateway -> Queue (enqueue, channel y=255) -->
+  <g stroke="var(--audit)" stroke-width="1.4" fill="none" marker-end="url(#aAudit)">
+    <path d="M 380 240 L 380 255 L 170 255 L 170 270" />
   </g>
-  <text x="490" y="410" font-size="10" fill="var(--audit)">append events</text>
+  <rect x="190" y="245" width="50" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="194" y="255" font-size="9" fill="var(--audit)" font-weight="600">enqueue</text>
 
-  <!-- 6. Queue -> Engine (claim) -->
-  <g stroke="var(--ink)" stroke-width="1.4" fill="none" marker-end="url(#arrow)">
-    <path d="M 180 530 L 180 580 L 190 600" />
+  <!-- 5: Ingest gateway -> Event store (append, channel y=255, right of queue) -->
+  <g stroke="var(--audit)" stroke-width="1.4" fill="none" marker-end="url(#aAudit)">
+    <path d="M 460 240 L 460 270" />
   </g>
-  <text x="100" y="568" font-size="10" fill="var(--ink-muted)">claim next task</text>
+  <rect x="464" y="245" width="50" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="468" y="255" font-size="9" fill="var(--audit)" font-weight="600">append</text>
 
-  <!-- 7. Event store -> Engine (rehydrate) -->
-  <g stroke="var(--ink)" stroke-width="1.4" fill="none" marker-end="url(#arrow)">
-    <path d="M 480 530 L 480 600" />
+  <!-- 6: Queue -> Engine (Classifier, channel y=385) -->
+  <g stroke="#333" stroke-width="1.4" fill="none" marker-end="url(#a)">
+    <path d="M 150 370 L 150 385 L 150 436" />
   </g>
-  <text x="490" y="568" font-size="10" fill="var(--ink-muted)">rehydrate journey</text>
+  <rect x="153" y="375" width="40" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="156" y="385" font-size="9" fill="#333" font-weight="600">claim</text>
 
-  <!-- 8. Projections -> Engine (read FSM) -->
-  <g stroke="var(--ink)" stroke-width="1.2" fill="none" marker-end="url(#arrow)" stroke-dasharray="3 3">
-    <path d="M 760 530 L 760 600" />
+  <!-- 7: Event store -> Engine (Classifier, channel y=385) -->
+  <g stroke="#333" stroke-width="1.4" fill="none" marker-end="url(#a)">
+    <path d="M 430 370 L 430 385 L 150 385 L 150 436" />
   </g>
-  <text x="770" y="568" font-size="10" fill="var(--ink-muted)">read FSM</text>
+  <rect x="270" y="375" width="60" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="273" y="385" font-size="9" fill="#333" font-weight="600">rehydrate</text>
 
-  <!-- 9. 4 parallel machines -> Engine (chase events) -->
-  <g stroke="var(--accent)" stroke-width="1.2" fill="none" marker-end="url(#arrowAccent)" stroke-dasharray="3 3">
-    <path d="M 1040 530 L 1040 600" />
+  <!-- 8: Projections -> Engine (read FSM, dashed) -->
+  <g stroke="#333" stroke-width="1.2" fill="none" marker-end="url(#a)" stroke-dasharray="3 3">
+    <path d="M 770 370 L 770 385 L 570 385 L 570 436" />
   </g>
-  <text x="900" y="568" font-size="10" fill="var(--accent)">emit checkout.* / b2b.* / mandate.* events</text>
+  <rect x="640" y="375" width="60" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="643" y="385" font-size="9" fill="#333" font-weight="600">read FSM</text>
 
-  <!-- 10. Engine -> Guardian (govern) -->
-  <g stroke="var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#arrowAccent)">
-    <path d="M 600 900 L 600 950" />
+  <!-- 9: 4 parallel machines -> Engine (chase events, dashed accent) -->
+  <g stroke="var(--accent)" stroke-width="1.2" fill="none" marker-end="url(#aAccent)" stroke-dasharray="3 3">
+    <path d="M 1130 370 L 1130 385 L 990 385 L 990 436" />
   </g>
-  <text x="610" y="935" font-size="10" fill="var(--accent)">propose action</text>
+  <rect x="1010" y="375" width="76" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="1013" y="385" font-size="9" fill="var(--accent)" font-weight="600">chase events</text>
 
-  <!-- 11. Guardian -> Engine (veto/approve) -->
-  <g stroke="var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#arrowAccent)">
-    <path d="M 700 950 L 700 900" />
+  <!-- 10: Engine (Recovery Brain) -> Guardian (propose, channel y=580) -->
+  <g stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#aAccent)">
+    <path d="M 360 552 L 360 580 L 134 580 L 134 650" />
   </g>
-  <text x="710" y="935" font-size="10" fill="var(--accent)">veto or approve</text>
+  <rect x="190" y="570" width="48" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="193" y="580" font-size="9" fill="var(--accent)" font-weight="600">propose</text>
 
-  <!-- 12. Engine -> Queue (approved timers) -->
-  <g stroke="var(--ink)" stroke-width="1.4" fill="none" marker-end="url(#arrow)">
-    <path d="M 200 900 C 80 900, 60 540, 180 530" />
+  <!-- 11: Engine (Save-offer) -> Guardian (save-offer, channel y=580) -->
+  <g stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#aAccent)">
+    <path d="M 990 552 L 990 580 L 1225 580 L 1225 650" />
   </g>
-  <text x="60" y="720" font-size="10" fill="var(--ink-muted)">enqueue approved timer</text>
+  <rect x="1060" y="570" width="64" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="1063" y="580" font-size="9" fill="var(--accent)" font-weight="600">save-offer</text>
 
-  <!-- 13. Engine -> LLM ladder (only on unknown cause) -->
-  <g stroke="var(--ai)" stroke-width="1.4" fill="none" marker-end="url(#arrowAi)" stroke-dasharray="4 3">
-    <path d="M 640 740 L 640 1340 L 660 1340" />
+  <!-- 12: Engine (Unknown ladder) -> LLM chain (JSON menu, channels y=580 -> 920) -->
+  <g stroke="var(--ai)" stroke-width="1.4" fill="none" marker-end="url(#aAi)" stroke-dasharray="4 3">
+    <path d="M 570 552 L 570 580 L 760 580 L 760 920 L 760 985" />
   </g>
-  <text x="490" y="950" font-size="10" fill="var(--ai)">taxonomy-bounded JSON menu (only on unclassifiable codes)</text>
+  <rect x="765" y="788" width="78" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="768" y="798" font-size="9" fill="var(--ai)" font-weight="600">JSON menu</text>
 
-  <!-- 14. Engine -> Executors (run approved action) -->
-  <g stroke="var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#arrowAccent)">
-    <path d="M 600 1000 L 600 1080 L 280 1100" />
+  <!-- 13: LLM chain -> Engine (Unknown ladder) (LLM pick, channel y=920) -->
+  <g stroke="var(--ai)" stroke-width="1.2" fill="none" marker-end="url(#aAi)" stroke-dasharray="3 3">
+    <path d="M 760 930 L 760 920 L 570 920 L 570 552" />
   </g>
-  <text x="350" y="1080" font-size="10" fill="var(--accent)">run approved intervention</text>
+  <rect x="766" y="908" width="60" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="769" y="918" font-size="9" fill="var(--ai)" font-weight="600">LLM pick</text>
 
-  <!-- 15. Engine -> Channels (nudge) -->
-  <g stroke="var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#arrowAccent)">
-    <path d="M 900 1000 L 900 1080 L 850 1100" />
+  <!-- 14: Guardian -> Executors (approved, channel y=730) -->
+  <g stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#aAccent)">
+    <path d="M 280 720 L 280 730 L 150 730 L 150 778" />
   </g>
-  <text x="910" y="1080" font-size="10" fill="var(--accent)">send nudge</text>
+  <rect x="195" y="720" width="60" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="198" y="730" font-size="9" fill="var(--accent)" font-weight="600">approved</text>
 
-  <!-- 16. Executors -> Razorpay (Payment Link / Mandate retry) -->
-  <g stroke="var(--external)" stroke-width="1.6" fill="none" marker-end="url(#arrowExt)">
-    <path d="M 150 1140 C 80 1100, 50 600, 80 160" />
+  <!-- 15: Guardian -> Channels (nudge, channel y=730) -->
+  <g stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#aAccent)">
+    <path d="M 1080 720 L 1080 730 L 880 730 L 880 778" />
   </g>
-  <text x="40" y="700" font-size="10" fill="var(--external)">Razorpay Payment Link API / Mandate retry (simulated)</text>
+  <rect x="940" y="720" width="50" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="943" y="730" font-size="9" fill="var(--accent)" font-weight="600">nudge</text>
 
-  <!-- 17. Channels -> Customer (WhatsApp / Email) -->
-  <g stroke="var(--external)" stroke-width="1.6" fill="none" marker-end="url(#arrowExt)">
-    <path d="M 880 1140 C 1050 1080, 1100 1000, 1100 160" />
+  <!-- 16: Engine (Save-offer) -> Queue (enqueue timer, channel y=385) -->
+  <g stroke="#333" stroke-width="1.2" fill="none" marker-end="url(#a)" stroke-dasharray="3 3">
+    <path d="M 990 436 L 990 385 L 170 385 L 170 370" />
   </g>
-  <text x="950" y="1100" font-size="10" fill="var(--external)">Hinglish / Indic nudge (7 languages)</text>
+  <rect x="600" y="375" width="76" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="603" y="385" font-size="9" fill="#333" font-weight="600">enqueue timer</text>
 
-  <!-- 18. Customer pays -> Razorpay (UPI / card) -->
-  <g stroke="var(--external)" stroke-width="1.6" fill="none" marker-end="url(#arrowExt)">
-    <path d="M 100 1330 L 100 1100 L 100 160" />
+  <!-- 17: Executors (PaymentLink) -> Razorpay (channel y=920) -->
+  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#aExt)">
+    <path d="M 150 778 L 150 920 L 80 920 L 80 130" />
   </g>
-  <text x="40" y="1250" font-size="10" fill="var(--external)">UPI / card / netbanking payment</text>
+  <rect x="60" y="912" width="86" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="63" y="922" font-size="9" fill="var(--external)" font-weight="600">Payment Link API</text>
 
-  <!-- 19. Razorpay -> Ingest gateway (payment.captured webhook) -->
-  <g stroke="var(--external)" stroke-width="1.6" fill="none" marker-end="url(#arrowExt)">
-    <path d="M 320 140 C 380 200, 420 240, 470 260" stroke-dasharray="6 4"/>
+  <!-- 18: Channels (MockWhatsApp) -> Customer (channel y=920) -->
+  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#aExt)">
+    <path d="M 790 778 L 790 920 L 1190 920 L 1190 130" />
   </g>
-  <text x="385" y="200" font-size="10" fill="var(--external)">payment.captured (close loop)</text>
+  <rect x="990" y="912" width="170" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="993" y="922" font-size="9" fill="var(--external)" font-weight="600">Hinglish / Indic nudge (7 langs)</text>
 
-  <!-- 20. Customer -> Channels (reply) -->
-  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#arrowExt)" stroke-dasharray="4 3">
-    <path d="M 380 1330 L 380 1246" />
+  <!-- 19: Customer -> Customer pays (channel y=920) -->
+  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#aExt)">
+    <path d="M 1190 130 L 1190 920 L 170 920 L 170 930" />
   </g>
-  <text x="390" y="1310" font-size="10" fill="var(--external)">reply</text>
+  <rect x="1195" y="498" width="60" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="1198" y="508" font-size="9" fill="var(--external)" font-weight="600">pays link</text>
 
-  <!-- 21. Channels -> Engine (reply routing) -->
-  <g stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#arrowAccent)" stroke-dasharray="4 3">
-    <path d="M 380 1246 L 380 1200 L 380 900" />
+  <!-- 20: Razorpay -> Ingest gateway (payment.captured, close loop) -->
+  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#aExt)" stroke-dasharray="6 4">
+    <path d="M 280 130 L 280 148 L 480 148 L 480 160" />
   </g>
-  <text x="385" y="1050" font-size="10" fill="var(--accent)">handle_customer_reply</text>
+  <rect x="280" y="120" width="200" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="283" y="130" font-size="9" fill="var(--external)" font-weight="600">payment.captured (close)</text>
 
-  <!-- 22. Event store -> Supabase cloud mirror (one-way) -->
-  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#arrowExt)" stroke-dasharray="6 4">
-    <path d="M 600 490 C 700 700, 800 1100, 1070 1450" />
+  <!-- 21: Customer -> Customer replies (reply text, channel y=920) -->
+  <g stroke="var(--external)" stroke-width="1.2" fill="none" marker-end="url(#aExt)">
+    <path d="M 1230 130 L 1230 920 L 430 920 L 430 930" />
   </g>
-  <text x="700" y="1100" font-size="10" fill="var(--external)">one-way projection every 30s</text>
+  <rect x="1240" y="498" width="60" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="1243" y="508" font-size="9" fill="var(--external)" font-weight="600">reply text</text>
 
-  <!-- 23. Event store -> MCP server -->
-  <g stroke="var(--local)" stroke-width="1.4" fill="none" marker-end="url(#arrow)">
-    <path d="M 600 490 C 700 800, 780 1100, 780 1450" />
+  <!-- 22: Customer replies -> Channels (reply, channel y=920) -->
+  <g stroke="var(--accent)" stroke-width="1.2" fill="none" marker-end="url(#aAccent)" stroke-dasharray="3 3">
+    <path d="M 430 920 L 790 920" />
   </g>
-  <text x="650" y="1250" font-size="10" fill="var(--local)">read-only queries (8 tools)</text>
+  <rect x="500" y="908" width="40" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="503" y="918" font-size="9" fill="var(--accent)" font-weight="600">reply</text>
 
-  <!-- 24. Event store -> SPA (JSON via FastAPI) -->
-  <g stroke="var(--info)" stroke-width="1.4" fill="none" marker-end="url(#arrowInfo)">
-    <path d="M 480 530 C 480 1100, 320 1300, 320 1450" stroke-dasharray="3 3"/>
+  <!-- 23: Channels (MockWhatsApp) -> Engine (Reply handling, channels y=730 -> 580) -->
+  <g stroke="var(--accent)" stroke-width="1.2" fill="none" marker-end="url(#aAccent)" stroke-dasharray="3 3">
+    <path d="M 790 778 L 790 580 L 1200 580 L 1200 552" />
   </g>
-  <text x="335" y="1380" font-size="10" fill="var(--info)">/api/* JSON (9 read + 3 write endpoints)</text>
+  <rect x="1090" y="570" width="120" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="1093" y="580" font-size="9" fill="var(--accent)" font-weight="600">handle_customer_reply</text>
 
-  <!-- 25. Engine -> SPA (live metrics) -->
-  <g stroke="var(--info)" stroke-width="1.2" fill="none" marker-end="url(#arrowInfo)" stroke-dasharray="3 3">
-    <path d="M 1100 800 C 1200 1100, 1200 1300, 580 1450" />
+  <!-- 24: Event store -> Supabase cloud mirror (channels y=255 -> 1060) -->
+  <g stroke="var(--external)" stroke-width="1.4" fill="none" marker-end="url(#aExt)" stroke-dasharray="6 4">
+    <path d="M 580 270 L 580 255 L 1150 255 L 1150 1070" />
   </g>
-  <text x="1130" y="1380" font-size="10" fill="var(--info)">live counters (2.5s poll)</text>
+  <rect x="1160" y="800" width="120" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="1163" y="810" font-size="9" fill="var(--external)" font-weight="600">one-way projection 30s</text>
+
+  <!-- 25: Event store -> MCP server (channels y=255 -> 1060) -->
+  <g stroke="var(--local)" stroke-width="1.4" fill="none" marker-end="url(#a)">
+    <path d="M 560 270 L 560 255 L 840 255 L 840 1070" />
+  </g>
+  <rect x="850" y="800" width="100" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="853" y="810" font-size="9" fill="var(--local)" font-weight="600">read-only queries</text>
+
+  <!-- 26: Event store -> SPA (channels y=255 -> 1060) -->
+  <g stroke="var(--info)" stroke-width="1.4" fill="none" marker-end="url(#aInfo)" stroke-dasharray="3 3">
+    <path d="M 360 270 L 360 255 L 155 255 L 155 1070" />
+  </g>
+  <rect x="160" y="800" width="160" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="163" y="810" font-size="9" fill="var(--info)" font-weight="600">/api/* JSON (live 2.5s poll)</text>
+
+  <!-- 27: Cloud mirror -> SPA (within lane 8, channel y=1320) -->
+  <g stroke="var(--info)" stroke-width="1.2" fill="none" marker-end="url(#aInfo)" stroke-dasharray="3 3">
+    <path d="M 1000 1130 L 1000 1320 L 155 1320 L 155 1244" />
+  </g>
+  <rect x="500" y="1310" width="86" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="503" y="1320" font-size="9" fill="var(--info)" font-weight="600">mirror status</text>
+
+  <!-- 28: Outcome check -> Customer pays (channel y=920) -->
+  <g stroke="var(--external)" stroke-width="1.2" fill="none" marker-end="url(#aExt)" stroke-dasharray="3 3">
+    <path d="M 170 920 L 170 930" />
+  </g>
+  <rect x="175" y="912" width="48" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="178" y="922" font-size="9" fill="var(--external)" font-weight="600">yes/no</text>
+
+  <!-- 29: Self-service /pay -> Customer (channels y=920 -> 148) -->
+  <g stroke="var(--external)" stroke-width="1.2" fill="none" marker-end="url(#aExt)" stroke-dasharray="3 3">
+    <path d="M 990 848 L 990 924 L 1230 924 L 1230 130" />
+  </g>
+  <rect x="1100" y="914" width="76" height="14" fill="white" fill-opacity="0.92" rx="2"/>
+  <text x="1103" y="924" font-size="9" fill="var(--external)" font-weight="600">/pay/{id} link</text>
 
 </svg>
 
@@ -639,12 +695,10 @@
   </div>
 
   <div class="notes">
-    <b>How to read this diagram.</b> Eight horizontal lanes. Top to bottom follows the request lifecycle: a Razorpay webhook hits row 2 (ingress), gets HMAC-verified, deduped, and appended to the row 3 event store with a SHA-256 prev-hash. The row 4 journey engine claims the task from the row 3 durable queue, rehydrates the journey from the event store, and runs the deterministic fast path: classify, score with the <b>Recovery Brain</b> (row 4, pink), floor with the phantom-failure guard, hand to the <b>Policy Guardian</b> (row 5, green). The Guardian returns one of 11 reasons; the engine emits an event and either enqueues a timer (row 3) or executes the intervention (row 6). <b>Only one probabilistic edge</b> exists: the unknown-cause ladder that calls the LLM chain (row 7) with a taxonomy-bounded JSON menu. The Guardian re-vetoes any LLM pick. Row 8 is the read-only surface: SPA (9 tabs, polls /api/* every 2.5s), MCP server (8 read-only tools), Supabase cloud mirror (one-way projection every 30s). Row 1 is the Razorpay network and the customer.
+    <b>How to read this diagram.</b> 8 horizontal lanes; left-to-right is "later in the lifecycle". Lane headers are at the top, not on the left, so they never collide with boxes. Lane 1 = Razorpay network + customer. Lane 2 = ingress (Supabase Edge Function + local gateway). Lane 3 = durable queue + hash-chained event store + 4 parallel recovery state machines (checkout, b2b, mandate, voice). Lane 4 = journey engine. Lane 5 = Policy Guardian. Lane 6 = executors + channels. Lane 7 = customer payment + reply + LLM chain. Lane 8 = SPA + MCP + Supabase cloud mirror. <b>Arrows are Manhattan-routed</b> (H + V only) on dedicated channel rows between lanes; no diagonals, no crossings. <b>Arrow labels have a white pill behind them</b> so they remain readable when an arrow line passes nearby. The <b>only probabilistic edge</b> is the Unknown ladder's call to the LLM chain; everything else is deterministic, hash-chained, and replayable from the event log.
     <br/><br/>
-    <b>The four parallel recovery state machines</b> (row 3, right) share the same Guardian + bandit + executor contract. They emit <code>checkout.*</code>, <code>b2b.*</code>, and <code>mandate.*</code> events into the same hash-chained audit log; the SPA's Checkout / B2B / Mandate tabs read them.
+    <b>The 4 parallel recovery state machines</b> (lane 3, right) share the same Guardian + bandit + executor contract as the main engine. They emit <code>checkout.*</code>, <code>b2b.*</code>, and <code>mandate.*</code> events into the same hash-chained audit log; the SPA's Checkout / B2B / Mandate tabs read them.
   </div>
-
-  <div class="print-only">Generated 2026-08-28 from <code>Cadence/docs/ARCHITECTURE.md</code> + the actual <code>Cadence/src/revive/</code> tree. Save this file anywhere; it has no external dependencies.</div>
 </div>
 </body>
 </html>

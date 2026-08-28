@@ -26,3 +26,6 @@ logs/
 # source-controlled (rebuild from the audit chain).
 docs/mandate_sequencer_log.jsonl
 
+# Architecture PNG (regenerated from the HTML by Chrome headless)
+docs/Cadence-architecture.png
+
