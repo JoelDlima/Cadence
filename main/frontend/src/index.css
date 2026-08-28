@@ -1,0 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import 'tailwindcss';
+
+/* ===========================================================================
+   Cadence - "Ledger" Financial Architecture.
+   Exact match to Spacey6849/OdooHackathon design tokens.
+   Warm cream paper canvas (#f8f7f4), pure white cards (#ffffff),
+   deep ink typography (#0e1112), and hairline warm borders (#e4e1da).
+   =========================================================================== */
+
+@theme {
+  --color-ink: #0e1112;
+  --color-ink-muted: #5b6366;
+  --color-ink-subtle: #8b9296;
+  --color-paper: #f8f7f4;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f3f2ee;
+  --color-line: #e4e1da;
+  --color-line-strong: #d2cec5;
+
+  --color-accent: #0e1112;
+  --color-accent-hover: #262b2d;
+  --color-accent-wash: #f0eee9;
+
+  /* Strict Semantic Colours: appear in data only, never as decoration */
+  --color-approved: #127a46;
+  --color-approved-wash: #e8f4ee;
+  --color-pending: #b8730a;
+  --color-pending-wash: #fdf3e2;
+  --color-rejected: #b3261e;
+  --color-rejected-wash: #fbeceb;
+  --color-info: #1f5c9e;
+  --color-info-wash: #eaf1f9;
+
+  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-sans: 'Inter Tight', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius-card: 10px;
+
+  --ease-dayflow: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-micro: 180ms;
+  --duration-entrance: 320ms;
+}
+
+:root {
+  color-scheme: light;
+  --shadow-card: 0 1px 2px rgb(14 17 18 / 0.04), 0 1px 3px rgb(14 17 18 / 0.06);
+  --shadow-raised: 0 8px 24px -8px rgb(14 17 18 / 0.16);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    background-color: var(--color-paper);
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv05' 1, 'ss03' 1;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Numeric formatting aligned to the digit */
+  .numeric {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--color-ink);
+    color: #ffffff;
+  }
+}
+
+/* iOS & Vercel-style clean light glassmorphism */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-card);
+}
+
+.glass-surface-subtle {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-line);
+}
+
+.glass-modal {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--color-line-strong);
+  box-shadow: var(--shadow-raised);
+}
+
+/* Subtle ledger borders */
+.border-line { border-color: var(--color-line); }
+.border-line-strong { border-color: var(--color-line-strong); }
+
+/* Custom clean scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-paper);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-subtle);
+}

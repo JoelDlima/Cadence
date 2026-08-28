@@ -1,0 +1,23 @@
+# Revive Python package ignores (inside main/)
+
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+.venv/
+venv/
+env/
+
+*.db
+*.db-wal
+*.db-shm
+
+.env
+.env.local
+
+logs/
+*.log

@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "revive"
+version = "0.1.0"
+description = "Autonomous revenue recovery system - event-sourced journeys, governed agent, measured outcomes"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn==0.34.0",
+    "httpx==0.28.1",
+    "pydantic==2.11.3",
+    "python-dotenv==1.1.0",
+    "tzdata==2025.2",
+    "mcp>=1.28,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.5",
+    "pytest-cov==6.0.0",
+    "pytest-asyncio>=0.23,<1",
+    "ruff==0.11.5",
+    "black==25.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+asyncio_mode = "auto"
+markers = [
+    "unit: fast isolated tests",
+    "integration: multi-component tests",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["B008"]  # FastAPI Depends() in signatures is idiomatic
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
