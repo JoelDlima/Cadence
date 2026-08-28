@@ -346,6 +346,28 @@ first — a real bug the test suite caught). Also fixed an existing
 artifact: removed `main/-` (a stray 36-byte file created by a bad shell
 command earlier).
 
+**Phase A (shipped) — Adaptive Recovery Brain.** A deterministic
+contextual bandit in `main/src/revive/policy/bandit.py` that scores
+every legal move for the (cause, context) tuple: amount tier, touch
+fatigue, prior attempts, cause prior, outage flag, peak-hold flag.
+The engine now calls the bandit in `_dispatch_fast_path`, picks the
+top-scoring move, and emits a new `E_BANDIT_RANKED` event with the
+full ranked list, the chosen top, per-cause scores, a human-readable
+reason, and the global `FEATURE_IMPORTANCES` dict. If the bandit
+returns an empty tuple, the engine falls back to the static
+`FAST_PATH_PREFERENCE` (the chain is now: bandit > planner > static).
+A new `GET /api/bandit/ranked?limit=N` endpoint exposes the most
+recent bandit decisions to the SPA. A new "Adaptive Recovery Brain"
+tab in the SPA renders 12 recent decisions in a 3-column grid with
+cause, top choice, human-readable reason, and the full ranked list
+with scores; below the grid, a feature-importances table shows the
+weights behind the most recent decision. 4 pre-existing engine tests
+were reframed to assert the bandit's adaptive contract: the chosen
+top is in `legal_moves(cause)` and is the engine-approved move.
+Test count: 360. The Adaptive Recovery Brain is **auditable end to
+end** — the weights live in source, the events are in the audit
+chain, the SPA reads them directly. No LLM is used at decision time.
+
 Skipped: Guardrails AI (cutoff Aug 25 2026 already past), Coqui STT
 (discontinued), Unsloth fine-tuning (would *reduce* recovery uplift),
 Temporal/Inngest (rewrite risk), Surya-OCR (GPL conflicts with MIT),
