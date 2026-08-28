@@ -154,7 +154,7 @@ config snippets and security posture in [`docs/mcp-integration.md`](docs/mcp-int
 ## Repository map
 
 - `main/src/revive/` — engine, classifier, Guardian, agents, executors, worker, cloud, sim, api, MCP server
-- `main/docs/` — [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (one-page diagram), [`eval-report.md`](docs/eval-report.md) + metrics, [`evidence-pack.md`](docs/evidence-pack.md) (13 primary sources), [`mcp-integration.md`](docs/mcp-integration.md), [`cloud-mirror.md`](docs/cloud-mirror.md), [`PITCH-VIDEO.md`](docs/PITCH-VIDEO.md) (5-min script), [`PITCH-DECK.md`](docs/PITCH-DECK.md) (slide deck), [`PITCH-GIF.md`](docs/PITCH-GIF.md) (hero GIF capture), [`APPLICATION.md`](docs/APPLICATION.md) (form answer cheat-sheet), [`KEYS-DAY.md`](docs/KEYS-DAY.md) (live-mode runbook), pre-launch audit, Research-OS set
+- `main/docs/` — [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (one-page diagram), [`eval-report.md`](docs/eval-report.md) + metrics, [`evidence-pack.md`](docs/evidence-pack.md) (13 primary sources), [`mcp-integration.md`](docs/mcp-integration.md), [`cloud-mirror.md`](docs/cloud-mirror.md), [`PITCH-VIDEO.md`](docs/PITCH-VIDEO.md) (5-min script), [`PITCH-DECK.md`](docs/PITCH-DECK.md) (slide deck), [`PITCH-GIF.md`](docs/PITCH-GIF.md) (hero GIF capture), [`APPLICATION.md`](docs/APPLICATION.md) (form answer cheat-sheet), [`KEYS-DAY.md`](docs/KEYS-DAY.md) (live-mode runbook), [`RESEARCH-2026-08-28.md`](docs/RESEARCH-2026-08-28.md) (deep research, 10+ sources, top-5 picks), pre-launch audit, Research-OS set
 - `main/JOURNAL.md` — every real bug, decision, and escape, dated
 - `main/supabase/` — schema (RLS-deny-all, 4 tables) + edge-function webhook ingress (optional; keyless works)
 - `main/scripts/` — dev runbook, seed, demo, eval, chaos drills, MCP server
@@ -273,6 +273,28 @@ events. Test count is now **289 passing**. The single most important
 line in the keys-day doc: "every number on the SPA is real — either
 from a real API call or from a deterministic simulator with the same
 code path as the real call."
+
+**Phase 9 — Aug 28 deep research.** 10+ direct primary-source
+fetches (GitHub releases, license files, README, PyPI, npm) covered
+LLM inference, voice, OCR, observability, evaluation, and Indian
+language tools. Full report in
+[`docs/RESEARCH-2026-08-28.md`](docs/RESEARCH-2026-08-28.md).
+Top 5 picks for the remaining 5 days (each additive, keyless, no
+test risk): (1) **Faker** to scale the 500-sub eval to 5,000-sub with
+Indian locales natively supported, (2) **Promptfoo** `promptfooconfig.yaml`
+with 50 adversarial prompts that the deterministic engine refuses
+("Used by OpenAI and Anthropic" verbatim), (3) **Arize Phoenix v20.4.0**
+(released Aug 26 2026) as a sidecar observability stack with the
+newly-shipped in-process MCP toolset, (4) **Sarvam AI Cookbook** as a
+4th `LLMClient` provider (Indian-first, free tier, 22 languages,
+Pipecat integration), (5) **PaddleOCR 3.7.0 + Docling** to auto-ingest
+RBI/NPCI circulars (single model covers 50 languages incl. Devanagari
+and Tamil at 96.3% OmniDocBench v1.6). Skipped: Guardrails AI (cutoff
+Aug 25 2026 already past), Coqui STT (discontinued), Unsloth
+fine-tuning (would *reduce* recovery uplift), Temporal/Inngest
+(rewrite risk), Surya-OCR (GPL conflicts with MIT), n8n (fair-code).
+The README's "shoulders of" footnote now credits AI4Bharat,
+Bhashini/ULCA, and iSPIRT for the Indian-language substrate.
 
 ---
 
