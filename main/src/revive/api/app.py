@@ -1152,6 +1152,10 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
     from revive.checkout.api import register_routes as _register_checkout
     _register_checkout(app, db=db, clock=clock)
 
+    # Phase B2B: B2B receivables chaser routes
+    from revive.b2b.api import register_routes as _register_b2b
+    _register_b2b(app, db=db, clock=clock)
+
     return app
 
 
