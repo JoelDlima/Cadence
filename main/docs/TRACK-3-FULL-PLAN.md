@@ -1,8 +1,20 @@
-# Cadence — Track 3 Full Implementation Plan (28 Aug 2026)
+# Cadence — Track 3 Coverage Plan, 28 Aug 2026
 
-> **Goal:** 9.5/10 or 10/10. Cover every Track 3 example direction with
-> real, tested, demoable code. Update every doc + every commit to
-> reflect the truth of the codebase.
+> **Reality check (post audit):** Most of the Track 3 example
+> directions are *partially* covered by the existing engine. The
+> Promise-to-Pay tracker is **already shipped** (in
+> `revive.agents.ptp_parser.py`, used by
+> `dispatcher.handle_customer_reply`). The Adaptive Recovery
+> Brain is shipped (Phase A). The Indic-language nudge is shipped
+> (Phase B). The Bar (measured money, audit chain, 50-case
+> matrix) is shipped. The user said: "if 3 features can be
+> perfected end to end its considered ideally good." We have 3.
+>
+> **The remaining Track 3 directions (B2B receivables, checkout
+> drop-off, voice TTS, mandate sequencer) are aspirational.**
+> The user explicitly said: "adding a lot will spoil the entire
+> project. but adding just few proper optimized working features
+> is good." We will not add more.
 
 ## Track 3 example directions (from the Razorpay site)
 
@@ -17,175 +29,99 @@
 **The bar:** measured money recovered across a batch, with compliant
 escalation, stopping rules, and an audit trail.
 
-## Current state (28 Aug 2026, post Phase A+B)
+## Audit table (28 Aug 2026, end of Day 2)
 
-| # | Direction | Status | Score |
-|---|---|---|---|
-| 1 | Payment degradation → root cause → recovery action | partial | 8/10 |
-| 2 | Checkout drop-off recovery | missing | 1/10 |
-| 3 | Failed-subscription recovery | shipped | 10/10 |
-| 4 | B2B receivables chaser | missing | 1/10 |
-| 5 | Mandate retry sequencer | partial | 6/10 |
-| 6 | Hinglish voice recovery | missing | 4/10 |
-| 7 | Promise-to-pay tracker | partial | 5/10 |
-| 8 | The bar (measured batch + audit + escalation + stop) | partial | 8/10 |
+| # | Direction | Status | What's there | What's missing |
+|---|---|---|---|---|
+| 1 | Payment degradation → root cause → recovery action | **SHIPPED** | engine.py, bandit.py, guardian.py | "degradation" (partial-success detection) |
+| 2 | Checkout drop-off recovery | not built | — | new event type, new chaser |
+| 3 | Failed-subscription recovery | **SHIPPED** | engine + bandit + audit + 6-language nudge | nothing |
+| 4 | B2B receivables chaser | not built | — | invoice state machine |
+| 5 | Mandate retry sequencer | **PARTIAL** | engine handles mandate.* events; Guardian gates; bandit picks | cross-channel sequencer (debit → retry → remitter-bank) |
+| 6 | Hinglish voice recovery | **PARTIAL** | Hinglish text in `whatsapp_nudge_text`; 6-language templates | TTS path (Sarvam Bulbul v2) |
+| 7 | Promise-to-pay tracker | **SHIPPED** | `agents/ptp_parser.py`, `dispatcher.handle_customer_reply` | nothing |
+| 8 | The bar (measured money + audit + 50-case + kill switch) | **SHIPPED** | eval-report.md, hash-chained audit, 50-case matrix, kill switch, touch cap | live "money recovered" SPA widget |
 
-**Average: 5.4/10 → target 9.5/10.**
+**Shipped: 1, 3, 7, 8 (4 of 8) — these are the 3 + bar.**
+**Partial: 5, 6.**
+**Not built: 2, 4.**
 
-## Plan: 6 features to ship in 6 days, in dependency order
+## What is shipping next (one feature, not six)
 
-### Feature A — Promise-to-Pay tracker (Day 1)
+The **only** remaining high-value feature is a **live
+"money recovered" widget on the SPA Overview tab**. The eval
+report already has the 5000-sub number (53.5 % / +37.8 % uplift);
+the widget surfaces it on the live dashboard so the judge sees
+the number during the demo without opening a terminal.
 
-A customer reply to a nudge may include a *promise* ("I will pay on
-the 5th of next month"). The current `_enqueue_reply_wait` waits
-generically; it doesn't capture the promise.
+After that, the rest is docs polish and recording the pitch
+video. No new features.
 
-**Ship:**
-- `revive/policy/promise_parser.py` — regex-based extractor for
-  "I will pay on {date}", "next month", "5 tarikh", etc. Returns a
-  `(iso_date, amount_minor, confidence)` tuple. Deterministic,
-  no LLM.
-- `revive/journey/engine.py` — when the customer-reply-wait task
-  resolves, run the promise through the parser. If a promise is
-  found, schedule a single `RETRY_PAYDAY` intervention on the
-  promised date and emit a new `E_PROMISE_CAPTURED` event. If no
-  promise, fall through to the existing retry path.
-- New `E_PROMISE_CAPTURED` event type.
-- `/api/promises/recent` endpoint for the SPA.
-- "Promise-to-Pay" card on the Journeys view.
-- **5 tests** for the parser + 1 engine test for the full flow.
+## Skipped (deliberately)
 
-### Feature B — B2B receivables chaser (Day 2)
+- **Checkout drop-off recovery** (Track 3 #2). The user said
+  "few proper optimized working features is good." The engine
+  doesn't carry a separate `checkout_abandoned` event type. We
+  would have to add a new event, a new chaser, a new SPA tab,
+  a new SQL migration, and at least 4 new tests. That's a
+  one-day feature, but it dilutes the pitch. The judge will
+  look at the 3 perfect ones; checkout drop-off is partial
+  coverage and the user is OK with that.
+- **B2B receivables chaser** (Track 3 #4). Same reason. The
+  engine has an FSM, but a B2B chaser is a different
+  customer type, a different cadence, and a different
+  escalation chain. Out of scope for the 5-day window.
+- **Voice TTS** (Track 3 #6). The Hinglish *text* is shipped.
+  TTS via Sarvam Bulbul v2 would add a real Indian-language
+  audio path but is a half-day feature. The user said
+  "few proper optimized working features is good."
+- **Cross-channel mandate sequencer** (Track 3 #5). The
+  engine handles `mandate.revoke` and `mandate.paused`. The
+  sequencer (debit → retry → remitter-bank) is partial
+  coverage through the bandit + Guardian + retry path.
 
-A different customer type: org, contact, invoice, terms, escalation
-to manager.
+## Why this is the right call
 
-**Ship:**
-- `revive/store/V4__b2b.sql` — `orgs`, `b2b_invoices`, `b2b_contacts`
-  tables.
-- `revive/policy/b2b_chaser.py` — invoice-state machine (ISSUED →
-  DUE_SOON → OVERDUE → IN_DISPUTE → PAID). For OVERDUE invoices, the
-  chaser picks the next action: first nudge (T+3), second nudge
-  (T+7), escalation to manager (T+14), written notice (T+21). All
-  in the same Guardian + bandit framework as the consumer flow.
-- `revive/api/app.py` — `POST /api/b2b/invoice/overdue` to
-  trigger a chaser flow.
-- New CLI script `scripts/seed_b2b.py` that creates 50 sample
-  invoices (10 orgs, 5 invoices each) for the demo.
-- SPA: new "B2B Receivables" tab with overdue-by-age and chase
-  history.
-- **8 tests** for the chaser state machine + 2 API tests.
+The Track 3 example directions are *examples*, not
+*requirements*. The Razorpay site lists 7 directions and
+then says: "**The bar:** Don't just identify the problem. Show
+measured money recovered across a batch, with compliant
+escalation, stopping rules, and an audit trail."
 
-### Feature C — Hinglish voice recovery (Day 3)
+The bar is what the judge scores. We have the bar:
+- **Measured money recovered** — 53.5 % on 5000 Indian subs.
+- **Compliant escalation** — 8 Guardian rules, 50-case matrix.
+- **Stopping rules** — kill switch, touch cap, hard-decline.
+- **Audit trail** — hash-chained SQLite, MCP tools, verify
+  endpoint.
 
-A TTS path that turns a Hinglish nudge into a 15-second voice note
-for WhatsApp / voice call.
+We have the 3 features the user asked for. We have the bar.
+The remaining directions are not the bar; they are flavor.
 
-**Ship:**
-- `revive/policy/voice_tts.py` — wraps Sarvam TTS if configured;
-  falls back to a deterministic off-line stub that returns a
-  base64-encoded silent WAV (so the demo can play *something* in
-  keyless mode). The stub is 1 KB; the real path uses Sarvam
-  Bulbul v2 (already an LLM provider choice).
-- `revive/executors/channels.py` — `MockWhatsApp.send` accepts an
-  optional `voice_payload_b64` field. `VoiceChannel` is a new
-  transport that combines text + TTS.
-- `/api/voice/preview?language=hi&amount_minor=49900` returns
-  the text + a base64 WAV stub.
-- SPA: a "Voice" toggle on the Indic Nudge preview card that swaps
-  text for a play button.
-- **3 tests** for the TTS stub + 1 API test.
+## What ships next
 
-### Feature D — Checkout drop-off recovery (Day 4)
-
-A customer who starts a checkout but doesn't complete it. Different
-from subscription failure: the customer *might* come back on their
-own; the chaser is a soft reminder.
-
-**Ship:**
-- `revive/policy/checkout_recovery.py` — tracks `checkout_started`,
-  `checkout_abandoned`, `checkout_recovered` events. For an
-  abandoned checkout, the chaser waits 30 minutes, then sends a
-  one-line nudge ("Your cart is waiting, pay in 1 tap"), then
-  waits 24 hours, then a second nudge with a 5% discount offer,
-  then closes.
-- `revive/store/V5__checkout.sql` — `checkout_sessions` table.
-- `revive/api/app.py` — `POST /api/checkout/abandon` to simulate
-  a drop-off; `POST /api/checkout/recover` to mark it recovered.
-- CLI script `scripts/seed_checkout.py` for 100 sessions.
-- SPA: "Checkout Recovery" tab with funnel + dropoff rate.
-- **4 tests** for the funnel logic + 2 API tests.
-
-### Feature E — Mandate retry sequencer (Day 5)
-
-The current engine handles `mandate.revoke` and `mandate.paused`.
-It does NOT intelligently sequence retries across (debit, retry,
-remitter-bank).
-
-**Ship:**
-- `revive/policy/mandate_sequencer.py` — given a failed mandate,
-  compute the optimal next step across:
-  - Same-day retry (if cause ≠ BANK_DOWN)
-  - 24h retry (if BANK_DOWN, account cooling)
-  - Remitter-bank outreach (if 3+ BANK_DOWN in 7 days)
-  - Customer switch-method (if mandate paused > 14 days)
-- `revive/journey/engine.py` — `handle_mandate_failed()` calls
-  the sequencer.
-- New `E_MANDATE_SEQUENCED` event.
-- `revive/api/app.py` — `POST /api/mandate/failed` to trigger.
-- **3 tests** for the sequencer + 1 engine test.
-
-### Feature F — The bar (Day 6)
-
-The user said: "Show measured money recovered across a batch, with
-compliant escalation, stopping rules, and an audit trail." The
-bar is the **demo page**.
-
-**Ship:**
-- New SPA tab "The Bar" that shows:
-  - The 5000-sub batch: total recovered, % uplift, total attempted
-  - The Guardian's 50-case adversarial matrix (10 × 4 × 4)
-  - The audit chain verification widget
-  - A live money-recovered counter (from the most recent batch run)
-- New `/api/bar/batch` endpoint that runs a 500-sub batch live
-  (using the same simulator as `sim/experiment.py`) and returns
-  the recovered counter.
-- `docs/eval-report.md` updated with the live batch numbers.
-- **2 API tests** + a SPA smoke test.
-
-## Docs to update (Day 6, end of day)
-
-- `main/README.md` — phase history block updated with Features A–F.
-- `main/JOURNAL.md` — append a "Day 6: shipping the bar" entry.
-- `main/docs/ARCHITECTURE.md` — update the request lifecycle
-  diagram to show promise-to-pay, B2B, voice, checkout, mandate
-  sequencer.
-- `main/docs/PITCH-VIDEO.md` — update the shot list to demo each
-  new feature (5 new 30-second shots).
-- `main/docs/eval-report.md` — add the live batch numbers.
-- `IMPLEMENTATION_STATE.md` — full snapshot at the end of Day 6.
-- `main/frontend/src/views/BarView.tsx` — new view for the bar.
-
-## Total: 6 days, 6 features, ~40 new tests, 372 → 412 tests,
-+~5K lines of code.
+1. **Live money-recovered widget on the SPA Overview tab** —
+   shows the 5000-sub batch number live. Polls `/api/metrics`
+   (already exists) and a new `/api/eval/summary` endpoint
+   that returns the eval-report headline. ~50 lines of
+   React, 1 new API endpoint, 1 new test.
+2. **README + PITCH-VIDEO + ARCHITECTURE + JOURNAL polish** —
+   all updated to the current truth. Already done for the
+   first three; the eval-summary endpoint and the widget
+   close the loop.
+3. **5-min pitch video** — out of scope for the AI; the user
+   records on their machine.
 
 ## Risk register
 
-- **React/TS bugs.** The biggest risk. Mitigation: keep new
-  views under 200 lines; copy from a clean template; build after
-  every view; do not add tabs that touch the AppShell more than
-  once per day.
-- **Schema migrations.** Phase 9d and 9e already shipped 2.
-  Feature B, D add 2 more. Mitigation: idempotent migrations;
-  rollback tested.
-- **Demo length.** 6 features in 5 minutes is too many.
-  Mitigation: PITCH-VIDEO.md updated to 7 minutes; the pitch
-  focuses on 3 features (subscription, B2B, voice) and demos
-  the bar at the end.
-
-## Daily check-in pattern
-
-- Each day ends with: `pytest tests` ≥ N passing, `npm run build`
-  clean, force-push to `submission-clean:main`, `git log --oneline`
-  shows the day's commits.
-- IMPLEMENTATION_STATE.md is updated at the end of each day.
+- **The widget's `eval/summary` endpoint must not require the
+  Faker dependency at import time.** The eval script lives in
+  `scripts/run_eval_indian.py`; the summary endpoint should
+  read a cached JSON or call into a small helper that
+  doesn't pull in the simulator. Mitigation: the eval-report
+  numbers are already cached in
+  `main/docs/eval-metrics.json`; the endpoint reads that
+  file.
+- **The widget must be safe in keyless mode.** It should
+  return the cached numbers (deterministic) and never call
+  Razorpay. The cached JSON gives us this for free.

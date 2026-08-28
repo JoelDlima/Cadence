@@ -77,20 +77,42 @@ flowchart TD
    six recoverable causes (HARD_DECLINE is not on its menu; stopping
    recovery is a human call) → human review. Every rung writes its own
    audited classification event.
-4. **Govern.** The preferred legal intervention for the cause goes
-   through the Guardian: touch caps, quiet hours, DND, hard-decline
-   stop, RBI 24h pre-debit notice, amount-tier approvals, cost ceiling,
-   kill switch. Vetoes are events too.
-5. **Execute.** Approved interventions become durable tasks: Payment
+4. **Pick.** The **Adaptive Recovery Brain** (a deterministic
+   contextual bandit in `revive.policy.bandit`) scores every legal
+   move for the (cause, context) tuple. The chosen top is a legal
+   intervention for the cause; the engine emits a `bandit.ranked`
+   event with the full ranked list, scores, reason, and feature
+   importances. The bandit is auditable: weights live in source.
+   If the bandit returns an empty tuple, the engine falls back to
+   the static `FAST_PATH_PREFERENCE` in `taxonomy.py`.
+5. **Govern.** The chosen move goes through the Guardian: touch
+   caps, quiet hours, DND, hard-decline stop, RBI 24h pre-debit
+   notice, amount-tier approvals, cost ceiling, kill switch. Vetoes
+   are events too. The Guardian's 50-case adversarial regression
+   suite (`tests/test_adversarial_guardian.py`) pins every reason
+   to a 50-test matrix.
+6. **Execute.** Approved interventions become durable tasks: Payment
    Links (live Razorpay test mode), mandate retries (simulated — no
    public NPCI merchant API), WhatsApp / email nudges with the
-   self-service `/pay/{id}` page.
-6. **Resolve.** Outcome checks ask Razorpay whether the link captured; a
+   self-service `/pay/{id}` page. The 6-language Indic nudge
+   templates in `revive.policy.nudge_templates` are picked at
+   send time (the Hinglish default for now; locale plumbing
+   through `InterventionRequest` is a follow-up).
+7. **Reply handling.** Customer replies to a nudge flow through
+   `dispatcher.handle_customer_reply`. The Promise-to-Pay parser
+   (`revive.agents.ptp_parser`) extracts `(kind, due_date,
+   confidence)` from the free text: dates, durations, vague
+   promises, refusals. A captured promise becomes a single
+   `RETRY_PAYDAY` intervention on the promised date; a refusal
+   closes the journey `CLOSED`; a vague promise gets the standard
+   retry. The PTP parser is deterministic, multi-lingual
+   (Hinglish + English), and has no LLM in the loop.
+8. **Resolve.** Outcome checks ask Razorpay whether the link captured; a
    real `payment.captured` webhook closes the journey `RECOVERED`
    through the FSM. Unpaid offers loop back as honest failures so caps
    keep governing cadence; closing vetoes arm the 7-day save-offer
    ladder before any close.
-7. **Autonomy & durability.** The FastAPI app runs its own background
+9. **Autonomy & durability.** The FastAPI app runs its own background
    worker loop (inbox → queue → cloud mirror). Kill the process
    mid-journey: the queue and hash-chained event log rebuild exact
    state on restart.
@@ -167,9 +189,9 @@ cd frontend && npm install && npm run dev
 
 # In a third
 python scripts/seed.py                # one synthetic failure, prints the journey
-python scripts/run_eval.py            # reproduces 500-subscriber batch
+python scripts/run_eval_indian.py --n 5000 --seed 42   # reproduces the 5000-sub Indian batch
 python scripts/chaos_drills.py        # 4/4 PASS
-python -m pytest tests -q              # 284 tests
+python -m pytest tests -q              # 372 tests
 python scripts/run_mcp.py             # stdio MCP server
 ```
 

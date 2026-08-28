@@ -70,7 +70,7 @@ cd frontend && npm install && npm run dev        # SPA
 
 # Other entrypoints
 python scripts/seed.py                 # one synthetic failure, prints the journey
-python -m pytest tests -q                # 282 tests
+python -m pytest tests -q                # 372 tests
 python scripts/run_mcp.py               # stdio MCP server for Claude Desktop
 ```
 
@@ -164,10 +164,12 @@ config snippets and security posture in [`docs/mcp-integration.md`](docs/mcp-int
 
 ## Status
 
-**297 tests · 4/4 chaos drills · +43.9% measured uplift · 0 violations · 8 MCP
-tools live · 8 backend endpoints serving the SPA · Supabase cloud mirror
-with live status · all 8 frontend KPIs wired to the real API (no hard-coded
-numbers) · Faker-driven 5,000-sub Indian cohort (Faker >= 20.0, MIT, `hi_IN`
+**372 tests · 4/4 chaos drills · +37.8% measured uplift (5,000-sub Indian
+cohort) · 0 violations · 8 MCP tools live · 8 backend endpoints serving
+the SPA · Supabase cloud mirror with live status · Adaptive Recovery
+Brain live in engine + SPA · Indic-language nudge in 6 scripts live in
+SPA · Promise-to-Pay parser shipping in production path**
+the live API · Faker-driven 5,000-sub Indian cohort (Faker >= 20.0, MIT, `hi_IN`
 locale) reproduces the headline number at 10x scale: 53.5% recovery vs
 38.8% naive on 5,000 subscribers (53.46% / 38.8% raw, +37.8% uplift, 0 LLM
 tokens, 2,560 Guardian vetoes).** The single honest gap is: the Razorpay
@@ -367,6 +369,29 @@ top is in `legal_moves(cause)` and is the engine-approved move.
 Test count: 360. The Adaptive Recovery Brain is **auditable end to
 end** — the weights live in source, the events are in the audit
 chain, the SPA reads them directly. No LLM is used at decision time.
+
+**Phase B (shipped) — Indic-language recovery nudge.** A new
+`main/src/revive/policy/nudge_templates.py` module with
+copy-reviewable templates in 6 Indian languages (Hindi, Tamil,
+Telugu, Bengali, Marathi, Gujarati) plus the existing Hinglish
+default. Each template uses a script-distinct greeting, the amount
+in INR (with the rupee glyph), a one-line ask, an optional payment
+link, an opt-out line, and a sign-off. The sign-off is the customer
+brand "Cadence". A new `GET /api/nudge/preview?language=...`
+endpoint renders the text for any language; a new "Indic-language
+recovery nudge" card on the SPA's Pay Portal lets the user toggle
+between 7 languages and see the rendered reminder in real time.
+12 new tests (7 for the renderer, 5 for the API). Test count: 372.
+
+**Phase A+B (already shipped, easy to miss).** The Promise-to-Pay
+tracker is `main/src/revive/agents/ptp_parser.py`: a deterministic,
+regex-driven, multi-lingual parser for free-text customer replies.
+It supports dates, durations, vague promises, and refusals; returns
+`(kind, due_date, confidence)`. Used by
+`dispatcher.handle_customer_reply` to schedule a single
+`RETRY_PAYDAY` intervention on the promised date. This is Track 3
+example direction #7, and it was already shipped before Phase A
+landed.
 
 Skipped: Guardrails AI (cutoff Aug 25 2026 already past), Coqui STT
 (discontinued), Unsloth fine-tuning (would *reduce* recovery uplift),

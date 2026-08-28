@@ -1,4 +1,4 @@
-# Cadence — Implementation State, 28 Aug 2026
+# Cadence — Implementation State, 28 Aug 2026 (Day 2)
 
 > **Purpose:** A self-contained snapshot of every commit, every file added,
 > every test, every decision, and what is left to do. This is the recovery
@@ -28,10 +28,35 @@
   - `6348998` feat(phase-9b): optional Arize Phoenix 20.4.0 observability sidecar
   - `19ed1c8` feat(phase-9c): Sarvam AI as 4th LLMClient provider
   - `7eaacf0` feat(phase-9d): RBI / NPCI circular ingestion with heuristic rule extraction
-  - **Phase 9e (next)**: 50-case adversarial regression suite for the Guardian
+  - `ef1e324` feat(phase-9e): 50-case adversarial regression suite for the Guardian (360 tests)
+  - `4b8bbe8` feat(phase-A-end-to-end): wire the Adaptive Recovery Brain into the engine + API endpoint
+  - `8fed9ac` feat(phase-A-end-to-end): wire the Adaptive Recovery Brain into the engine, API, and types
+  - `3091473` feat(phase-A-spa): wire the Adaptive Recovery Brain tab end to end
+  - `ff306e2` docs(phase-A): add the Adaptive Recovery Brain to the README phase history
+  - `f3d4336` feat(phase-B-nudge): add Indic-language recovery nudge templates + API
+  - `158b811` feat(phase-B-spa): Indic-nudge preview card on the Pay Portal + full Track 3 plan
 
 - **Tests at start of this session:** 289
-- **Tests at end of this session:** 360 (50 new: 10 hand-rolled + 40 parametrized)
+- **Tests at end of this session:** 372 (372 = 360 + 7 nudge templates + 5 nudge API)
+
+### Already shipped (and the AI did not notice)
+
+- **Promise-to-Pay tracker** — `main/src/revive/agents/ptp_parser.py`
+  is a complete deterministic parser. Regex-driven, multi-lingual
+  (English + Hinglish), supports dates, durations, vague promises,
+  refusals. Returns `(kind, due_date, confidence)`. Used by
+  `dispatcher.handle_customer_reply` to schedule a single
+  `RETRY_PAYDAY` intervention on the promised date. **This was
+  already done; the AI nearly rebuilt it.** Track 3 example
+  direction #7 is already shipped.
+- **Hinglish voice recovery** — partial. The
+  `whatsapp_nudge_text` is Hinglish text; TTS is not wired. The
+  `sarvam` LLM provider in `agents/llm_client.py` is the path for
+  Hindi-language reasoning. Track 3 #6 is partial.
+- **Mandate retry sequencer** — partial. The engine handles
+  `mandate.revoke` and `mandate.paused` events; the Guardian and
+  bandit give the legal move. A cross-channel sequencer (debit →
+  retry → remitter-bank) is not built. Track 3 #5 is partial.
 - **The user is asleep.** This document is the AI's memory.
 
 ---
@@ -282,17 +307,51 @@ The build_client switch is in `main/src/revive/executors/razorpay_client.py`. Te
 
 ## 4. The phases remaining (still on the table)
 
-- **Phase 9e — Promptfoo 50 adversarial prompts.** Low-priority. Optional. Would
-  add a `promptfooconfig.yaml` with 50 prompts the deterministic engine
-  should refuse. 30 min dev. Skip if no time.
-- **Phase 10 — final README polish + pitch script update + 5-min
-  video capture.** Day-of-submission work. Use the existing pitch
-  script at `docs/PITCH-VIDEO.md` and update with the new headline
-  numbers (5,000-sub, Sarvam, Phoenix, RBI circulars).
-- **Phase 11 — README final pass + orphan-branch force-push to
-  public main.** The 4 phase-9 commits and the README update are on
-  `submission-clean`. When ready, force-push the public `main`. The
-  Pitch Video recording is the only thing the AI can't do unattended.
+The user said: "adding a lot will spoil the entire project. but adding
+just few proper optimized working features is good." The 3 features
+that the Track 3 judge will look at in 5 minutes are:
+
+1. **Adaptive Recovery Brain** (Phase A) — **SHIPPED end to end**:
+   engine + bandit + API + SPA tab. 4 engine tests reframed to the
+   adaptive contract; bandit contract is `bandit.ranked` event
+   contains the top, ranked list, scores, reason, and feature
+   importances.
+2. **Indic-language nudge** (Phase B) — **SHIPPED end to end**:
+   engine templates in 6 languages + Hinglish, API endpoint, SPA
+   preview card on the Pay Portal. 12 new tests.
+3. **The bar** (Phase F in the plan) — partially shipped:
+   - `eval-report.md` has 53.5% recovery, +37.8% uplift on 5000
+     Indian subscribers.
+   - 50-case adversarial Guardian suite ships.
+   - Hash-chained audit chain ships.
+   - Kill switch, touch cap, quiet hours ship.
+   - **Missing:** a "live money recovered" widget on the SPA
+     Overview tab. This is the ONE remaining feature worth adding
+     before the demo.
+
+**Skip list (judge's perspective: would add noise):**
+
+- **Phase 9e-style new features** — checkout drop-off, B2B
+  receivables, voice TTS, mandate sequencer. The user is right:
+  these would dilute the 5-min pitch. They are *partially* covered
+  in the engine and the design (PTP tracker is shipped, mandate
+  events are handled), but the user explicitly said "if 3
+  features can be perfected end to end its considered ideally
+  good." We have 3.
+
+**What the AI is working on next:**
+
+1. **Live money-recovered widget** on the SPA Overview tab. Polls
+   `/api/metrics` (already exists) and shows live counter in INR.
+2. **Updated docs** (this file, README, JOURNAL, PITCH-VIDEO,
+   ARCHITECTURE) reflecting the truth.
+3. **Final commit + push** of all .md updates to
+   `submission-clean:main`.
+
+The user said: "I will send the api keys tomorrow" — so the engine
+must stay keyless-runnable but ready for LIVE mode. Nothing more
+needs to be coded before the keys arrive; the wiring already
+exists in `config.py` and `razorpay_client.py`.
 
 ### What I should NOT do (updated)
 
@@ -306,6 +365,9 @@ The build_client switch is in `main/src/revive/executors/razorpay_client.py`. Te
 - **Don't fine-tune with LlamaParse** — deprecated, cutoff was May 1
   2026.
 - **Don't add Surya-OCR** — GPL-3.0 conflicts with our MIT distribution.
+- **Don't add new Track 3 example directions** unless asked. The
+  user said "few proper optimized working features is good." Stop
+  expanding the surface area.
 
 ---
 
@@ -315,15 +377,23 @@ The build_client switch is in `main/src/revive/executors/razorpay_client.py`. Te
 
 ---
 
-## 7. The 5-day plan (the original; one day consumed by deep research)
+## 7. The plan (updated 28 Aug 2026, end of Day 2)
 
 | Day | Work | Status |
 |---|---|---|
-| Aug 28 (today) | Phase 9a Faker + 9b Phoenix + 9c Sarvam + 9d Circulars | **All 4 shipped in this session** |
-| Aug 29 | Phase 9e Promptfoo (optional) | Pending |
-| Aug 30 | Phase 10 README + pitch script update + record 5-min video | Pending |
-| Aug 31 | Final polish + dry-run submission | Pending |
-| Sep 1 | Submit | Pending |
+| Aug 28 (today) | Phase 9a Faker + 9b Phoenix + 9c Sarvam + 9d Circulars + 9e 50-case | **All 5 shipped** |
+| Aug 28 (Day 2) | Phase A Adaptive Recovery Brain (engine + API + SPA) | **Shipped** |
+| Aug 28 (Day 2) | Phase B Indic-language nudge (engine + API + SPA) | **Shipped** |
+| Aug 28 (Day 2) | Docs rewrite to reflect truth | **In progress** |
+| Aug 29 | Live money-recovered widget on Overview tab + final README pass | Next |
+| Aug 30 | Phase 10 pitch script update + record 5-min video | Next |
+| Aug 31 | Final polish + dry-run submission | Next |
+| Sep 1 | Submit | Next |
+
+**Working assumption:** API keys arrive on Aug 29. The engine is
+already keyless-runnable and the LIVE path in `config.py` and
+`razorpay_client.py` will flip on when keys are present. No
+re-wiring needed; just the `.env` file.
 
 ---
 
@@ -343,5 +413,5 @@ To resume, an agent needs only:
 
 ---
 
-**Last AI commit before this memory was written:** `7eaacf0` (Phase 9d, circulars).
-**Next AI commit target:** Phase 9e (Promptfoo, low-priority) or README final pass if 9e is skipped.
+**Last AI commit before this memory was written:** `158b811` (Phase B SPA + Track 3 plan).
+**Next AI commit target:** Live money-recovered widget on the Overview tab, then final README + pitch script polish.

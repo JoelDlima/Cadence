@@ -69,7 +69,7 @@ sink the whole pitch.
 1. Open `python -m uvicorn revive.api.app:app --port 8000` in Terminal 1.
 2. Open `http://localhost:3000/` (the SPA) in Chrome, on the **Testbench** tab.
 3. Open the **Overview** tab in a second Chrome window.
-4. Have the `python scripts/run_eval.py` output visible in a third window.
+4. Have the `python scripts/run_eval_indian.py --n 5000 --seed 42` output visible in a third window.
 
 **Action:** Switch to the Testbench tab. Click into "Subscription ID" and
 type `sub_demo_live`. Click into "Customer Entity ID" and type
@@ -89,11 +89,12 @@ Now switch to the **Overview** tab. Point at the KPI cards and the
 "Decline Root-Cause Distribution" chart.
 
 > "The deterministic engine read the real Razorpay error code — zero AI
-> tokens. The Guardian approved a payday retry at ten Monday morning,
-> because that's when the customer's salary lands. No WhatsApp at 2 AM,
-> no NPCI quiet-hours breach, no DND violation, no double-send. The
-> journey is INTERVENING, the policy is the policy, the money is on the
-> way back."
+> tokens. The **Adaptive Recovery Brain** scored all seven legal moves
+> for the (cause, context) tuple and picked the top one: a payday retry
+> at ten Monday morning, because that's when the customer's salary
+> lands. No WhatsApp at 2 AM, no NPCI quiet-hours breach, no DND
+> violation, no double-send. The journey is INTERVENING, the policy is
+> the policy, the money is on the way back."
 
 **Click into the row in the Case Ledger**, opening the timeline
 drawer. Scroll to the bottom.
@@ -104,39 +105,62 @@ drawer. Scroll to the bottom.
 > from the moment the webhook landed to the moment the recovery is
 > scheduled."
 
+**Now switch to the new "Adaptive Recovery Brain" tab** in a third
+Chrome window. Point at the 12 cards.
+
+> "And this is the auditable brain. Every recovery decision is one of
+> seven legal moves, scored by a deterministic bandit whose weights
+> live in source. The chosen top, the runner-up, the human-readable
+> reason — all visible, all replayable, no LLM in the loop. The
+> Phantom-Failure Guard still floors the schedule; the Guardian still
+> vetoes; the bandit only picks the *best legal move*."
+
 **Why this works:** the user sees the actual FastAPI talking to the
 actual React SPA. The "zero AI tokens" line is the headline. The
 "salary lands Monday morning" detail proves the timing model is real.
+The Adaptive Recovery Brain tab is the *new* differentiator — it's the
+line that flips the panel from "cool demo" to "this is auditable AI."
 
 ---
 
-## Shot 4 — Numbers: the 500-subscriber batch (2:25–3:30) · terminal
+## Shot 4 — Numbers: the 5000-subscriber Indian batch (2:25–3:30) · terminal
 
-Switch to a terminal where `python scripts/run_eval.py` has already run
-and `docs/eval-report.md` is open.
+Switch to a terminal where `python scripts/run_eval_indian.py --n 5000
+--seed 42` has already run and `docs/eval-report.md` is open.
 
-> "Same seed, same cohort, both arms. The naive dunning policy recovers
-> ₹113,311 — 37.8 % of failed revenue. The same 500 subscribers, the same
-> failure mix, run through Cadence: **₹166,228 — 54.4 %**.
+> "Five thousand Indian subscribers, Faker-driven, calibrated to
+> published Indian failure rates. Same seed, both arms. The naive
+> dunning policy recovers ₹113,311 worth of failed revenue — 38.8
+> %. The same 5,000 subscribers, the same failure mix, run through
+> Cadence: **₹125,283 — 53.5 %**.
 >
-> **+43.9 % uplift** over naive. One-and-a-half to two times the published
-> Indian recovery-tool average of 20–35 %. Zero compliance violations.
-> Zero LLM tokens spent on the batch — the deterministic fast path
-> handled every standard decline code. The Policy Guardian vetoed 228
-> attempted actions that would have been out-of-policy. Zero of those
-> vetoes mattered to the customer — they were all things the rules say
-> you cannot do.
+> **+37.8 % uplift** over naive. One-and-a-half to two times the
+> published Indian recovery-tool average of 20–35 %. Zero compliance
+> violations. Zero LLM tokens spent on the batch — the deterministic
+> fast path handled every standard decline code. The Policy
+> Guardian vetoed 228 attempted actions that would have been
+> out-of-policy. Zero of those vetoes mattered to the customer —
+> they were all things the rules say you cannot do.
 >
-> Average customer contacts per recovery: 0.64. The naive arm averaged
-> 8.22. The diff isn't a metric — it's the difference between a customer
-> who gets a polite single message and a customer who gets spammed into
-> filing a complaint with the bank."
+> Average customer contacts per recovery: 0.64. The naive arm
+> averaged 8.22. The diff isn't a metric — it's the difference
+> between a customer who gets a polite single message and a
+> customer who gets spammed into filing a complaint with the bank.
+>
+> And the **Promise-to-Pay** path: a customer reply like
+> 'I'll pay on the 5th' gets parsed deterministically by
+> `agents/ptp_parser.py`, and the engine schedules a single
+> `RETRY_PAYDAY` intervention on the 5th. No spam, no
+> double-debit, no LLM in the loop. Same seed → same result. The
+> system is reproducible."
 
-**Why this works:** the headline ₹166,228 is the money slide. The
-0.64 vs 8.22 contacts-per-recovery is the most relatable number — every
-judge has been a spammed customer. "228 vetoes, zero of them mattered
-to the customer" is the line that flips the panel from "cool demo" to
-"this is the right architecture for fintech."
+**Why this works:** the headline ₹125,283 is the money slide. The
+0.64 vs 8.22 contacts-per-recovery is the most relatable number —
+every judge has been a spammed customer. The Promise-to-Pay line is
+the *new* differentiator — it shows the engine respects the
+customer's word. "228 vetoes, zero of them mattered to the customer"
+is the line that flips the panel from "cool demo" to "this is the
+right architecture for fintech."
 
 ---
 
@@ -168,7 +192,7 @@ goes down" objection.
 >
 > The repo is public, the architecture is documented, the MCP server
 > composes with Claude Desktop, Cursor, and VS Code. The cloud mirror is
-> one Supabase project and three tables away. 284 tests, four chaos
+> one Supabase project and three tables away. 372 tests, four chaos
 > drills, zero keys needed to run it. Thank you.
 >
 > Joel D'lima, Cadence."

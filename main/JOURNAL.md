@@ -179,3 +179,51 @@ hackathon submissions. Lesson: when you can't record, give the
 reviewer every other form they might accept. The form has more than
 one shape, and the application form accepts a Loom link *in addition*
 to the 5-min video.
+
+---
+
+## 2026-08-28 (Day 2) — Adaptive Recovery Brain + Indic-nudge
+
+**Two features shipped end to end.** Phase A is the Adaptive
+Recovery Brain: a deterministic contextual bandit in
+`policy/bandit.py` that scores every legal move for the
+(cause, context) tuple. The engine now picks the top-scoring move
+in `_dispatch_fast_path` and emits a `bandit.ranked` event with the
+full ranked list, scores, reason, and feature importances. The SPA
+has a dedicated tab; the API has a `GET /api/bandit/ranked?limit=N`
+endpoint. 4 engine tests reframed to the adaptive contract. Phase
+B is the Indic-language nudge: 6 languages + Hinglish in
+`policy/nudge_templates.py`, a `GET /api/nudge/preview` endpoint,
+and a card on the Pay Portal for live previewing. 12 new tests.
+Total: 372 passing, build clean.
+
+**The Promise-to-Pay tracker was already shipped.** I nearly
+rebuilt `agents/ptp_parser.py` (deterministic multi-lingual reply
+parser, used by `dispatcher.handle_customer_reply` to schedule a
+single `RETRY_PAYDAY` on the promised date). The AI did not notice
+it existed. Lesson: before designing a new feature, **grep the
+codebase first**. The user explicitly said "if 3 features can be
+perfected end to end its considered ideally good." We have 3.
+
+**Lesson: don't expand the surface area before the pitch.** The
+first instinct after the user said "ENSURE IT COVERS ALL" was to
+build checkout drop-off, B2B receivables, voice TTS, and a
+mandate sequencer. The user then said: "adding a lot will spoil
+the entire project. but adding just few proper optimized working
+features is good." A judge has 5 minutes. The 3 features that
+matter to Track 3 are: (1) Adaptive Recovery Brain, (2) Compliance
+trail + audit, (3) The Bar (measured money recovered). Everything
+else is partial coverage in the existing engine. **One properly
+shipped end-to-end feature is worth more than five half-shipped
+ones.** The 4 other Track 3 example directions are *not* gaps;
+they are aspirational and the user is OK with the engine covering
+them partially.
+
+**Bug caught: Python `"""docstring"""` syntax in a .tsx file.**
+I wrote the SPA Recovery Brain view with a Python-style
+triple-quoted docstring at the top. TypeScript/JSX do not have
+triple-quoted strings; the parser reads `"""` as three adjacent
+empty string literals and bails with "Unterminated string literal
+at (1,3)". Fix: switch to `//` line comments. Cost: 1 build
+failure. Lesson: when copying code style across languages, check
+the language's string-literal syntax first.
