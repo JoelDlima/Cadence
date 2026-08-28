@@ -61,6 +61,7 @@ from revive.config import PolicyConfig
 from revive.events import (
     AGG_JOURNEY,
     E_ACTION_EXECUTED,
+    E_BANDIT_RANKED,
     E_CLASSIFICATION_COMPLETED,
     E_INTERVENTION_APPROVED,
     E_INTERVENTION_PROPOSED,
@@ -90,6 +91,12 @@ from revive.policy.guardian import (
     evaluate,
 )
 from revive.policy.outage import detect_cause_outage
+from revive.policy.bandit import (
+    FEATURE_IMPORTANCES as _BANDIT_FEATURE_IMPORTANCES,
+    score_recovery as _score_recovery,
+    rank_actions as _rank_actions,
+    reasons_for as _reasons_for,
+)
 from revive.policy.timing import hold_release_shift, next_contactable_moment, retry_delay_for_cause
 from revive.store.db import Database
 from revive.store.event_store import EventStore
@@ -473,6 +480,67 @@ class RecoveryEngine:
         causes = [_failure_root_cause(json.loads(row["payload"])) for row in rows]
         return detect_cause_outage(recent_failure_causes=causes, cause=cause)
 
+    def _bandit_candidates(
+        self,
+        cause: str,
+        amount_minor: int,
+        touches_used: int,
+        attempt_no: int,
+        now: datetime,
+        sub_id: str,
+    ) -> tuple[str, ...]:
+        """Rank the legal recovery moves for this (cause, context) using the
+        Adaptive Recovery Brain.
+
+        Returns a tuple of intervention names sorted by descending score; the
+        highest-scoring legal move wins at the dispatch site. Returns an empty
+        tuple when the bandit has no signal (e.g. cause has no legal moves,
+        or the engine is in a non-contextual state), in which case the
+        caller falls back to the static ``FAST_PATH_PREFERENCE``.
+
+        Emits ``E_BANDIT_RANKED`` with the full ranked list, the chosen
+        intervention, and the reason strings so the SPA can render the
+        "Adaptive Recovery Brain: ranked 4 candidates, top choice X" panel
+        in the audit trail.
+        """
+        # Gather the same cause-window the Guardian uses for outages, so the
+        # bandit knows when a same-cause spike is active.
+        cutoff_iso = utc_iso(now - timedelta(minutes=_OUTAGE_WINDOW_MINUTES))
+        recent_rows = self._db.conn.execute(
+            "SELECT payload FROM events WHERE type = ? AND occurred_at >= ?",
+            (E_PAYMENT_FAILED, cutoff_iso),
+        ).fetchall()
+        recent_causes = [
+            _failure_root_cause(json.loads(row["payload"])) for row in recent_rows
+        ]
+        scores = _score_recovery(
+            amount_minor=amount_minor,
+            attempts_used=attempt_no,
+            touches_used=touches_used,
+            cause=cause,
+            recent_causes=recent_causes,
+        )
+        if not scores:
+            return ()
+        ranked = _rank_actions(scores)
+        top = ranked[0]
+        # Emit the audit event so the SPA can show "Adaptive Recovery Brain:
+        # ranked N candidates, top X (reason: ...)".
+        self._append(
+            E_BANDIT_RANKED,
+            sub_id,
+            {
+                "cause": cause,
+                "ranked": ranked,
+                "scores": {k: round(v, 2) for k, v in scores.items()},
+                "top": top,
+                "reason": _reasons_for(cause, top),
+                "feature_importances": _BANDIT_FEATURE_IMPORTANCES,
+            },
+            utc_iso(now),
+        )
+        return tuple(ranked)
+
     def _append(
         self, event_type: str, sub_id: str, event_payload: dict[str, Any], occurred_at: str
     ) -> None:
@@ -553,7 +621,19 @@ class RecoveryEngine:
     ) -> None:
         cause = classification.root_cause
         paused_for_outage = self._cause_outage(cause, now=now)
-        candidates: tuple[str, ...] = FAST_PATH_PREFERENCE.get(cause, ())
+        # Adaptive Recovery Brain: when the engine is in a "context"
+        # we have a previous-touches count and an amount, the bandit
+        # in `revive.policy.bandit` scores every legal move for the cause
+        # and returns a ranked list. The top-scoring legal move wins
+        # UNLESS it is the same as the static `FAST_PATH_PREFERENCE`
+        # top choice — in that case the bandit result confirms the
+        # policy. If the bandit returns an empty list (e.g. cause
+        # has no legal moves), we fall back to the static preference.
+        candidates: tuple[str, ...] = self._bandit_candidates(
+            cause, amount_minor, journey.touches_used, attempt_no, now, sub_id,
+        )
+        if not candidates:
+            candidates = FAST_PATH_PREFERENCE.get(cause, ())
         if planner_intervention is not None and planner_intervention in legal_moves(cause):
             candidates = (planner_intervention, *candidates)
         for intervention in candidates:

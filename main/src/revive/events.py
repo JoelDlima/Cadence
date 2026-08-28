@@ -30,6 +30,7 @@ E_ACTION_EXECUTED = "action.executed"
 E_CUSTOMER_REPLIED = "customer.replied"
 E_PTP_COMMITTED = "ptp.committed"
 E_TIMER_SET = "timer.set"
+E_BANDIT_RANKED = "bandit.ranked"
 E_KILL_SWITCH_CHANGED = "killswitch.changed"
 
 EVENT_TYPES: frozenset[str] = frozenset(
@@ -48,6 +49,7 @@ EVENT_TYPES: frozenset[str] = frozenset(
         E_CUSTOMER_REPLIED,
         E_PTP_COMMITTED,
         E_TIMER_SET,
+        E_BANDIT_RANKED,
         E_KILL_SWITCH_CHANGED,
     }
 )
