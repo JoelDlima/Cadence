@@ -93,6 +93,27 @@ export const api = {
     );
   },
 
+  async getNudgePreview(
+    language: string = 'hinglish',
+    amount_minor: number = 49900,
+    link_url: string | null = null,
+  ): Promise<{
+    language: string;
+    amount_minor: number;
+    link_url: string | null;
+    text: string;
+    supported_languages: string[];
+  }> {
+    const params = new URLSearchParams({
+      language,
+      amount_minor: String(amount_minor),
+    });
+    if (link_url) {
+      params.set('link_url', link_url);
+    }
+    return jsonFetch(`/api/nudge/preview?${params.toString()}`);
+  },
+
   async getLlmSpend(): Promise<LlmSpend> {
     return jsonFetch<LlmSpend>('/api/llm-spend');
   },
