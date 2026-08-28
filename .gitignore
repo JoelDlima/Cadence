@@ -10,8 +10,8 @@ graphify-out/
 
 # Private (author's reference) docs - not for public repo / judges
 private/
-main/private/
-main/docs/private/
+Cadence/private/
+Cadence/docs/private/
 
 # Python
 __pycache__/
@@ -40,13 +40,13 @@ data/*.db
 # Logs
 logs/
 *.log
-main/logs/
-main/*.log
+Cadence/logs/
+Cadence/*.log
 
 # Node / frontend
-main/frontend/node_modules/
-main/frontend/dist/
-main/frontend/.vite/
+Cadence/frontend/node_modules/
+Cadence/frontend/dist/
+Cadence/frontend/.vite/
 
 # OS / editor
 .DS_Store
@@ -57,9 +57,10 @@ Thumbs.db
 *.swo
 
 # Build artifacts
-main/frontend/src/revive/console/dist/
+Cadence/frontend/src/revive/console/dist/
 
 # Python editable-install metadata (regenerated on every `pip install -e`)
-main/src/revive.egg-info/
+Cadence/src/revive.egg-info/
 *.egg-info/
 *.egg
+
