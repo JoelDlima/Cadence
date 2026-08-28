@@ -292,7 +292,7 @@ uplift, 0 LLM tokens, 2,560 Guardian vetoes, 0.76 contacts/recovery
 direction. The 500-sub canonical number is untouched.
 **Phase 9b (shipped) — Phoenix 20.4.0 observability sidecar.** Added
 optional `arize-phoenix>=8.0` as `[observability]` extra in `pyproject.toml`
-(NOT a hard dep — the 301+ tests pass keyless without Phoenix). New
+(NOT a hard dep; the 301+ existing tests pass keyless without Phoenix). New
 `main/src/revive/observability/phoenix.py` is a graceful no-op when
 Phoenix isn't installed: `is_available()` returns False, `instrument()`
 returns False without raising, `recent_traces()` returns `[]`. New
@@ -303,12 +303,34 @@ returns False without raising, `recent_traces()` returns `[]`. New
 that Anthropic recommends" — Phoenix 20.4.0 (released 2026-08-26) has
 the in-process MCP toolset. License: ELv2, not OSI-MIT; disclosed in
 the README.
-**Phase 9c — Sarvam as 4th LLMClient**,
-**Phase 9d — PaddleOCR 3.7.0 + Docling for RBI circulars** all on the
-plan. Skipped: Guardrails AI (cutoff Aug 25 2026 already past), Coqui
-STT (discontinued), Unsloth fine-tuning (would *reduce* recovery
-uplift), Temporal/Inngest (rewrite risk), Surya-OCR (GPL conflicts
-with MIT), n8n (fair-code).
+**Phase 9c (shipped) — Sarvam AI as 4th LLMClient provider.** Added
+`sarvam` to `_OPENAI_COMPATIBLE_URLS` in
+`main/src/revive/agents/llm_client.py` (Sarvam is OpenAI-compatible at
+`/v1/chat/completions`). Added `sarvam_api_key` and `model_sarvam` fields
+to `LLMConfig` with default empty string so existing test constructors
+keep working. Updated `main/.env.example` with the Sarvam block. Two
+new tests verify: (1) `llm_keys_present=true` when `SARVAM_API_KEY` is
+set, (2) `llm_keys_present=false` when empty (keyless path unchanged).
+Tests 301 → 303. Pitch line: "Our cohort tests in 10 Indian languages
+because Sarvam is one of our four LLM providers. The deterministic
+engine handles standard Razorpay error codes with zero LLM tokens;
+Sarvam is only consulted for genuinely unclassifiable failures."
+**Phase 9d (shipped) — RBI / NPCI circular ingestion.** New
+`main/src/revive/policy/circulars.py` with heuristic extractors
+(source detection, summary, date, reference, rule list capped at 32).
+New `main/src/revive/store/V3__policy_circulars.sql` migration adds
+`policy_circulars` table. Three new endpoints
+(`/api/circulars`, `/api/circulars/{id}`, `/api/circulars/ingest`).
+PDF text via `pypdf` (user-installed, optional). 5 unit tests for the
+extractors + 2 API tests for idempotency + keyless no-op. Tests
+303 → 310. Pitch line: "We auto-ingest every new RBI / NPCI circular
+into the engine's evidence pack. The Guardian cites the source; the
+engine's rules are auditable end-to-end." The data plane is in place;
+dynamic-rule reading is a post-hackathon add. **Phase 9e —
+Promptfoo 50 adversarial prompts** all on the plan. Skipped: Guardrails
+AI (cutoff Aug 25 2026 already past), Coqui STT (discontinued),
+Unsloth fine-tuning (would *reduce* recovery uplift), Temporal/Inngest
+(rewrite risk), Surya-OCR (GPL conflicts with MIT), n8n (fair-code).
 
 ---
 
