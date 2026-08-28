@@ -125,11 +125,16 @@ class Dispatcher:
     def resolve_outcome_check(self, payload: dict[str, Any]) -> None:
         """Runtime hook for ``outcome_check`` tasks: did the offered link get paid?
 
-        Live clients ask Razorpay whether a payment with this journey's
-        reference_id captured; the keyless simulator resolves via the same
-        injectable OutcomeFn the mandate-retry path uses. Unpaid means the
-        attempt did not convert: loop the journey back with an honest failure
-        code so touch caps and the save ladder keep governing cadence.
+        Live path (PHASE 2): if the journey has a stored Razorpay payment_id
+        from its payment-link action, call ``client.fetch_payment(payment_id)``
+        and read the live ``status`` field. If the link is captured, close
+        the journey RECOVERED. If the link is unpaid, loop the journey back
+        with an honest failure code so touch caps and the save ladder keep
+        governing cadence.
+
+        Fallback: the legacy list-payments-by-reference probe, and finally the
+        injectable OutcomeFn for the keyless simulator. Unpaid means the
+        attempt did not convert.
         """
         journey = self._journeys.get(str(payload["journey_id"]))
         if journey is None or journey.state != STATE_WAITING_OUTCOME:
@@ -137,23 +142,97 @@ class Dispatcher:
         journey_id = journey.journey_id
         attempt_no = max(int(payload.get("attempt_no", 1)), 1)
         reference_id = f"{journey_id}:{attempt_no}"
-        probe = getattr(self._client, "payment_captured_for", None)
-        if probe is not None:
-            won = bool(probe(reference_id=reference_id))
-        else:
-            subscription_id = str(payload.get("subscription_id", journey.subscription_id))
-            won = self._outcome_fn(f"{subscription_id}:{attempt_no}")
-        if won:
+        won = self._fetch_outcome(reference_id, payload=payload, journey=journey)
+        if won is True:
             self._finish_recovered(
                 self._request_from(journey, attempt_no=attempt_no, intervention=PAYMENT_LINK),
                 self._last_link_ref(journey_id) or reference_id,
             )
             return
-        self._finish_retry_failed(
-            self._request_from(journey, attempt_no=attempt_no, intervention=PAYMENT_LINK),
-            code="payment_link_unpaid",
-            description="payment link went unpaid",
+        if won is False:
+            self._finish_retry_failed(
+                self._request_from(journey, attempt_no=attempt_no, intervention=PAYMENT_LINK),
+                code="payment_link_unpaid",
+                description="payment link went unpaid",
+            )
+            return
+        # won is None -> unknown: do nothing this tick, the worker will re-poll.
+
+    def _fetch_outcome(
+        self,
+        reference_id: str,
+        *,
+        payload: dict[str, Any],
+        journey: Any,
+    ) -> bool | None:
+        """Probe Razorpay (live) or the simulator (offline) for whether the
+        payment attached to this journey captured.
+
+        Returns True on captured, False on confirmed unpaid, None on
+        "can't tell yet" (Razorpay still processing, transport error, etc.).
+        """
+        # PHASE 2 primary path: live Razorpay fetch by payment_id (single-call).
+        # The payment_id was stored on the journey's most recent payment-link
+        # action event when the link was created. This is exact, fast, and
+        # race-free.
+        live_payment_id = self._live_payment_id_for_journey(journey.journey_id)
+        if live_payment_id:
+            try:
+                payment = self._client.fetch_payment(payment_id=live_payment_id)
+                status = str(payment.get("status", "")).lower()
+                if status == "captured":
+                    return True
+                if status in ("failed", "cancelled", "expired"):
+                    return False
+                # authorized / created / pending: still processing -> retry next tick
+                return None
+            except Exception:
+                # transport error, 5xx, etc. -> fall through to the next probe
+                pass
+
+        # Fallback: list payments by reference_id (the older path, works
+        # for the simulator and for live when no payment_id was stored).
+        probe = getattr(self._client, "payment_captured_for", None)
+        if probe is not None:
+            try:
+                return bool(probe(reference_id=reference_id))
+            except Exception:
+                pass
+
+        # Final fallback: injectable outcome function (keyless demo).
+        try:
+            subscription_id = str(payload.get("subscription_id", journey.subscription_id))
+            return bool(self._outcome_fn(f"{subscription_id}:{attempt_no}"))
+        except Exception:
+            return None
+
+    def _live_payment_id_for_journey(self, journey_id: str) -> str | None:
+        """Look at the most recent action event for a Razorpay payment_id.
+
+        The dispatcher stores the Razorpay payment_id (or, in the simulator,
+        a ``plink_sim_xxx`` id) as the ``ref`` field on the action event. For
+        a real Razorpay payment_link that has been paid, the corresponding
+        payment has its own ``pay_xxx`` id, and the link action carries the
+        ``payment_id`` as a separate field. We check both.
+        """
+        events = sorted(
+            self._event_store.get_by_aggregate(AGG_JOURNEY, journey_id),
+            key=lambda e: e.seq,
         )
+        for event in reversed(events):
+            if event.type != E_ACTION_EXECUTED:
+                continue
+            payload = event.payload
+            kind = payload.get("kind")
+            if kind != PAYMENT_LINK:
+                continue
+            payment_id = payload.get("payment_id")
+            if payment_id:
+                return str(payment_id)
+            ref = payload.get("ref")
+            if ref and (ref.startswith("pay_") or ref.startswith("plink_")):
+                return str(ref)
+        return None
 
     def resolve_reply_wait(self, payload: dict[str, Any]) -> None:
         """Runtime hook for ``await_customer_reply`` tasks: the wait elapsed, no reply.

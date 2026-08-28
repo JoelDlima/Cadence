@@ -153,6 +153,17 @@ class SimulatedRazorpayClient:
             "simulated": True,
         }
 
+    def capture_payment(self, *, payment_id: str, amount_minor: int | None = None) -> dict:
+        """Simulated capture: returns ``status=captured`` with the same amount."""
+        return {
+            "id": payment_id,
+            "entity": "payment",
+            "status": "captured",
+            "amount": amount_minor or 49900,
+            "currency": "INR",
+            "simulated": True,
+        }
+
 
 @dataclass(frozen=True)
 class LiveRazorpayClient:
@@ -289,6 +300,26 @@ class LiveRazorpayClient:
     def cancel_payment_link(self, *, payment_link_id: str) -> dict:
         request = httpx.Request(
             "POST", f"{_BASE_URL}/payment_links/{payment_link_id}/cancel"
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        return dict(response.json())
+
+    def capture_payment(self, *, payment_id: str, amount_minor: int | None = None) -> dict:
+        """Capture a previously-authorized payment. On Razorpay test mode, the
+        client.capture API is the standard way to settle an authorized payment;
+        the dashboard uses the same endpoint. Amounts are optional; if omitted,
+        the full authorized amount is captured.
+
+        Used by the demo "Pay Now" button: clicking it captures the payment
+        the recovery agent created, which the outcome check then sees as
+        ``status=captured`` and closes the journey as RECOVERED.
+        """
+        body: dict = {}
+        if amount_minor is not None:
+            body["amount"] = amount_minor
+        request = httpx.Request(
+            "POST", f"{_BASE_URL}/payments/{payment_id}/capture", json=body
         )
         response = self._send(request)
         response.raise_for_status()

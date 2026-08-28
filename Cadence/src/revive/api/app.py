@@ -611,24 +611,101 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
 
     @app.post("/api/pay/{journey_id}/simulate-paid")
     def simulate_pay(journey_id: str, body: PaySimulateIn | None = None) -> dict[str, Any]:
-        """DEMO-only: synthesize a payment.captured event to close the journey.
+        """Close the journey as RECOVERED.
 
-        LIVE mode returns 410 because real captured events come from Razorpay
-        via the webhook, not from a button press.
+        DEMO mode (no Razorpay keys): synthesizes a payment.captured event
+        so the SPA can demo the close-the-loop flow without a live key.
+
+        LIVE mode (real Razorpay test keys): calls ``client.capture_payment``
+        on the real Razorpay payment that the engine created, so the outcome
+        check (which now uses ``client.fetch_payment`` in PHASE 2) sees
+        ``status=captured`` and closes the journey. The flow is fully on
+        real Razorpay test-mode rails; the only thing being "simulated" is
+        the user clicking a button instead of completing the UPI flow on
+        their phone.
         """
-        if config.razorpay.is_live:
-            raise HTTPException(
-                status_code=410,
-                detail="simulate-paid is disabled in LIVE mode; payment.captured comes from Razorpay",
-            )
         from revive.events import AGG_JOURNEY, E_PAYMENT_RECOVERED
         journey = journeys.get(journey_id)
         if journey is None:
             raise HTTPException(status_code=404, detail="unknown journey")
         if is_terminal(journey.state):
             raise HTTPException(status_code=409, detail="journey already resolved")
-        # Append a synthetic E_PAYMENT_RECOVERED with the journey's own
-        # reference_id; the worker will then transition via handle_payment_captured.
+
+        # LIVE: capture the real Razorpay payment that the engine created.
+        # The payment_id was stored on the PAYMENT_LINK action event when
+        # the engine called client.create_payment_link.
+        if config.razorpay.is_live:
+            from revive.executors.razorpay_client import LiveRazorpayClient
+            assert isinstance(runtime.dispatcher._client, LiveRazorpayClient), (
+                "live simulate-paid requires the LiveRazorpayClient"
+            )
+            # Find the most recent PAYMENT_LINK action's payment_id/ref.
+            live_payment_id = None
+            events = sorted(
+                store.get_by_aggregate(AGG_JOURNEY, journey_id), key=lambda e: e.seq
+            )
+            for event in reversed(events):
+                if (
+                    event.type == "action.executed"
+                    and event.payload.get("kind") == "PAYMENT_LINK"
+                ):
+                    candidate = event.payload.get("payment_id") or event.payload.get("ref")
+                    if candidate:
+                        live_payment_id = str(candidate)
+                        break
+            if not live_payment_id:
+                raise HTTPException(
+                    status_code=409,
+                    detail="no PAYMENT_LINK event found for this journey",
+                )
+            # Real Razorpay capture. If the transport fails (e.g. real Razorpay
+            # is down or keys are bad), surface a 502 to the SPA so the demo
+            # surfaces a clear error rather than a 500.
+            try:
+                runtime.dispatcher._client.capture_payment(
+                    payment_id=live_payment_id,
+                    amount_minor=int(journey.amount_minor or 0),
+                )
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"razorpay capture failed for {live_payment_id}: {exc!r}",
+                ) from exc
+            # Append the corresponding E_PAYMENT_RECOVERED so the worker
+            # transitions via handle_payment_captured.
+            store.append(
+                event_type=E_PAYMENT_RECOVERED,
+                aggregate_type=AGG_JOURNEY,
+                aggregate_id=journey.subscription_id,
+                payload={
+                    "payment_id": live_payment_id,
+                    "amount_minor": int(journey.amount_minor or 0),
+                    "captured_via_simulate_paid": True,
+                },
+                occurred_at=utc_iso(clock.now()),
+                recorded_at=utc_iso(clock.now()),
+                event_id=f"prl_{uuid.uuid4().hex[:12]}",
+            )
+            from revive.executors.contracts import TASK_PAYMENT_CAPTURED
+            from revive.store.queue_repo import QueueRepo as _Q
+            _Q(db).enqueue(
+                task_type=TASK_PAYMENT_CAPTURED,
+                payload={"subscription_id": journey.subscription_id, "payment_id": live_payment_id},
+                idempotency_key=f"sim_paid:{journey_id}",
+                available_at=utc_iso(clock.now()),
+                created_at=utc_iso(clock.now()),
+            )
+            runtime.worker.run_once(runtime.handlers, max_tasks=10)
+            after = journeys.get(journey_id)
+            return {
+                "simulated": False,
+                "journey_id": journey_id,
+                "state_after": after.state if after else "unknown",
+                "payment_id": live_payment_id,
+                "note": (body.note if body else None),
+            }
+
+        # DEMO path: synthesise the event.
         from revive.executors.contracts import TASK_PAYMENT_CAPTURED
         from revive.executors.dispatcher import Dispatcher as _D
         from revive.store.queue_repo import QueueRepo as _Q

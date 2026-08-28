@@ -567,7 +567,12 @@ def test_simulate_paid_works_in_demo_mode(api: Api) -> None:
     assert body["state_after"] == "RECOVERED"
 
 
-def test_simulate_paid_410_in_live_mode(tmp_path: Path) -> None:
+def test_simulate_paid_in_live_mode_attempts_real_capture(tmp_path: Path) -> None:
+    """PHASE 2: simulate-paid in LIVE mode attempts a real Razorpay capture
+    on the payment_id of the most recent PAYMENT_LINK action. With fake keys
+    in this test environment, Razorpay returns 401, which the engine surfaces
+    as 500. The contract is: we entered the LIVE branch, not the DEMO branch."""
+    import httpx
     cfg = _config(tmp_path / "live_paid.db")
     cfg = AppConfig(
         **{
@@ -577,8 +582,6 @@ def test_simulate_paid_410_in_live_mode(tmp_path: Path) -> None:
             ),
         }
     )
-    client = TestClient(create_app(cfg=cfg))
-    # Seed directly
     db = Database(cfg.db_path)
     store = EventStore(db)
     journeys = JourneyRepo(db)
@@ -592,9 +595,49 @@ def test_simulate_paid_410_in_live_mode(tmp_path: Path) -> None:
         opened_at=T0,
     )
     journeys.update_fields("j_live", {"state": "INTERVENING"}, updated_at=T1)
+    # Seed a PAYMENT_LINK action event so the LIVE branch has a payment_id
+    # to capture. This is the same shape the dispatcher emits in _exec_payment_link.
+    store.append(
+        event_type="action.executed",
+        aggregate_type="journey",
+        aggregate_id="j_live",
+        payload={
+            "kind": "PAYMENT_LINK",
+            "status": "executed",
+            "ref": "plink_test_xxx",
+            "payment_id": "pay_live_test_001",
+        },
+        occurred_at=T1,
+        recorded_at=T1,
+        event_id="ax_live_test_001",
+    )
     db.close()
-    r = client.post("/api/pay/j_live/simulate-paid", json={})
-    assert r.status_code == 410
+    real_capture_called = {"v": False}
+
+    def _fake_handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST" and "/capture" in str(request.url):
+            real_capture_called["v"] = True
+        return httpx.Response(401, content=b'{"error":{"code":"BAD_REQUEST_ERROR"}}')
+
+    client = TestClient(create_app(cfg=cfg))
+    from revive.executors.razorpay_client import LiveRazorpayClient
+    orig = client.app.state.runtime.dispatcher._client
+    new_client = LiveRazorpayClient(
+        cfg=cfg.razorpay, transport=httpx.Client(transport=httpx.MockTransport(_fake_handler))
+    )
+    client.app.state.runtime.dispatcher._client = new_client
+    try:
+        r = client.post("/api/pay/j_live/simulate-paid", json={})
+    finally:
+        client.app.state.runtime.dispatcher._client = orig
+    assert real_capture_called["v"] is True, f"LIVE branch should call real capture, response={r.status_code}"
+    assert r.status_code != 410, "old DEMO-only 410 behavior is gone"
+    # Re-open DB to check the journey state was not advanced to RECOVERED
+    # (transport failure must not mark recovered).
+    db2 = Database(tmp_path / "live_paid.db")
+    j2 = JourneyRepo(db2).get("j_live")
+    db2.close()
+    assert j2.state != "RECOVERED", "transport failure must NOT mark recovered"
 
 
 def test_get_journey_by_id_and_subscription(api: Api) -> None:
@@ -757,14 +800,12 @@ def test_demo_razorpay_client_selected_when_keys_absent(tmp_path: Path) -> None:
     assert client.mode == "simulated"
 
 
-def test_pay_link_in_live_mode_simulate_paid_returns_410(tmp_path: Path) -> None:
-    """Live mode wiring: the simulate-paid endpoint returns 410 in LIVE
-    mode (simulate is DEMO-only). This is the strongest contract test
-    we can do in-process because the actual pay-link endpoint calls out
-    to api.razorpay.com, which will 401 in the test runner (we use fake
-    keys). The 410 here proves the runtime is using the LiveRazorpay
-    client, not the simulator (the simulator would not gate simulate-paid).
-    """
+def test_pay_link_in_live_mode_simulate_paid_attempts_real_capture(tmp_path: Path) -> None:
+    """PHASE 2: simulate-paid in LIVE mode routes through the LiveRazorpay
+    client and calls capture on the real Razorpay payment. With fake keys
+    in the test runner, Razorpay returns 401; the endpoint surfaces that
+    as a 500. The contract is: we entered the LIVE branch."""
+    import httpx
     cfg = _config(tmp_path / "live_pay.db")
     cfg = AppConfig(
         **{
@@ -774,7 +815,6 @@ def test_pay_link_in_live_mode_simulate_paid_returns_410(tmp_path: Path) -> None
             ),
         }
     )
-    client = TestClient(create_app(cfg=cfg))
     db = Database(cfg.db_path)
     journeys = JourneyRepo(db)
     journeys.create(
@@ -787,9 +827,43 @@ def test_pay_link_in_live_mode_simulate_paid_returns_410(tmp_path: Path) -> None
         opened_at=T0,
     )
     journeys.update_fields("j_livepay", {"state": "INTERVENING"}, updated_at=T1)
+    # Seed a PAYMENT_LINK action event so the LIVE branch has a payment_id
+    # to capture.
+    store = EventStore(db)
+    store.append(
+        event_type="action.executed",
+        aggregate_type="journey",
+        aggregate_id="j_livepay",
+        payload={
+            "kind": "PAYMENT_LINK",
+            "status": "executed",
+            "ref": "plink_livepay_xxx",
+            "payment_id": "pay_livepay_test_002",
+        },
+        occurred_at=T1,
+        recorded_at=T1,
+        event_id="ax_livepay_test_002",
+    )
     db.close()
-    sim = client.post("/api/pay/j_livepay/simulate-paid", json={})
-    assert sim.status_code == 410
+
+    def _fake_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, content=b'{"error":{"code":"BAD_REQUEST_ERROR"}}')
+
+    client = TestClient(create_app(cfg=cfg))
+    from revive.executors.razorpay_client import LiveRazorpayClient
+    orig = client.app.state.runtime.dispatcher._client
+    client.app.state.runtime.dispatcher._client = LiveRazorpayClient(
+        cfg=cfg.razorpay, transport=httpx.Client(transport=httpx.MockTransport(_fake_handler))
+    )
+    try:
+        sim = client.post("/api/pay/j_livepay/simulate-paid", json={})
+    finally:
+        client.app.state.runtime.dispatcher._client = orig
+    assert sim.status_code != 410, "old DEMO-only 410 behavior is gone"
+    db2 = Database(tmp_path / "live_pay.db")
+    j2 = JourneyRepo(db2).get("j_livepay")
+    db2.close()
+    assert j2.state != "RECOVERED", "transport failure must NOT mark recovered"
 
 
 def test_live_check_prints_cadence_header(tmp_path: Path) -> None:
