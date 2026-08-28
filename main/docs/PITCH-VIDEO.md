@@ -198,7 +198,7 @@ goes down" objection.
 > Joel D'lima, Cadence."
 
 **Why this works:** the close names the regulatory principle, restates
-the technical differentiator, lists the social proof (284 tests, 4
+the technical differentiator, lists the social proof (372 tests, 4
 drills, keyless), and ends on a name. Don't read it; say it like you
 mean it.
 
