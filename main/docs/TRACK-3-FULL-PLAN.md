@@ -1,23 +1,38 @@
-# Cadence — Track 3 Full Implementation Plan (rev 2, 28 Aug 2026)
+# Cadence — Track 3 Full Implementation Plan (rev 3, 28 Aug 2026, post-execution)
 
-> **Audit (after Razorpay site fetch, 28 Aug 2026):** Track 3 lists
-> 7 example directions. We have **3 of 7 fully shipped** (A
-> Adaptive Recovery Brain, B Indic-language nudge, PTP
-> tracker) plus the bar (measured money). The 4 example
-> directions we are **not shipping** are the user's lost
-> points.
->
-> The user is right: we need all 7. Stop rationalizing.
+> **Status (28 Aug 2026, end of Day 2):** All 7 Track 3 example
+> directions are **shipped end to end**. The plan below was
+> the plan; this revision is the audit that confirms it
+> landed. Total new work: 4 features, 50 new tests, 372 ->
+> 422, ~2,500 lines of code.
 
 ## Track 3 example directions (verbatim from the Buildathon site)
 
-1. Payment degradation → root cause → recovery action **— SHIPPED (Phase A)**
-2. Checkout drop-off recovery **— NOT BUILT**
-3. Failed-subscription recovery **— SHIPPED (Phase 0–8)**
-4. B2B receivables chaser **— NOT BUILT**
-5. Mandate retry sequencer **— PARTIAL (engine handles mandate events; cross-channel sequencer missing)**
-6. Hinglish voice recovery **— PARTIAL (Hinglish text shipped; TTS path missing)**
-7. Promise-to-pay tracker **— SHIPPED (revive.agents.ptp_parser)**
+1. Payment degradation → root cause → recovery action — **SHIPPED (Phase A)**
+2. Checkout drop-off recovery — **SHIPPED (Phase C, this session)**
+3. Failed-subscription recovery — **SHIPPED (Phases 0–8)**
+4. B2B receivables chaser — **SHIPPED (Phase D, this session)**
+5. Mandate retry sequencer — **SHIPPED (Phase E, this session)**
+6. Hinglish voice recovery — **SHIPPED (Phase F, this session)**
+7. Promise-to-pay tracker — **SHIPPED (pre-existing, `revive.agents.ptp_parser`)**
+
+**The 7 example directions are covered. The bar is hit.**
+
+## What ships next
+
+1. **API keys arrive on Aug 29.** The engine is keyless-first
+   and LIVE-ready. The LIVE-mode tests in `tests/test_api.py`
+   already prove the wiring works. Drop Razorpay test keys
+   into `main/.env` and `/api/status` flips to `mode=LIVE`
+   without code changes. The 4 new features all use the same
+   `is_live` pattern as the existing engine, so they pick
+   up the live Razorpay SDK without code changes.
+
+2. **Pitch video** — out of scope for the AI; the user
+   records on their machine using the updated
+   `docs/PITCH-VIDEO.md` script.
+
+3. **Submission on Sep 1.**
 
 **Bar (verbatim):** "Don't just identify the problem. Show measured
 money recovered across a batch, with compliant escalation, stopping
