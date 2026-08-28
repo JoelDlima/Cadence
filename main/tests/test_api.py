@@ -847,3 +847,53 @@ def test_trace_recent_endpoint_is_noop_when_phoenix_missing(api: Api) -> None:
     Phoenix is not installed. The SPA uses ``enabled`` to gate the UI."""
     body = api.client.get("/api/trace/recent").json()
     assert body == {"enabled": False, "traces": []}
+
+
+def test_sarvam_provider_listed_when_key_present(tmp_path: Path) -> None:
+    """When SARVAM_API_KEY is set and listed in provider_order, the status
+    endpoint reports llm_keys_present=true. The actual HTTP call is mocked by
+    the existing LLMClient tests; here we just verify the wiring at the
+    config layer."""
+    cfg = _config(tmp_path / "sarv.db")
+    cfg = AppConfig(
+        **{
+            **cfg.__dict__,
+            "llm": LLMConfig(
+                provider_order=["sarvam"],
+                gemini_api_key="", groq_api_key="", openrouter_api_key="",
+                sarvam_api_key="sarv_test_xxx",
+                model_gemini="gemini-2.0-flash",
+                model_groq="llama-3.3-70b-versatile",
+                model_openrouter="meta-llama/llama-3.3-70b-instruct:free",
+                model_sarvam="sarvam-m",
+                daily_request_cap=10,
+            ),
+        }
+    )
+    client = TestClient(create_app(cfg=cfg))
+    body = client.get("/api/status").json()
+    assert body["llm_keys_present"] is True
+
+
+def test_sarvam_provider_skipped_when_key_absent(tmp_path: Path) -> None:
+    """When SARVAM_API_KEY is empty and the chain is set to ['sarvam'], the
+    status reports llm_keys_present=false (keyless path unchanged)."""
+    cfg = _config(tmp_path / "no_sarv.db")
+    cfg = AppConfig(
+        **{
+            **cfg.__dict__,
+            "llm": LLMConfig(
+                provider_order=["sarvam"],
+                gemini_api_key="", groq_api_key="", openrouter_api_key="",
+                sarvam_api_key="",
+                model_gemini="gemini-2.0-flash",
+                model_groq="llama-3.3-70b-versatile",
+                model_openrouter="meta-llama/llama-3.3-70b-instruct:free",
+                model_sarvam="sarvam-m",
+                daily_request_cap=10,
+            ),
+        }
+    )
+    client = TestClient(create_app(cfg=cfg))
+    body = client.get("/api/status").json()
+    assert body["llm_keys_present"] is False

@@ -52,12 +52,20 @@ class LLMConfig:
     ollama_base_url: str = "http://localhost:11434/v1"
     model_ollama: str = "llama3.1:8b"
     timeout_seconds: float = 20.0
+    # Phase 9c: Sarvam AI (Indian-first, free tier, OpenAI-compatible).
+    # The dataclass has these fields without defaults so existing test
+    # constructors that pass them positionally keep working. We use
+    # ``field(default=...)`` to keep them keyword-friendly.
+    from dataclasses import field  # local import to keep top tidy
+    sarvam_api_key: str = field(default="")
+    model_sarvam: str = field(default="sarvam-m")
 
     def key_for(self, provider: str) -> str:
         return {
             "gemini": self.gemini_api_key,
             "groq": self.groq_api_key,
             "openrouter": self.openrouter_api_key,
+            "sarvam": self.sarvam_api_key,
             "ollama": "ollama",  # local server needs no API key
         }.get(provider, "")
 
@@ -134,15 +142,17 @@ def load_config() -> AppConfig:
             webhook_secret=os.environ.get("RZP_WEBHOOK_SECRET", "revive_dev_webhook_secret"),
         ),
         llm=LLMConfig(
-            provider_order=_env_list("LLM_PROVIDER_ORDER", ["gemini", "groq", "openrouter"]),
+            provider_order=_env_list("LLM_PROVIDER_ORDER", ["gemini", "groq", "openrouter"]),  # noqa: E501
             gemini_api_key=os.environ.get("GEMINI_API_KEY", ""),
             groq_api_key=os.environ.get("GROQ_API_KEY", ""),
             openrouter_api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+            sarvam_api_key=os.environ.get("SARVAM_API_KEY", ""),
             model_gemini=os.environ.get("LLM_MODEL_GEMINI", "gemini-2.0-flash"),
             model_groq=os.environ.get("LLM_MODEL_GROQ", "llama-3.3-70b-versatile"),
             model_openrouter=os.environ.get(
                 "LLM_MODEL_OPENROUTER", "meta-llama/llama-3.3-70b-instruct:free"
             ),
+            model_sarvam=os.environ.get("LLM_MODEL_SARVAM", "sarvam-m"),
             daily_request_cap=_env_int("LLM_DAILY_REQUEST_CAP", 400),
             ollama_base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
             model_ollama=os.environ.get("LLM_MODEL_OLLAMA", "llama3.1:8b"),

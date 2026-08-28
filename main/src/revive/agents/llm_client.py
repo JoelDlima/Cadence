@@ -19,6 +19,10 @@ _CIRCUIT_OPEN_SECONDS = 300
 _OPENAI_COMPATIBLE_URLS: dict[str, str] = {
     "groq": "https://api.groq.com/openai/v1/chat/completions",
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
+    # Sarvam AI is OpenAI-compatible. Indian-first models, free tier at
+    # dashboard.sarvam.ai. Set SARVAM_API_KEY to enable; without it the
+    # provider is silently skipped (keyless path unchanged).
+    "sarvam": "https://api.sarvam.ai/v1/chat/completions",
 }
 
 
