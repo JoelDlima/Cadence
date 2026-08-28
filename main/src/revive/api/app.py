@@ -1156,6 +1156,10 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
     from revive.b2b.api import register_routes as _register_b2b
     _register_b2b(app, db=db, clock=clock)
 
+    # Phase mandate: Mandate retry sequencer routes
+    from revive.mandate.api import register_routes as _register_mandate
+    _register_mandate(app, db=db, clock=clock)
+
     return app
 
 
