@@ -28,13 +28,10 @@
   - `6348998` feat(phase-9b): optional Arize Phoenix 20.4.0 observability sidecar
   - `19ed1c8` feat(phase-9c): Sarvam AI as 4th LLMClient provider
   - `7eaacf0` feat(phase-9d): RBI / NPCI circular ingestion with heuristic rule extraction
+  - **Phase 9e (next)**: 50-case adversarial regression suite for the Guardian
 
 - **Tests at start of this session:** 289
-- **Tests at end of this session:** 310
-  - Phase 9a: +6 Faker cohort tests
-  - Phase 9b: +4 Phoenix no-op tests
-  - Phase 9c: +2 Sarvam config tests
-  - Phase 9d: +7 circulars tests (5 unit + 2 API)
+- **Tests at end of this session:** 360 (50 new: 10 hand-rolled + 40 parametrized)
 - **The user is asleep.** This document is the AI's memory.
 
 ---

@@ -1,6 +1,6 @@
 # Revive Evaluation Report
 
-Date: 2026-08-26 · Cohort: 500 synthetic subscribers · Seed: 42 · Arms: naive vs revive
+Date: 2026-08-28 · Cohort: 500 synthetic subscribers · Seed: 42 · Arms: naive vs revive
 
 ## Methodology
 

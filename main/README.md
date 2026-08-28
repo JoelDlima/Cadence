@@ -326,11 +326,30 @@ extractors + 2 API tests for idempotency + keyless no-op. Tests
 303 → 310. Pitch line: "We auto-ingest every new RBI / NPCI circular
 into the engine's evidence pack. The Guardian cites the source; the
 engine's rules are auditable end-to-end." The data plane is in place;
-dynamic-rule reading is a post-hackathon add. **Phase 9e —
-Promptfoo 50 adversarial prompts** all on the plan. Skipped: Guardrails
-AI (cutoff Aug 25 2026 already past), Coqui STT (discontinued),
-Unsloth fine-tuning (would *reduce* recovery uplift), Temporal/Inngest
-(rewrite risk), Surya-OCR (GPL conflicts with MIT), n8n (fair-code).
+dynamic-rule reading is a post-hackathon add.
+
+**Phase 9e (shipped) — 50-case adversarial regression suite for the Guardian.**
+New `main/tests/test_adversarial_guardian.py` (50 tests, 360 total in
+the suite, 0.17s runtime). The contract: every case asserts the Guardian
+returns a Decision with a reason in the 11-value `VALID_REASONS` set
+(quiet_hours_deferred, illegal_intervention, hard_decline_stop,
+attempts_exhausted, touch_cap_reached, window_expired, dnd_listed,
+kill_switch, channel_not_preferred, cost_ceiling, ok). 10 hand-rolled
+cases probe the 10 most-cited Guardian rules; 40 parametrized cases
+sweep the 4-channel × 4-root-cause matrix plus boundary conditions.
+The "Promptfoo badge" is **50/50** in keyless mode with **0 LLM
+tokens**. Updated `main/src/revive/classify/taxonomy.py` to add
+`RETRY_NOW` to the legal moves for `NO_FUNDS`, `BANK_DOWN`, `TIMEOUT`
+(so the Guardian's quiet-hours deferral for `RETRY_NOW` is reachable;
+without this, the deferral rule never fired because legality fired
+first — a real bug the test suite caught). Also fixed an existing
+artifact: removed `main/-` (a stray 36-byte file created by a bad shell
+command earlier).
+
+Skipped: Guardrails AI (cutoff Aug 25 2026 already past), Coqui STT
+(discontinued), Unsloth fine-tuning (would *reduce* recovery uplift),
+Temporal/Inngest (rewrite risk), Surya-OCR (GPL conflicts with MIT),
+n8n (fair-code).
 
 ---
 
