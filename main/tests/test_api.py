@@ -18,6 +18,7 @@ from revive.config import (
     RazorpayConfig,
 )
 from revive.events import AGG_JOURNEY, E_CLASSIFICATION_COMPLETED, E_JOURNEY_OPENED, E_TIMER_SET
+from revive.executors.razorpay_client import build_client
 from revive.store.db import Database
 from revive.store.event_store import EventStore
 from revive.store.journey_repo import JourneyRepo
@@ -627,3 +628,136 @@ def test_cloud_status_error_when_upsert_fails(tmp_path: Path, monkeypatch) -> No
         "last_journeys_error", "last_metrics_error",
         "supabase_url_configured", "service_key_configured",
     }
+
+
+# ----------------------------------------------------------------------
+# Phase 8: live-mode activation (keys-day)
+# ----------------------------------------------------------------------
+
+
+def test_status_reports_all_four_key_classes(tmp_path: Path) -> None:
+    """All four key classes present => mode=LIVE and all flags set."""
+    from revive.config import CloudConfig
+    cfg = _config(tmp_path / "live_full.db")
+    cfg = AppConfig(
+        **{
+            **cfg.__dict__,
+            "razorpay": RazorpayConfig(
+                key_id="rzp_test_xxx", key_secret="secret", webhook_secret="s3cret"
+            ),
+            "channels": ChannelConfig(
+                resend_api_key="re_xxx", email_from="cadence@example.com"
+            ),
+            "cloud": CloudConfig(
+                supabase_url="https://x.supabase.co",
+                supabase_service_key="svc-xxx",
+                sync_enabled=True,
+            ),
+            "llm": LLMConfig(
+                provider_order=["gemini", "groq", "openrouter"],
+                gemini_api_key="gem-xxx",
+                groq_api_key="gsk_xxx",
+                openrouter_api_key="sk-or-xxx",
+                model_gemini="gemini-2.0-flash",
+                model_groq="llama-3.3-70b-versatile",
+                model_openrouter="meta-llama/llama-3.3-70b-instruct:free",
+                daily_request_cap=400,
+            ),
+        }
+    )
+    client = TestClient(create_app(cfg=cfg))
+    body = client.get("/api/status").json()
+    assert body["mode"] == "LIVE"
+    assert body["razorpay_keys_present"] is True
+    assert body["resend_key_present"] is True
+    assert body["supabase_keys_present"] is True
+    assert body["llm_keys_present"] is True
+
+
+def test_live_razorpay_client_selected_when_keys_present(tmp_path: Path) -> None:
+    """The build_client() factory picks LiveRazorpayClient (not Simulated) when is_live."""
+    from revive.executors.razorpay_client import (
+        LiveRazorpayClient, SimulatedRazorpayClient, build_client,
+    )
+    cfg = _config(tmp_path / "live_client.db")
+    cfg = AppConfig(
+        **{
+            **cfg.__dict__,
+            "razorpay": RazorpayConfig(
+                key_id="rzp_test_xxx", key_secret="secret", webhook_secret="s3cret"
+            ),
+        }
+    )
+    client = build_client(cfg.razorpay)
+    assert isinstance(client, LiveRazorpayClient)
+    assert not isinstance(client, SimulatedRazorpayClient)
+    assert client.mode == "live"
+
+
+def test_demo_razorpay_client_selected_when_keys_absent(tmp_path: Path) -> None:
+    """The build_client() factory picks SimulatedRazorpayClient when no keys."""
+    from revive.executors.razorpay_client import (
+        LiveRazorpayClient, SimulatedRazorpayClient, build_client,
+    )
+    cfg = _config(tmp_path / "demo_client.db")
+    # no razorpay keys
+    client = build_client(cfg.razorpay)
+    assert isinstance(client, SimulatedRazorpayClient)
+    assert not isinstance(client, LiveRazorpayClient)
+    assert client.mode == "simulated"
+
+
+def test_pay_link_in_live_mode_simulate_paid_returns_410(tmp_path: Path) -> None:
+    """Live mode wiring: the simulate-paid endpoint returns 410 in LIVE
+    mode (simulate is DEMO-only). This is the strongest contract test
+    we can do in-process because the actual pay-link endpoint calls out
+    to api.razorpay.com, which will 401 in the test runner (we use fake
+    keys). The 410 here proves the runtime is using the LiveRazorpay
+    client, not the simulator (the simulator would not gate simulate-paid).
+    """
+    cfg = _config(tmp_path / "live_pay.db")
+    cfg = AppConfig(
+        **{
+            **cfg.__dict__,
+            "razorpay": RazorpayConfig(
+                key_id="rzp_test_xxx", key_secret="secret", webhook_secret="s3cret"
+            ),
+        }
+    )
+    client = TestClient(create_app(cfg=cfg))
+    db = Database(cfg.db_path)
+    journeys = JourneyRepo(db)
+    journeys.create(
+        journey_id="j_livepay",
+        subscription_id="sub_livepay",
+        customer_id="cust_livepay",
+        amount_minor=49900,
+        currency="INR",
+        failure_code="insufficient_funds",
+        opened_at=T0,
+    )
+    journeys.update_fields("j_livepay", {"state": "INTERVENING"}, updated_at=T1)
+    db.close()
+    sim = client.post("/api/pay/j_livepay/simulate-paid", json={})
+    assert sim.status_code == 410
+
+
+def test_live_check_prints_cadence_header(tmp_path: Path) -> None:
+    """The live_check.py CLI is rebranded to Cadence.
+
+    Run it as a subprocess with an absolute cwd (Windows-safe).
+    """
+    import subprocess
+    import sys as _sys
+    main_dir = (Path(__file__).resolve().parents[1])  # main/
+    result = subprocess.run(
+        [_sys.executable, "scripts/live_check.py"],
+        cwd=str(main_dir),
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env={**_sys.__dict__.get("environ", {}), "PYTHONPATH": str(main_dir / "src")},
+    )
+    assert result.returncode == 0, f"stderr: {result.stderr}"
+    assert "Cadence live-check" in result.stdout
+    assert "REVIVE" not in result.stdout  # no leftover old branding

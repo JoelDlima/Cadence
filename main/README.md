@@ -154,7 +154,7 @@ config snippets and security posture in [`docs/mcp-integration.md`](docs/mcp-int
 ## Repository map
 
 - `main/src/revive/` — engine, classifier, Guardian, agents, executors, worker, cloud, sim, api, MCP server
-- `main/docs/` — [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (one-page diagram), [`eval-report.md`](docs/eval-report.md) + metrics, [`evidence-pack.md`](docs/evidence-pack.md) (13 primary sources), [`mcp-integration.md`](docs/mcp-integration.md), [`cloud-mirror.md`](docs/cloud-mirror.md), [`PITCH-VIDEO.md`](docs/PITCH-VIDEO.md) (5-min script), [`PITCH-DECK.md`](docs/PITCH-DECK.md) (slide deck), [`PITCH-GIF.md`](docs/PITCH-GIF.md) (hero GIF capture), [`APPLICATION.md`](docs/APPLICATION.md) (form answer cheat-sheet), pre-launch audit, Research-OS set
+- `main/docs/` — [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (one-page diagram), [`eval-report.md`](docs/eval-report.md) + metrics, [`evidence-pack.md`](docs/evidence-pack.md) (13 primary sources), [`mcp-integration.md`](docs/mcp-integration.md), [`cloud-mirror.md`](docs/cloud-mirror.md), [`PITCH-VIDEO.md`](docs/PITCH-VIDEO.md) (5-min script), [`PITCH-DECK.md`](docs/PITCH-DECK.md) (slide deck), [`PITCH-GIF.md`](docs/PITCH-GIF.md) (hero GIF capture), [`APPLICATION.md`](docs/APPLICATION.md) (form answer cheat-sheet), [`KEYS-DAY.md`](docs/KEYS-DAY.md) (live-mode runbook), pre-launch audit, Research-OS set
 - `main/JOURNAL.md` — every real bug, decision, and escape, dated
 - `main/supabase/` — schema (RLS-deny-all, 4 tables) + edge-function webhook ingress (optional; keyless works)
 - `main/scripts/` — dev runbook, seed, demo, eval, chaos drills, MCP server
@@ -164,12 +164,13 @@ config snippets and security posture in [`docs/mcp-integration.md`](docs/mcp-int
 
 ## Status
 
-**284 tests · 4/4 chaos drills · +43.9% measured uplift · 0 violations · 8 MCP
+**289 tests · 4/4 chaos drills · +43.9% measured uplift · 0 violations · 8 MCP
 tools live · 8 backend endpoints serving the SPA · Supabase cloud mirror
 with live status · all 8 frontend KPIs wired to the real API (no hard-coded
-numbers).** The single honest gap is: the Razorpay live-mode wiring, which
-is gated on real test-mode keys (keys coming in 2 days). Everything else
-works keyless today.
+numbers).** The single honest gap is: the Razorpay live-mode wiring, which is
+gated on real test-mode keys (keys coming in 2 days). Everything else
+works keyless today. Drop the keys in `main/.env` per `docs/KEYS-DAY.md`
+and the SPA flips to LIVE.
 
 ---
 
@@ -237,6 +238,41 @@ assets now include three deliverables:
 The research for this phase confirmed: a public YouTube unlisted link is
 the de-facto expected format (not Loom or MP4), and a hero GIF embedded
 directly in the README is now standard for 2026 hackathon submissions.
+
+**Phase 6 — Submission polish.** The application form's long-form
+questions are answered in [`docs/APPLICATION.md`](docs/APPLICATION.md)
+(pre-written answer blocks to paste, plus the explicit
+"leave keys out of the form" warning). The
+[`ARCHITECTURE.md`](docs/ARCHITECTURE.md) was rewritten to reflect
+Phase 0-5: the Mermaid diagram now includes the SPA, the MCP server,
+the cloud mirror, and the worker loop. The
+[`JOURNAL.md`](../JOURNAL.md) gained four dated entries (real-data UI
+rebuild, MCP SDK conversation, cloud mirror, pitch assets) in
+plain English, 100-200 words each, written for the application form's
+"Build challenges" field.
+
+**Phase 7 — Repo cleanup.** Force-pushed to a clean orphan branch on
+the public `main`. The new history has two commits: initial submission
++ a cleanup commit that drops three leftover pre-Phase-0 internal
+docs (`improvement-backlog.md`, `technical-architecture.md`,
+`ui-ux-guidelines.md`). The public repo has 136 files and zero
+references to the old "Revive" brand or the pre-Phase-0 internal
+artifacts. Verified end-to-end: fresh clone, keyless, full demo loop
+works on a clean machine.
+
+**Phase 8 — Keys day wiring.** The day the user pastes the keys,
+`docs/KEYS-DAY.md` is the runbook. Verified the wiring with five new
+tests: (1) `/api/status` reports `mode: "LIVE"` only when all four
+key classes are present, (2) `build_client()` picks
+`LiveRazorpayClient` (not the simulator) when `is_live`, (3)
+`/api/pay/{id}/simulate-paid` returns 410 in LIVE mode (the
+simulator-only endpoint is correctly gated), (4)
+`scripts/live_check.py` is rebranded to "Cadence live-check", (5) the
+simulator-vs-live contract is the same code path with the same
+events. Test count is now **289 passing**. The single most important
+line in the keys-day doc: "every number on the SPA is real — either
+from a real API call or from a deterministic simulator with the same
+code path as the real call."
 
 ---
 

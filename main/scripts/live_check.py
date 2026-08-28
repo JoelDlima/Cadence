@@ -30,7 +30,7 @@ def _row(name: str, state: str, detail: str) -> None:
 
 def _header() -> None:
     print("=" * _WIDTH)
-    print("REVIVE live-check")
+    print("Cadence live-check")
     print("=" * _WIDTH)
 
 
