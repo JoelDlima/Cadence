@@ -5,6 +5,7 @@ import { JourneysView } from './views/JourneysView';
 import { GuardianView } from './views/GuardianView';
 import { TestbenchView } from './views/TestbenchView';
 import { PayPortalView } from './views/PayPortalView';
+import { RecoveryBrainView } from './views/RecoveryBrainView';
 import { Journey, Metrics, Status, CloudStatus } from './types';
 import { api } from './services/api';
 
@@ -22,7 +23,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const readHash = () => {
       const h = window.location.hash.replace('#', '');
-      if (h && ['overview', 'journeys', 'guardian', 'testbench', 'pay'].includes(h)) {
+      if (h && ['overview', 'journeys', 'guardian', 'testbench', 'pay', 'brain'].includes(h)) {
         setCurrentTab(h);
       }
     };
@@ -92,6 +93,10 @@ export const App: React.FC = () => {
 
       {currentTab === 'pay' && (
         <PayPortalView />
+      )}
+
+      {currentTab === 'brain' && (
+        <RecoveryBrainView />
       )}
     </AppShell>
   );
