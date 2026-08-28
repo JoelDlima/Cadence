@@ -290,12 +290,25 @@ isolation from the 500-sub cohort, profile-fidelity validation). Tests
 uplift, 0 LLM tokens, 2,560 Guardian vetoes, 0.76 contacts/recovery
 (vs 7.96 naive).** 10x the cohort, same engine, same seed stability, same
 direction. The 500-sub canonical number is untouched.
-**Phase 9b — Phoenix 20.4.0 sidecar**, **Phase 9c — Sarvam as 4th
-LLMClient**, **Phase 9d — PaddleOCR 3.7.0 + Docling for RBI circulars**
-all on the plan. Skipped: Guardrails AI (cutoff Aug 25 2026 already
-past), Coqui STT (discontinued), Unsloth fine-tuning (would *reduce*
-recovery uplift), Temporal/Inngest (rewrite risk), Surya-OCR (GPL
-conflicts with MIT), n8n (fair-code).
+**Phase 9b (shipped) — Phoenix 20.4.0 observability sidecar.** Added
+optional `arize-phoenix>=8.0` as `[observability]` extra in `pyproject.toml`
+(NOT a hard dep — the 301+ tests pass keyless without Phoenix). New
+`main/src/revive/observability/phoenix.py` is a graceful no-op when
+Phoenix isn't installed: `is_available()` returns False, `instrument()`
+returns False without raising, `recent_traces()` returns `[]`. New
+`/api/trace/recent` endpoint returns `{enabled: bool, traces: []}`. The
+`/api/status` payload now includes a `phoenix_enabled: bool` field.
+`main/docs/phoenix-setup.md` is the 30-second setup walkthrough. Tests
+297 → 301. The pitch line: "Traced by the same observability stack
+that Anthropic recommends" — Phoenix 20.4.0 (released 2026-08-26) has
+the in-process MCP toolset. License: ELv2, not OSI-MIT; disclosed in
+the README.
+**Phase 9c — Sarvam as 4th LLMClient**,
+**Phase 9d — PaddleOCR 3.7.0 + Docling for RBI circulars** all on the
+plan. Skipped: Guardrails AI (cutoff Aug 25 2026 already past), Coqui
+STT (discontinued), Unsloth fine-tuning (would *reduce* recovery
+uplift), Temporal/Inngest (rewrite risk), Surya-OCR (GPL conflicts
+with MIT), n8n (fair-code).
 
 ---
 

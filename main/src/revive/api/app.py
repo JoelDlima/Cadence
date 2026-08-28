@@ -671,12 +671,18 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             (config.llm.key_for(p) for p in config.llm.provider_order)
         )
         mode = "LIVE" if config.razorpay.is_live else "DEMO"
+        # Phoenix observability is an optional sidecar; we report whether
+        # it's actually installed in the current process. When it's
+        # present the SPA can show a "View trace" link; when it's not,
+        # the SPA omits that affordance.
+        from revive.observability.phoenix import is_available as _phx_avail
         return StatusOut(
             mode=mode,
             razorpay_keys_present=config.razorpay.is_live,
             resend_key_present=config.channels.email_is_live,
             supabase_keys_present=config.cloud.is_live,
             llm_keys_present=bool(llm_keys),
+            phoenix_enabled=_phx_avail(),
             db_event_count=store.count(),
             db_path=str(config.db_path),
         )
@@ -974,6 +980,21 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         if journey is None:
             raise HTTPException(status_code=404, detail="unknown journey key")
         return _journey_out(journey)
+
+    @app.get("/api/trace/recent")
+    def get_recent_traces(limit: int = 20) -> dict[str, Any]:
+        """Return recent OpenTelemetry spans if the Phoenix sidecar is installed.
+
+        Always returns ``{"enabled": <bool>, "traces": <list>}``. When
+        Phoenix is not installed (the keyless / demo path), ``enabled`` is
+        False and ``traces`` is an empty list. The SPA uses ``enabled`` to
+        conditionally render a "View trace" link in the journey timeline.
+        """
+        from revive.observability.phoenix import is_available, recent_traces
+        return {
+            "enabled": is_available(),
+            "traces": recent_traces(limit=limit),
+        }
 
     @app.get("/api/cloud/status", response_model=CloudStatusOut)
     def get_cloud_status() -> CloudStatusOut:

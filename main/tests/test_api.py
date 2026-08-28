@@ -811,3 +811,39 @@ def test_live_check_prints_cadence_header(tmp_path: Path) -> None:
     assert result.returncode == 0, f"stderr: {result.stderr}"
     assert "Cadence live-check" in result.stdout
     assert "REVIVE" not in result.stdout  # no leftover old branding
+
+
+# ----------------------------------------------------------------------
+# Phase 9b: Arize Phoenix 20.4.0 observability sidecar
+# ----------------------------------------------------------------------
+
+
+def test_phoenix_is_available_is_false_when_module_missing(monkeypatch) -> None:
+    """``is_available()`` returns False when the optional Phoenix sidecar
+    is not installed. This is the path the 297 existing tests run on."""
+    from revive.observability.phoenix import is_available
+    # The test runner has no arviz-phoenix installed.
+    assert is_available() is False
+
+
+def test_phoenix_instrument_is_safe_noop_when_not_available() -> None:
+    """``instrument()`` returns False and never raises when Phoenix is missing.
+    This is the contract the keyless path relies on."""
+    from revive.observability.phoenix import instrument
+    assert instrument() is False  # no app arg -> no-op + returns False
+
+
+def test_status_reports_phoenix_disabled_field_in_payload(api: Api) -> None:
+    """``/api/status`` includes a ``phoenix_enabled`` boolean so the SPA can
+    conditionally render a 'View trace' affordance."""
+    body = api.client.get("/api/status").json()
+    assert "phoenix_enabled" in body
+    # arviz-phoenix is not in the dev requirements, so this is False.
+    assert body["phoenix_enabled"] is False
+
+
+def test_trace_recent_endpoint_is_noop_when_phoenix_missing(api: Api) -> None:
+    """``/api/trace/recent`` returns ``{enabled: False, traces: []}`` when
+    Phoenix is not installed. The SPA uses ``enabled`` to gate the UI."""
+    body = api.client.get("/api/trace/recent").json()
+    assert body == {"enabled": False, "traces": []}

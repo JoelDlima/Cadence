@@ -51,6 +51,7 @@ class StatusOut(BaseModel):
     resend_key_present: bool
     supabase_keys_present: bool
     llm_keys_present: bool
+    phoenix_enabled: bool
     db_event_count: int
     db_path: str
 
