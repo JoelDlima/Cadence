@@ -1148,6 +1148,10 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
                 return FileResponse(dist_dir / "index.html")
             return FileResponse(CONSOLE_DIR / "index.html")
 
+    # Phase checkout: drop-off recovery routes
+    from revive.checkout.api import register_routes as _register_checkout
+    _register_checkout(app, db=db, clock=clock)
+
     return app
 
 
