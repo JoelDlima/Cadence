@@ -849,10 +849,23 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
 
     @app.get("/api/eval-summary", response_model=EvalSummaryOut)
     def get_eval_summary() -> EvalSummaryOut:
-        # Try eval-metrics.json; if missing, return a placeholder explaining
-        # how to generate it. The script run_eval.py writes that file.
+        """Read the latest eval summary from disk.
+
+        Order of preference (most recent first):
+          1. ``docs/eval-metrics-large.json`` (5,000-sub Faker Indian cohort, the
+             "scaled run" number for the pitch deck)
+          2. ``docs/eval-metrics.json`` (500-sub canonical, the headline number
+             cited in the README and ARCHITECTURE.md)
+          3. ``main/docs/eval-metrics.json`` (fallback if a CWD-shifted build
+             expects a different root)
+        """
         from pathlib import Path as _P
+        # The large cohort is preferred when present (the pitch-deck slide
+        # cites "5,000 subscribers"); otherwise we fall back to the 500-sub
+        # canonical. Both files have the same JSON shape.
         candidates = [
+            _P("docs/eval-metrics-large.json"),
+            _P("main/docs/eval-metrics-large.json"),
             _P("docs/eval-metrics.json"),
             _P("main/docs/eval-metrics.json"),
         ]
@@ -873,6 +886,9 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         data = _json.loads(path.read_text(encoding="utf-8"))
         naive = data.get("naive", {})
         revive = data.get("revive", {})
+        source = "cached"
+        if "live-faker" in str(data.get("source", "")):
+            source = "live-faker-indian"
         return EvalSummaryOut(
             n=int(data.get("n", 0)),
             seed=int(data.get("seed", 0)),
@@ -889,7 +905,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
                 if int(revive.get("llm_requests", 0)) > 0
                 else 100.0
             ),
-            source="cached",
+            source=source,
         )
 
     @app.post("/api/chaos/{drill}/run", response_model=ChaosResultOut)

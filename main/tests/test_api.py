@@ -440,6 +440,56 @@ def test_eval_summary_missing_file_returns_zeroes(tmp_path: Path, monkeypatch) -
     assert body["n"] == 0
 
 
+def test_eval_summary_prefers_large_file_when_present(tmp_path: Path, monkeypatch) -> None:
+    """When docs/eval-metrics-large.json (5,000-sub Faker) is present, the
+    endpoint returns its numbers; the source string is 'live-faker-indian'."""
+    monkeypatch.chdir(tmp_path)
+    db_path = tmp_path / "api.db"
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "eval-metrics-large.json").write_text(
+        '{"n": 5000, "seed": 42, "naive": {"recovered_inr_major": 1154660.0, '
+        '"recovery_rate_pct": 38.8, "contacts": 15434, "contacts_per_recovery": 7.96, '
+        '"llm_requests": 0}, "revive": {"recovered_inr_major": 1610927.0, '
+        '"recovery_rate_pct": 53.46, "contacts_per_recovery": 0.76, "llm_requests": 0}, '
+        '"uplift_pct": 37.78, "source": "live-faker-indian"}',
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(cfg=_config(db_path)))
+    body = client.get("/api/eval-summary").json()
+    assert body["source"] == "live-faker-indian"
+    assert body["n"] == 5000
+    assert body["revive_recovery_pct"] == 53.46
+    assert body["revive_recovered_inr"] == 1610927.0
+    assert body["naive_recovered_inr"] == 1154660.0
+    assert body["uplift_pct"] == 37.78
+
+
+def test_eval_summary_falls_back_to_canonical_500_when_no_large_file(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """When only the 500-sub canonical file is present, the endpoint uses it."""
+    monkeypatch.chdir(tmp_path)
+    db_path = tmp_path / "api.db"
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "eval-metrics.json").write_text(
+        '{"n": 500, "seed": 42, "naive": {"recovered_inr_major": 113311.0, '
+        '"recovery_rate_pct": 37.8, "contacts": 1554, "contacts_per_recovery": 8.22}, '
+        '"revive": {"recovered_inr_major": 166228.0, "recovery_rate_pct": 54.4, '
+        '"contacts_per_recovery": 0.64, "llm_requests": 0}, "uplift_pct": 43.9, '
+        '"source": "canonical"}',
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(cfg=_config(db_path)))
+    body = client.get("/api/eval-summary").json()
+    assert body["n"] == 500
+    assert body["revive_recovery_pct"] == 54.4
+    # Source is "cached" (not "live-faker-indian") when only the canonical
+    # file is present, even though the 500-sub number is the headline.
+    assert body["source"] == "cached"
+
+
 def test_test_inject_creates_a_journey_with_known_root_cause(api: Api) -> None:
     body = {
         "subscription_id": "sub_inj_1",

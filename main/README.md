@@ -164,13 +164,16 @@ config snippets and security posture in [`docs/mcp-integration.md`](docs/mcp-int
 
 ## Status
 
-**289 tests · 4/4 chaos drills · +43.9% measured uplift · 0 violations · 8 MCP
+**297 tests · 4/4 chaos drills · +43.9% measured uplift · 0 violations · 8 MCP
 tools live · 8 backend endpoints serving the SPA · Supabase cloud mirror
 with live status · all 8 frontend KPIs wired to the real API (no hard-coded
-numbers).** The single honest gap is: the Razorpay live-mode wiring, which is
-gated on real test-mode keys (keys coming in 2 days). Everything else
-works keyless today. Drop the keys in `main/.env` per `docs/KEYS-DAY.md`
-and the SPA flips to LIVE.
+numbers) · Faker-driven 5,000-sub Indian cohort (Faker >= 20.0, MIT, `hi_IN`
+locale) reproduces the headline number at 10x scale: 53.5% recovery vs
+38.8% naive on 5,000 subscribers (53.46% / 38.8% raw, +37.8% uplift, 0 LLM
+tokens, 2,560 Guardian vetoes).** The single honest gap is: the Razorpay
+live-mode wiring, which is gated on real test-mode keys (keys coming
+in 2 days). Everything else works keyless today. Drop the keys in
+`main/.env` per `docs/KEYS-DAY.md` and the SPA flips to LIVE.
 
 ---
 
@@ -274,27 +277,25 @@ line in the keys-day doc: "every number on the SPA is real — either
 from a real API call or from a deterministic simulator with the same
 code path as the real call."
 
-**Phase 9 — Aug 28 deep research.** 10+ direct primary-source
-fetches (GitHub releases, license files, README, PyPI, npm) covered
-LLM inference, voice, OCR, observability, evaluation, and Indian
-language tools. Full report in
-[`docs/RESEARCH-2026-08-28.md`](docs/RESEARCH-2026-08-28.md).
-Top 5 picks for the remaining 5 days (each additive, keyless, no
-test risk): (1) **Faker** to scale the 500-sub eval to 5,000-sub with
-Indian locales natively supported, (2) **Promptfoo** `promptfooconfig.yaml`
-with 50 adversarial prompts that the deterministic engine refuses
-("Used by OpenAI and Anthropic" verbatim), (3) **Arize Phoenix v20.4.0**
-(released Aug 26 2026) as a sidecar observability stack with the
-newly-shipped in-process MCP toolset, (4) **Sarvam AI Cookbook** as a
-4th `LLMClient` provider (Indian-first, free tier, 22 languages,
-Pipecat integration), (5) **PaddleOCR 3.7.0 + Docling** to auto-ingest
-RBI/NPCI circulars (single model covers 50 languages incl. Devanagari
-and Tamil at 96.3% OmniDocBench v1.6). Skipped: Guardrails AI (cutoff
-Aug 25 2026 already past), Coqui STT (discontinued), Unsloth
-fine-tuning (would *reduce* recovery uplift), Temporal/Inngest
-(rewrite risk), Surya-OCR (GPL conflicts with MIT), n8n (fair-code).
-The README's "shoulders of" footnote now credits AI4Bharat,
-Bhashini/ULCA, and iSPIRT for the Indian-language substrate.
+**Phase 9 — Aug 28 deep research.**
+**Phase 9a (shipped) — Faker 10x scale.** Added `faker>=20.0` to deps,
+wrote `main/src/revive/sim/indian_cohort.py` (`generate_indian_cohort(n,
+seed)` with `hi_IN` locale, realistic Indian names, UPI handles, IFSC
+codes from a known Indian bank set), `main/scripts/run_eval_indian.py`,
+updated `/api/eval-summary` to prefer `docs/eval-metrics-large.json` when
+present, and added `main/tests/test_indian_cohort.py` (6 tests covering
+determinism, cause-mix realism, amount-tier sanity, profile structure,
+isolation from the 500-sub cohort, profile-fidelity validation). Tests
+289 → 297. The 5,000-sub headline: **53.46% recovery vs 38.8% naive, +37.8%
+uplift, 0 LLM tokens, 2,560 Guardian vetoes, 0.76 contacts/recovery
+(vs 7.96 naive).** 10x the cohort, same engine, same seed stability, same
+direction. The 500-sub canonical number is untouched.
+**Phase 9b — Phoenix 20.4.0 sidecar**, **Phase 9c — Sarvam as 4th
+LLMClient**, **Phase 9d — PaddleOCR 3.7.0 + Docling for RBI circulars**
+all on the plan. Skipped: Guardrails AI (cutoff Aug 25 2026 already
+past), Coqui STT (discontinued), Unsloth fine-tuning (would *reduce*
+recovery uplift), Temporal/Inngest (rewrite risk), Surya-OCR (GPL
+conflicts with MIT), n8n (fair-code).
 
 ---
 

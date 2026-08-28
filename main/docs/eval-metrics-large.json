@@ -1,0 +1,35 @@
+{
+  "n": 5000,
+  "seed": 42,
+  "naive": {
+    "recovered_count": 1940,
+    "recovered_inr_major": 1154660.0,
+    "recovery_rate_pct": 38.8,
+    "recovered_inr_per_100_failures": 23093.2,
+    "contacts": 15434,
+    "contacts_per_recovery": 7.96,
+    "attempts": 5000,
+    "vetoes": 0,
+    "llm_requests": 0,
+    "journey_states": {}
+  },
+  "revive": {
+    "recovered_count": 2673,
+    "recovered_inr_major": 1610927.0,
+    "recovery_rate_pct": 53.46,
+    "recovered_inr_per_100_failures": 32218.54,
+    "contacts": 2043,
+    "contacts_per_recovery": 0.76,
+    "attempts": 8821,
+    "vetoes": 2560,
+    "llm_requests": 0,
+    "journey_states": {
+      "CLOSED_UNRECOVERED": 1564,
+      "HUMAN_REVIEW": 158,
+      "INTERVENING": 605,
+      "RECOVERED": 2673
+    }
+  },
+  "uplift_pct": 37.78350515463919,
+  "source": "live-faker-indian"
+}

@@ -15,6 +15,7 @@ dependencies = [
     "python-dotenv==1.1.0",
     "tzdata==2025.2",
     "mcp>=1.28,<2",
+    "faker>=20.0",
 ]
 
 [project.optional-dependencies]
