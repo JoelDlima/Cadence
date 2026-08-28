@@ -11,7 +11,10 @@ import {
   ShieldAlert,
   Server,
   Activity,
-  Brain
+  Brain,
+  ShoppingCart,
+  Briefcase,
+  GitBranch
 } from 'lucide-react';
 import { Badge, Button, cn } from '../components/primitives';
 import { api } from '../services/api';
@@ -30,6 +33,9 @@ const navItems: NavItem[] = [
   { id: 'testbench', label: 'Simulation & Chaos', icon: FlaskConical },
   { id: 'pay', label: 'Payment Portal', icon: CreditCard },
   { id: 'brain', label: 'Adaptive Recovery Brain', icon: Brain },
+  { id: 'checkout', label: 'Checkout Recovery', icon: ShoppingCart },
+  { id: 'b2b', label: 'B2B Receivables', icon: Briefcase },
+  { id: 'mandate', label: 'Mandate Sequencer', icon: GitBranch },
 ];
 
 export function AppShell({

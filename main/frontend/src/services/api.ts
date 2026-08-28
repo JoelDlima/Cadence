@@ -114,6 +114,89 @@ export const api = {
     return jsonFetch(`/api/nudge/preview?${params.toString()}`);
   },
 
+  async getVoicePreview(
+    language: string = 'hinglish',
+    amount_minor: number = 49900,
+    link_url: string | null = null,
+  ): Promise<{
+    language: string;
+    text: string;
+    amount_minor: number;
+    link_url: string | null;
+    sample_rate: number;
+    duration_seconds: number;
+    pcm_payload_b64: string;
+    is_stub: boolean;
+    reason: string;
+  }> {
+    const params = new URLSearchParams({
+      language,
+      amount_minor: String(amount_minor),
+    });
+    if (link_url) {
+      params.set('link_url', link_url);
+    }
+    return jsonFetch(`/api/voice/preview?${params.toString()}`);
+  },
+
+  // --- Checkout drop-off recovery ---
+
+  async getCheckoutSessions(limit: number = 50): Promise<any[]> {
+    return jsonFetch(`/api/checkout/sessions?limit=${limit}`);
+  },
+  async getCheckoutFunnel(): Promise<{ counts: Record<string, number> }> {
+    return jsonFetch('/api/checkout/funnel');
+  },
+  async abandonCheckout(body: { customer_id: string; amount_minor: number; currency?: string }): Promise<any> {
+    return postJson('/api/checkout/abandon', body);
+  },
+  async recoverCheckout(id: string, body: { payment_id: string }): Promise<any> {
+    return postJson(`/api/checkout/recover/${encodeURIComponent(id)}`, body);
+  },
+  async tickCheckout(): Promise<any> {
+    return postJson('/api/checkout/tick', {});
+  },
+
+  // --- B2B receivables chaser ---
+
+  async getB2BInvoices(status: string | null = null, limit: number = 50): Promise<any[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (status) params.set('status', status);
+    return jsonFetch(`/api/b2b/invoices?${params.toString()}`);
+  },
+  async getB2BFunnel(): Promise<{ counts: Record<string, number> }> {
+    return jsonFetch('/api/b2b/funnel');
+  },
+  async createB2BInvoice(body: any): Promise<any> {
+    return postJson('/api/b2b/invoice/create', body);
+  },
+  async chaseB2BInvoice(id: string): Promise<any> {
+    return postJson(`/api/b2b/invoice/${encodeURIComponent(id)}/chase`, {});
+  },
+  async tickB2B(): Promise<any> {
+    return postJson('/api/b2b/tick', {});
+  },
+
+  // --- Mandate retry sequencer ---
+
+  async getMandateSequenced(limit: number = 25): Promise<any[]> {
+    return jsonFetch(`/api/mandate/sequenced?limit=${limit}`);
+  },
+  async getMandateSequencedSummary(): Promise<{ counts: Record<string, number>; total: number }> {
+    return jsonFetch('/api/mandate/sequenced/summary');
+  },
+  async mandateFailed(body: {
+    subscription_id: string;
+    customer_id: string;
+    mandate_id: string;
+    cause: string;
+    mandate_status?: string;
+    paused_at?: string;
+    recent_failures?: Array<{ cause: string; occurred_at: string }>;
+  }): Promise<any> {
+    return postJson('/api/mandate/failed', body);
+  },
+
   async getLlmSpend(): Promise<LlmSpend> {
     return jsonFetch<LlmSpend>('/api/llm-spend');
   },

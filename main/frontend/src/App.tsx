@@ -6,6 +6,9 @@ import { GuardianView } from './views/GuardianView';
 import { TestbenchView } from './views/TestbenchView';
 import { PayPortalView } from './views/PayPortalView';
 import { RecoveryBrainView } from './views/RecoveryBrainView';
+import { CheckoutView } from './views/CheckoutView';
+import { B2BView } from './views/B2BView';
+import { MandateView } from './views/MandateView';
 import { Journey, Metrics, Status, CloudStatus } from './types';
 import { api } from './services/api';
 
@@ -23,7 +26,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const readHash = () => {
       const h = window.location.hash.replace('#', '');
-      if (h && ['overview', 'journeys', 'guardian', 'testbench', 'pay', 'brain'].includes(h)) {
+      if (h && ['overview', 'journeys', 'guardian', 'testbench', 'pay', 'brain', 'checkout', 'b2b', 'mandate'].includes(h)) {
         setCurrentTab(h);
       }
     };
@@ -97,6 +100,18 @@ export const App: React.FC = () => {
 
       {currentTab === 'brain' && (
         <RecoveryBrainView />
+      )}
+
+      {currentTab === 'checkout' && (
+        <CheckoutView />
+      )}
+
+      {currentTab === 'b2b' && (
+        <B2BView />
+      )}
+
+      {currentTab === 'mandate' && (
+        <MandateView />
       )}
     </AppShell>
   );
