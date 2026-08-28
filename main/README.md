@@ -5,6 +5,13 @@
 > failed, and wins the money back — within RBI and NPCI rules, with a tamper-evident
 > audit trail, and with measured rupees recovered across a reproducible batch.
 
+**The headline numbers (5,000 Indian subscribers, seed 42, byte-identical):**
+- **+37.8 % recovery uplift** over naive dunning (₹1.61M vs ₹1.15M recovered)
+- **53.5 %** recovery rate on Cadence vs **38.8 %** naive
+- **0.76** customer contacts per recovery vs **7.96** naive
+- **0 LLM tokens** spent on the batch; **2,560** Guardian vetoes (0 violations)
+- **372 tests · 4/4 chaos drills · 50/50 Guardian adversarial matrix · 0 keys to run**
+
 ---
 
 ## What Cadence is, in plain English
