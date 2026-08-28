@@ -41,6 +41,9 @@ from revive.api.schemas import (
     AuditVerifyOut,
     BanksOut,
     ChaosResultOut,
+    CircularDetailOut,
+    CircularIngestResultOut,
+    CircularOut,
     CloudStatusOut,
     EvalSummaryOut,
     EventOut,
@@ -995,6 +998,52 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             "enabled": is_available(),
             "traces": recent_traces(limit=limit),
         }
+
+    # ------------------------------------------------------------------
+    # Phase 9d: RBI / NPCI circular ingestion
+    # ------------------------------------------------------------------
+
+    @app.get("/api/circulars", response_model=list[CircularOut])
+    def get_circulars() -> list[CircularOut]:
+        """List ingested regulatory circulars, newest first.
+
+        The keyless path returns an empty list (no PDFs in
+        ``data/circulars/``). The pitch line: 'We auto-ingest every new
+        RBI / NPCI circular into the engine's evidence pack.'"""
+        from revive.policy.circulars import list_circulars as _list
+        return [CircularOut(**c) for c in _list(db)]
+
+    @app.get("/api/circulars/{circular_id}", response_model=CircularDetailOut)
+    def get_circular_detail(circular_id: int) -> CircularDetailOut:
+        """Return one circular including the full extracted text + rules."""
+        from revive.policy.circulars import get_circular as _get
+        c = _get(db, circular_id)
+        if c is None:
+            raise HTTPException(status_code=404, detail="unknown circular id")
+        return CircularDetailOut(**c)
+
+    @app.post("/api/circulars/ingest", response_model=CircularIngestResultOut)
+    def post_circulars_ingest(directory: str = "data/circulars") -> CircularIngestResultOut:
+        """Scan a directory for PDFs and (re)ingest them.
+
+        Admin hook. Idempotent: re-running with the same directory updates
+        existing rows by path. Returns the count scanned and the count of
+        newly-inserted or updated circulars.
+        """
+        from revive.policy.circulars import ingest_directory as _ingest
+        root = Path(directory)
+        if not root.is_absolute():
+            root = (Path(__file__).resolve().parents[2] / directory).resolve()
+        ingested = _ingest(db, root)
+        return CircularIngestResultOut(
+            scanned=len(list(root.glob("*.pdf"))) if root.is_dir() else 0,
+            ingested=len(ingested),
+            circulars=[CircularOut(
+                id=None, source=c.source, title=c.title, issued_on=c.issued_on,
+                reference=c.reference, path=c.path, summary=c.summary,
+                rules=[r.to_dict() for r in c.rules], ingested_at=c.ingested_at,
+            ) for c in ingested],
+        )
 
     @app.get("/api/cloud/status", response_model=CloudStatusOut)
     def get_cloud_status() -> CloudStatusOut:

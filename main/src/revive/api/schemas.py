@@ -164,6 +164,30 @@ class CloudStatusOut(BaseModel):
     service_key_configured: bool
 
 
+class CircularOut(BaseModel):
+    """One ingested regulatory document."""
+    id: int
+    source: str
+    title: str
+    issued_on: str | None
+    reference: str | None
+    path: str
+    summary: str
+    rules: list[dict]
+    ingested_at: str
+
+
+class CircularDetailOut(CircularOut):
+    text: str  # full plain-text body
+
+
+class CircularIngestResultOut(BaseModel):
+    """Result of a directory scan + ingest."""
+    scanned: int
+    ingested: int
+    circulars: list[CircularOut]
+
+
 class KillSwitchIn(BaseModel):
     enabled: bool
 
