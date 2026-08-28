@@ -58,6 +58,21 @@ pre-action veto layer (2,560 vetoes fired at caps/windows/hard-decline
 stops on the 5,000-sub run; 0 illegal actions executed). Journeys
 resolved with zero LLM requests: 100%.
 
+## 7 example directions covered
+
+The Track 3 example bar requires covering all 7 directions listed on
+the Razorpay Buildathon site. All 7 are shipped in Cadence:
+
+| # | Direction | Where it lives |
+|---|---|---|
+| 1 | Payment degradation → root cause → recovery action | engine + Adaptive Recovery Brain |
+| 2 | Checkout drop-off recovery | `revive.checkout.recovery` + 5 SPA endpoints |
+| 3 | Failed-subscription recovery | engine + Adaptive Recovery Brain + Indic nudge |
+| 4 | B2B receivables chaser | `revive.b2b.chaser` + 6 SPA endpoints |
+| 5 | Mandate retry sequencer | `revive.mandate.sequencer` + 3 SPA endpoints |
+| 6 | Hinglish voice recovery | `revive.policy.voice_tts` (Sarvam Bulbul v2) |
+| 7 | Promise-to-pay tracker | `revive.agents.ptp_parser` (pre-existing) |
+
 ## Honest simulation notes
 
 Debits ride simulated NPCI rails: no public merchant API can re-fire

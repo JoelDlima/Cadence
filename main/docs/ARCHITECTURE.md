@@ -107,15 +107,44 @@ flowchart TD
    closes the journey `CLOSED`; a vague promise gets the standard
    retry. The PTP parser is deterministic, multi-lingual
    (Hinglish + English), and has no LLM in the loop.
-8. **Resolve.** Outcome checks ask Razorpay whether the link captured; a
+8. **Parallel recovery paths** (Phase C–F). The same
+   engine + Guardian + Adaptive Recovery Brain framework
+   is reused for three other Razorpay-led revenue-recovery
+   flows:
+   - **Checkout drop-off** (`revive.checkout.recovery`):
+     a Razorpay `payment_link` was started but not paid
+     within 30 min. The chaser fires a soft reminder
+     (T+0, T+24h, T+7d); the 3rd nudge carries a 5%
+     discount signal. Honors the same NPCI quiet hours
+     and touch cap as the consumer path.
+   - **B2B receivables** (`revive.b2b.chaser`): a
+     Razorpay `client.invoice` is past due. The chaser
+     runs a 5-rung ladder: pre-due reminder (T-3) ->
+     friendly nudge (T+3) -> firmer nudge with UPI
+     deep-link (T+7) -> escalate to manager (T+14) ->
+     written notice (T+21) -> write-off (T+45).
+   - **Mandate retry sequencer** (`revive.mandate.sequencer`):
+     a failed UPI AutoPay or card e-mandate. The
+     sequencer picks the next step across same-day retry,
+     24h retry (BANK_DOWN), remitter-bank outreach (3+
+     BANK_DOWN in 7d), switch-method (mandate paused
+     > 14d), and human review (3+ distinct causes).
+   - **Hinglish voice** (`revive.policy.voice_tts`):
+     the same `nudge_for_language` text from Phase B
+     is piped through a TTS path. When
+     `SARVAM_API_KEY` is set, Sarvam Bulbul v2 returns
+     the WAV; otherwise a deterministic 1-second
+     silent-WAV stub is returned so the demo can play
+     *something* in keyless mode.
+9. **Resolve.** Outcome checks ask Razorpay whether the link captured; a
    real `payment.captured` webhook closes the journey `RECOVERED`
    through the FSM. Unpaid offers loop back as honest failures so caps
    keep governing cadence; closing vetoes arm the 7-day save-offer
    ladder before any close.
-9. **Autonomy & durability.** The FastAPI app runs its own background
-   worker loop (inbox → queue → cloud mirror). Kill the process
-   mid-journey: the queue and hash-chained event log rebuild exact
-   state on restart.
+10. **Autonomy & durability.** The FastAPI app runs its own background
+    worker loop (inbox → queue → cloud mirror). Kill the process
+    mid-journey: the queue and hash-chained event log rebuild exact
+    state on restart.
 
 ## Why this shape
 
@@ -191,7 +220,7 @@ cd frontend && npm install && npm run dev
 python scripts/seed.py                # one synthetic failure, prints the journey
 python scripts/run_eval_indian.py --n 5000 --seed 42   # reproduces the 5000-sub Indian batch
 python scripts/chaos_drills.py        # 4/4 PASS
-python -m pytest tests -q              # 372 tests
+python -m pytest tests -q              # 422 tests
 python scripts/run_mcp.py             # stdio MCP server
 ```
 

@@ -131,7 +131,7 @@ Run with `python scripts/chaos_drills.py`. Four lines, every run.
 > composes with Claude Desktop, Cursor, and VS Code — 8 read-only
 > tools let any AI agent inspect recovery state in real time, and
 > nothing more. The cloud mirror is one Supabase project and three
-> tables away. 372 tests. Four chaos drills. Zero keys needed to run
+> tables away. 422 tests. Four chaos drills. Zero keys needed to run
 > it.
 >
 > If this is a wrapper, it's a wrapper that survived four chaos drills,

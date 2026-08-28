@@ -16,7 +16,7 @@ optional PaddleOCR 3.7.0 path is **not** part of the keyless demo:
   realistic case.
 - OCR-on-image is a future add behind a separate `paddleocr` extra.
 
-**The contract that protects the 372 existing tests** is the same
+**The contract that protects the 422 existing tests** is the same
 as Phoenix: the circulars module is a no-op when ``data/circulars/`` is
 empty. The existing tests pass without modification because the
 heuristic extractors are pure-Python regex functions — no I/O, no

@@ -141,8 +141,48 @@ evolution of the Indic-language nudge.
 - 4 tests (2 for the TTS stub, 1 for the API, 1 for the
   channel path).
 
-## Total: 4 days, 4 features, ~25 new tests, 372 → ~400 tests,
-+~2,500 lines of code.
+## Total: 4 days, 4 features, ~50 new tests, 372 → 422 tests,
+
++~2,500 lines of code. **All 4 shipped in this session.**
+
+## Status (post-execution, 28 Aug 2026)
+
+All 4 features are shipped end to end:
+
+1. **Checkout drop-off recovery** — engine
+   (`revive.checkout.recovery`), 5 SPA endpoints, 1 SPA tab,
+   16 tests. Open: 0/0/0/0 → chaser → 3/1/2/0/0 (counts by
+   status) within 1 tick.
+2. **B2B receivables chaser** — engine
+   (`revive.b2b.chaser`), 6 SPA endpoints, 1 SPA tab, 16 tests.
+   5-rung ladder: pre_due -> friendly -> firmer -> manager ->
+   written -> writeoff.
+3. **Mandate retry sequencer** — engine
+   (`revive.mandate.sequencer`), 3 SPA endpoints, 1 SPA tab,
+   11 tests. Ladder: 3+ distinct -> STOP_AND_HUMAN_REVIEW,
+   3+ BANK_DOWN in 7d -> REMITTER_OUTREACH, paused > 14d ->
+   SWITCH_METHOD, BANK_DOWN -> RETRY_24H, else RETRY_NOW.
+4. **Hinglish voice recovery** — engine
+   (`revive.policy.voice_tts`), 1 SPA endpoint, voice toggle
+   on Pay Portal, 7 tests. Sarvam Bulbul v2 when
+   `SARVAM_API_KEY` is set; deterministic 1-second silent
+   WAV stub when the key is absent.
+
+**Total:** 50 new tests, 372 → 422 tests, all passing.
+Build clean. Pushed to `submission-clean:main`.
+
+## What the user is going to do tomorrow
+
+1. Drop Razorpay test keys into `main/.env`. The engine flips
+   to `mode=LIVE` automatically. The 4 new features all
+   use the same `is_live` pattern as the existing engine,
+   so they pick up the live Razorpay SDK without code
+   changes.
+2. Optionally drop `SARVAM_API_KEY` to flip the voice TTS
+   path to the real Sarvam Bulbul v2 (currently stub).
+3. Record the pitch video using the updated
+   `docs/PITCH-VIDEO.md` script.
+4. Submit.
 
 ## Daily check-in pattern
 

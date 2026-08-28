@@ -192,13 +192,13 @@ goes down" objection.
 >
 > The repo is public, the architecture is documented, the MCP server
 > composes with Claude Desktop, Cursor, and VS Code. The cloud mirror is
-> one Supabase project and three tables away. 372 tests, four chaos
+> one Supabase project and three tables away. 422 tests, four chaos
 > drills, zero keys needed to run it. Thank you.
 >
 > Joel D'lima, Cadence."
 
 **Why this works:** the close names the regulatory principle, restates
-the technical differentiator, lists the social proof (372 tests, 4
+the technical differentiator, lists the social proof (422 tests, 4
 drills, keyless), and ends on a name. Don't read it; say it like you
 mean it.
 

@@ -10,7 +10,16 @@
 - **53.5 %** recovery rate on Cadence vs **38.8 %** naive
 - **0.76** customer contacts per recovery vs **7.96** naive
 - **0 LLM tokens** spent on the batch; **2,560** Guardian vetoes (0 violations)
-- **372 tests · 4/4 chaos drills · 50/50 Guardian adversarial matrix · 0 keys to run**
+- **422 tests · 4/4 chaos drills · 50/50 Guardian adversarial matrix · 0 keys to run**
+
+**All 7 Track 3 example directions are shipped end to end:**
+1. Payment degradation → root cause → recovery action — Phase A Adaptive Recovery Brain
+2. Checkout drop-off recovery — `revive.checkout.recovery` + SPA tab
+3. Failed-subscription recovery — Phase 0–8 engine
+4. B2B receivables chaser — `revive.b2b.chaser` + SPA tab
+5. Mandate retry sequencer — `revive.mandate.sequencer` + SPA tab
+6. Hinglish voice recovery — `revive.policy.voice_tts` + voice toggle on the Pay Portal
+7. Promise-to-pay tracker — `revive.agents.ptp_parser` (already shipped pre-session)
 
 ---
 
@@ -77,7 +86,7 @@ cd frontend && npm install && npm run dev        # SPA
 
 # Other entrypoints
 python scripts/seed.py                 # one synthetic failure, prints the journey
-python -m pytest tests -q                # 372 tests
+python -m pytest tests -q                # 422 tests
 python scripts/run_mcp.py               # stdio MCP server for Claude Desktop
 ```
 
@@ -175,7 +184,10 @@ config snippets and security posture in [`docs/mcp-integration.md`](docs/mcp-int
 cohort) · 0 violations · 8 MCP tools live · 8 backend endpoints serving
 the SPA · Supabase cloud mirror with live status · Adaptive Recovery
 Brain live in engine + SPA · Indic-language nudge in 6 scripts live in
-SPA · Promise-to-Pay parser shipping in production path**
+SPA · Promise-to-Pay parser shipping in production path · Checkout
+drop-off chaser in engine + SPA · B2B receivables chaser in engine +
+SPA · Mandate retry sequencer in engine + SPA · Hinglish voice TTS
+(Sarvam-ready) live in Pay Portal**
 the live API · Faker-driven 5,000-sub Indian cohort (Faker >= 20.0, MIT, `hi_IN`
 locale) reproduces the headline number at 10x scale: 53.5% recovery vs
 38.8% naive on 5,000 subscribers (53.46% / 38.8% raw, +37.8% uplift, 0 LLM
@@ -399,6 +411,65 @@ It supports dates, durations, vague promises, and refusals; returns
 `RETRY_PAYDAY` intervention on the promised date. This is Track 3
 example direction #7, and it was already shipped before Phase A
 landed.
+
+**Phase C (shipped) — Checkout drop-off recovery.** Track 3 example
+direction #2. A new `main/src/revive/store/V4__checkout.sql`
+table (`checkout_sessions`) and a pure-function state machine
+in `main/src/revive/checkout/recovery.py` (ladders: OPEN ->
+ABANDONED (30 min) -> NUDGED with up to 3 nudges (24h, 7d, 7d)
+-> RECOVERED on `payment_link.paid` webhook -> EXPIRED after
+14d; the 3rd nudge carries a 5% discount signal). Five new
+endpoints: `POST /api/checkout/abandon`, `POST
+/api/checkout/recover/{id}`, `GET /api/checkout/sessions`,
+`GET /api/checkout/funnel`, `POST /api/checkout/tick`. The
+chaser emits `checkout.*` events into the hash-chained audit
+log. The SPA has a "Checkout Recovery" tab with the 5-card
+funnel + a sessions table + simulate-abandon + run-tick
+buttons. 16 new tests.
+
+**Phase D (shipped) — B2B receivables chaser.** Track 3 example
+direction #4. Razorpay's `client.invoice.create / fetch / all /
+issue / cancel / notify_by` API hooks a 5-rung cadence
+chase: pre_due_reminder (T-3) -> friendly_nudge (T+3) ->
+firmer_nudge (T+7) -> escalate_to_manager (T+14) ->
+written_notice (T+21) -> writeoff (T+45). New
+`main/src/revive/store/V5__b2b.sql` (`b2b_invoices` +
+`b2b_orgs`) and `main/src/revive/b2b/chaser.py` state
+machine. Six new endpoints (`POST /api/b2b/invoice/create`,
+`GET /api/b2b/invoices`, `GET /api/b2b/invoices/overdue`,
+`POST /api/b2b/invoice/{id}/chase`, `GET /api/b2b/funnel`,
+`POST /api/b2b/tick`). The SPA has a "B2B Receivables" tab
+with the 4-card funnel + invoices table sorted overdue-first.
+16 new tests.
+
+**Phase E (shipped) — Mandate retry sequencer.** Track 3
+example direction #5. Pure-function state machine in
+`main/src/revive/mandate/sequencer.py` (ladder: 3+ distinct
+causes -> STOP_AND_HUMAN_REVIEW; 3+ BANK_DOWN in 7d ->
+REMITTER_OUTREACH; mandate paused > 14d -> SWITCH_METHOD;
+cause = BANK_DOWN -> RETRY_24H (24h delay); otherwise
+RETRY_NOW). Three new endpoints (`POST /api/mandate/failed`,
+`GET /api/mandate/sequenced`, `GET
+/api/mandate/sequenced/summary`). Every sequencer call emits
+a `mandate.sequenced` event into the hash-chained audit log +
+appends a JSONL line to `docs/mandate_sequencer_log.jsonl`.
+The SPA has a "Mandate Sequencer" tab with a 5-card
+action-count grid + decisions table + simulate-BANK_DOWN
+button. 11 new tests.
+
+**Phase F (shipped) — Hinglish voice recovery.** Track 3
+example direction #6. A new `main/src/revive/policy/voice_tts.py`
+module that wraps Sarvam Bulbul v2 (when `SARVAM_API_KEY` is
+set) and falls back to a deterministic 1-second silent WAV
+stub (when the key is absent — the default for the demo).
+The stub is byte-identical for the same `(text, language)`,
+so the audit chain is happy and the SPA's `<audio>` tag
+accepts the data URL. The `nudge_for_language` text from
+Phase B is piped through `synthesize`; a new `GET
+/api/voice/preview?language=...` endpoint returns the text +
+the base64-encoded WAV + the `is_stub` flag. The Pay Portal
+SPA has a "voice: on / off" toggle that swaps the rendered
+text for a play button. 7 new tests.
 
 Skipped: Guardrails AI (cutoff Aug 25 2026 already past), Coqui STT
 (discontinued), Unsloth fine-tuning (would *reduce* recovery uplift),

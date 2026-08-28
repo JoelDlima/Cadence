@@ -37,9 +37,9 @@
   - `158b811` feat(phase-B-spa): Indic-nudge preview card on the Pay Portal + full Track 3 plan
 
 - **Tests at start of this session:** 289
-- **Tests at end of this session:** 372 (372 = 360 + 7 nudge templates + 5 nudge API)
+- **Tests at end of this session:** 422 (372 from Phase A+B + 16 checkout + 16 b2b + 11 mandate + 7 voice)
 
-### Already shipped (and the AI did not notice)
+### Already shipped (and the AI did not notice, then built it anyway)
 
 - **Promise-to-Pay tracker** — `main/src/revive/agents/ptp_parser.py`
   is a complete deterministic parser. Regex-driven, multi-lingual
@@ -47,16 +47,8 @@
   refusals. Returns `(kind, due_date, confidence)`. Used by
   `dispatcher.handle_customer_reply` to schedule a single
   `RETRY_PAYDAY` intervention on the promised date. **This was
-  already done; the AI nearly rebuilt it.** Track 3 example
-  direction #7 is already shipped.
-- **Hinglish voice recovery** — partial. The
-  `whatsapp_nudge_text` is Hinglish text; TTS is not wired. The
-  `sarvam` LLM provider in `agents/llm_client.py` is the path for
-  Hindi-language reasoning. Track 3 #6 is partial.
-- **Mandate retry sequencer** — partial. The engine handles
-  `mandate.revoke` and `mandate.paused` events; the Guardian and
-  bandit give the legal move. A cross-channel sequencer (debit →
-  retry → remitter-bank) is not built. Track 3 #5 is partial.
+  already done; the AI did notice the second time and stopped
+  before rebuilding it.** Track 3 example direction #7 is shipped.
 - **The user is asleep.** This document is the AI's memory.
 
 ---
@@ -307,51 +299,42 @@ The build_client switch is in `main/src/revive/executors/razorpay_client.py`. Te
 
 ## 4. The phases remaining (still on the table)
 
-The user said: "adding a lot will spoil the entire project. but adding
-just few proper optimized working features is good." The 3 features
-that the Track 3 judge will look at in 5 minutes are:
+The user said: "ENSURE IT COVERS ALL" after seeing the Razorpay
+site. After the audit, all 7 Track 3 example directions are now
+shipped end to end:
 
-1. **Adaptive Recovery Brain** (Phase A) — **SHIPPED end to end**:
-   engine + bandit + API + SPA tab. 4 engine tests reframed to the
-   adaptive contract; bandit contract is `bandit.ranked` event
-   contains the top, ranked list, scores, reason, and feature
-   importances.
-2. **Indic-language nudge** (Phase B) — **SHIPPED end to end**:
-   engine templates in 6 languages + Hinglish, API endpoint, SPA
-   preview card on the Pay Portal. 12 new tests.
-3. **The bar** (Phase F in the plan) — partially shipped:
-   - `eval-report.md` has 53.5% recovery, +37.8% uplift on 5000
-     Indian subscribers.
-   - 50-case adversarial Guardian suite ships.
-   - Hash-chained audit chain ships.
-   - Kill switch, touch cap, quiet hours ship.
-   - **Missing:** a "live money recovered" widget on the SPA
-     Overview tab. This is the ONE remaining feature worth adding
-     before the demo.
+1. ✅ Payment degradation → root cause → recovery action — Phase A
+2. ✅ Checkout drop-off recovery — Phase C (this session)
+3. ✅ Failed-subscription recovery — Phases 0–8
+4. ✅ B2B receivables chaser — Phase D (this session)
+5. ✅ Mandate retry sequencer — Phase E (this session)
+6. ✅ Hinglish voice recovery — Phase F (this session)
+7. ✅ Promise-to-pay tracker — `revive.agents.ptp_parser`
 
-**Skip list (judge's perspective: would add noise):**
+**The "perfect 3 features" are no longer 3. They are 7.**
 
-- **Phase 9e-style new features** — checkout drop-off, B2B
-  receivables, voice TTS, mandate sequencer. The user is right:
-  these would dilute the 5-min pitch. They are *partially* covered
-  in the engine and the design (PTP tracker is shipped, mandate
-  events are handled), but the user explicitly said "if 3
-  features can be perfected end to end its considered ideally
-  good." We have 3.
+**What's still on the table (low-risk polish, not new features):**
+
+- A "live money recovered" widget on the SPA Overview tab. The
+  eval report already has the 5,000-sub number (53.5 % / +37.8 %
+  uplift); the widget surfaces it on the live dashboard so the
+  judge sees the number during the demo without opening a
+  terminal. The current Overview already shows it; the polish
+  is making it more prominent.
+- README + PITCH-VIDEO + ARCHITECTURE + JOURNAL polish reflecting
+  the new 4 SPA tabs.
+- API keys arrive on Aug 29. The engine is already keyless-first
+  and LIVE-ready. The LIVE-mode tests in `tests/test_api.py`
+  already prove the wiring works. Drop Razorpay test keys into
+  `main/.env` and `/api/status` flips to `mode=LIVE` without code
+  changes.
 
 **What the AI is working on next:**
 
-1. **Live money-recovered widget** on the SPA Overview tab. Polls
-   `/api/metrics` (already exists) and shows live counter in INR.
-2. **Updated docs** (this file, README, JOURNAL, PITCH-VIDEO,
-   ARCHITECTURE) reflecting the truth.
-3. **Final commit + push** of all .md updates to
-   `submission-clean:main`.
-
-The user said: "I will send the api keys tomorrow" — so the engine
-must stay keyless-runnable but ready for LIVE mode. Nothing more
-needs to be coded before the keys arrive; the wiring already
-exists in `config.py` and `razorpay_client.py`.
+1. Final doc pass (this commit).
+2. The pitch video — out of scope for the AI; the user records
+   on their machine.
+3. Submission on Sep 1.
 
 ### What I should NOT do (updated)
 
@@ -384,8 +367,12 @@ exists in `config.py` and `razorpay_client.py`.
 | Aug 28 (today) | Phase 9a Faker + 9b Phoenix + 9c Sarvam + 9d Circulars + 9e 50-case | **All 5 shipped** |
 | Aug 28 (Day 2) | Phase A Adaptive Recovery Brain (engine + API + SPA) | **Shipped** |
 | Aug 28 (Day 2) | Phase B Indic-language nudge (engine + API + SPA) | **Shipped** |
-| Aug 28 (Day 2) | Docs rewrite to reflect truth | **In progress** |
-| Aug 29 | Live money-recovered widget on Overview tab + final README pass | Next |
+| Aug 28 (Day 2, cont) | Phase C Checkout drop-off recovery (engine + API + SPA) | **Shipped** |
+| Aug 28 (Day 2, cont) | Phase D B2B receivables chaser (engine + API + SPA) | **Shipped** |
+| Aug 28 (Day 2, cont) | Phase E Mandate retry sequencer (engine + API + SPA) | **Shipped** |
+| Aug 28 (Day 2, cont) | Phase F Hinglish voice TTS (engine + API + SPA toggle) | **Shipped** |
+| Aug 28 (Day 2, cont) | Docs rewrite to reflect the 7-direction truth | **In progress** |
+| Aug 29 | API keys arrive; LIVE-mode flips automatically | Next |
 | Aug 30 | Phase 10 pitch script update + record 5-min video | Next |
 | Aug 31 | Final polish + dry-run submission | Next |
 | Sep 1 | Submit | Next |
