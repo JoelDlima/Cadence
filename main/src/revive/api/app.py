@@ -1029,6 +1029,35 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         ]
         return {"rankings": rankings, "count": len(rankings)}
 
+    @app.get("/api/nudge/preview")
+    def get_nudge_preview(
+        language: str = "hinglish",
+        amount_minor: int = 49900,
+        link_url: str | None = None,
+    ) -> dict[str, Any]:
+        """Render the recovery nudge for a given language.
+
+        The Indic-language nudge templates live in
+        ``revive.policy.nudge_templates``. The SPA can call this with
+        each supported language code to show side-by-side previews
+        during the demo. The dispatcher itself doesn't pick a
+        language yet (no locale plumbing through InterventionRequest);
+        this endpoint is the visual proof that the templates exist
+        and are copy-reviewable in source.
+        """
+        from revive.policy.nudge_templates import (
+            SUPPORTED_LANGUAGES as _SUPPORTED,
+            nudge_for_language as _nudge,
+        )
+        text = _nudge(language, amount_minor, link_url)
+        return {
+            "language": language,
+            "amount_minor": amount_minor,
+            "link_url": link_url,
+            "text": text,
+            "supported_languages": sorted(_SUPPORTED),
+        }
+
     # ------------------------------------------------------------------
     # Phase 9d: RBI / NPCI circular ingestion
     # ------------------------------------------------------------------
