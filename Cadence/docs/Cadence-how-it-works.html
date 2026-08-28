@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Cadence - How it works (plain English)</title>
+<style>
+  :root {
+    --ink: #1a1d21;
+    --ink-soft: #5b6168;
+    --paper: #fbfaf7;
+    --line: #d8d3c5;
+    --earth: #8a6f3e;       /* Razorpay - the outside world */
+    --earth-bg: #f4ead9;
+    --leaf: #3b6e3f;        /* Cadence - the agent */
+    --leaf-bg: #d6e6d4;
+    --water: #2b5d80;       /* Razorpay data flowing in */
+    --water-bg: #d6e1eb;
+    --berry: #6b2c5b;        /* AI brain */
+    --berry-bg: #efd8e7;
+    --paper2: #f1ebd9;
+    --amber: #b87333;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 24px 30px 60px; }
+  h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 18px; }
+  .sec-title { font-size: 17px; font-weight: 700; margin: 26px 0 8px; color: var(--ink); }
+  .sec-body { font-size: 14px; line-height: 1.7; color: var(--ink); }
+  .callout { background: #fff; border-left: 4px solid var(--leaf); border-radius: 0 6px 6px 0;
+    padding: 12px 16px; margin: 14px 0; font-size: 13.5px; line-height: 1.6; color: var(--ink); }
+  .step { background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 18px; margin: 10px 0; }
+  .step-head { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--leaf); }
+  .step-body { font-size: 13px; line-height: 1.6; color: var(--ink-soft); }
+  .big { font-size: 16px; font-weight: 700; color: var(--ink); }
+  svg { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line);
+    border-radius: 8px; }
+  @media print {
+    .page { padding: 6px; }
+    svg { border: 1px solid #999; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>How Cadence works &mdash; in plain English, in one picture</h1>
+  <div class="sub">A 5-minute read for anyone who has never seen the codebase. No jargon. One diagram, 7 story beats.</div>
+
+  <div class="callout">
+    <b>The story in one paragraph.</b> A customer&rsquo;s auto-debit fails. Razorpay tells us. Our small Python program (<b>Cadence</b>) looks at the failure, figures out <i>why</i> it failed, decides what to do about it, checks that decision against RBI / NPCI rules, and then either sends a message or schedules one. Every step is recorded in a tamper-evident log. The result: <b>+37.8% more money recovered</b> than the industry-average blind-retry system, with zero compliance violations.
+  </div>
+
+  <div class="sec-title">The picture</div>
+
+<svg viewBox="0 0 1100 1240" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="12">
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b6168" />
+    </marker>
+    <marker id="arLeaf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b6e3f" />
+    </marker>
+  </defs>
+
+  <!-- ============== TOP: the OUTSIDE WORLD ============== -->
+  <g>
+    <rect x="40" y="50" width="1020" height="80" rx="10" fill="var(--earth-bg)" stroke="var(--earth)" stroke-width="1.5"/>
+    <text x="550" y="78" text-anchor="middle" font-weight="700" font-size="14" fill="var(--earth)">The outside world</text>
+    <text x="120" y="108" text-anchor="middle" font-weight="700" font-size="12">Customer</text>
+    <text x="120" y="123" text-anchor="middle" fill="var(--ink-soft)" font-size="10">(bank account, UPI app, etc.)</text>
+
+    <text x="550" y="108" text-anchor="middle" font-weight="700" font-size="12">Razorpay</text>
+    <text x="550" y="123" text-anchor="middle" fill="var(--ink-soft)" font-size="10">payment processor</text>
+
+    <text x="980" y="108" text-anchor="middle" font-weight="700" font-size="12">WhatsApp / Email</text>
+    <text x="980" y="123" text-anchor="middle" fill="var(--ink-soft)" font-size="10">message channel</text>
+  </g>
+
+  <!-- arrow: Customer -> Razorpay (tries to pay, fails) -->
+  <g stroke="var(--ink-soft)" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+    <path d="M 220 130 L 460 130" />
+  </g>
+  <text x="340" y="124" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-style="italic">tries to pay</text>
+
+  <!-- arrow: Razorpay -> Customer (failure message) -->
+  <g stroke="var(--ink-soft)" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+    <path d="M 640 130 L 880 130" />
+  </g>
+  <text x="760" y="124" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-style="italic">payment failed</text>
+
+  <!-- ============== ARROW: Razorpay -> Cadence "failure notice" ============== -->
+  <g stroke="var(--water)" stroke-width="2" fill="none" marker-end="url(#ar)">
+    <path d="M 550 130 L 550 200" />
+  </g>
+  <text x="558" y="160" font-size="11" fill="var(--water)" font-weight="600">"Hey, this payment failed. Here's why."</text>
+  <text x="558" y="174" font-size="10" fill="var(--ink-soft)" font-style="italic">(a signed, encrypted notification)</text>
+
+  <!-- ============== CADENCE: the big box ============== -->
+  <g>
+    <rect x="40" y="200" width="1020" height="470" rx="12" fill="var(--leaf-bg)" stroke="var(--leaf)" stroke-width="2"/>
+    <text x="60" y="226" font-weight="800" font-size="15" fill="var(--leaf)">Cadence</text>
+    <text x="60" y="244" font-size="11" fill="var(--ink-soft)">a small Python program running on a laptop</text>
+  </g>
+
+  <!-- Step 1: the front door -->
+  <g>
+    <rect x="80" y="260" width="940" height="56" rx="6" fill="#fff" stroke="var(--line)"/>
+    <text x="100" y="282" font-weight="700" font-size="12">1. The doorman checks the signature</text>
+    <text x="100" y="300" font-size="11" fill="var(--ink-soft)">If the notification isn't really from Razorpay, throw it out. No fraud can fake a real notification.</text>
+  </g>
+
+  <!-- arrow step 1 -> 2 -->
+  <g stroke="var(--ink-soft)" stroke-width="1.2" fill="none" marker-end="url(#ar)">
+    <path d="M 550 316 L 550 326" />
+  </g>
+
+  <!-- Step 2: figure out why -->
+  <g>
+    <rect x="80" y="328" width="940" height="68" rx="6" fill="#fff" stroke="var(--line)"/>
+    <text x="100" y="350" font-weight="700" font-size="12">2. The classifier reads the error code and decides what kind of failure this is</text>
+    <text x="100" y="368" font-size="11" fill="var(--ink-soft)">&ldquo;Not enough money&rdquo; is different from &ldquo;card expired&rdquo; is different from &ldquo;UPI app offline&rdquo;.</text>
+    <text x="100" y="384" font-size="11" fill="var(--ink-soft)">Each needs a different next step. That&rsquo;s the whole point of the classifier.</text>
+  </g>
+
+  <g stroke="var(--ink-soft)" stroke-width="1.2" fill="none" marker-end="url(#ar)">
+    <path d="M 550 396 L 550 406" />
+  </g>
+
+  <!-- Step 3: the AI picks -->
+  <g>
+    <rect x="80" y="408" width="940" height="68" rx="6" fill="var(--berry-bg)" stroke="var(--berry)" stroke-width="1.5"/>
+    <text x="100" y="430" font-weight="700" font-size="12" fill="var(--berry)">3. The small AI (Recovery Brain) picks the best next action from a legal menu</text>
+    <text x="100" y="448" font-size="11" fill="var(--ink-soft)">It considers: failure cause, customer history, time of day, day of month, amount.</text>
+    <text x="100" y="464" font-size="11" fill="var(--ink-soft)">7 legal choices: send WhatsApp now, wait until payday, send a payment link, give up, etc.</text>
+  </g>
+
+  <g stroke="var(--ink-soft)" stroke-width="1.2" fill="none" marker-end="url(#ar)">
+    <path d="M 550 476 L 550 486" />
+  </g>
+
+  <!-- Step 4: the guardian checks the rules -->
+  <g>
+    <rect x="80" y="488" width="940" height="68" rx="6" fill="#fff" stroke="var(--line)"/>
+    <text x="100" y="510" font-weight="700" font-size="12">4. The policy guardian double-checks against RBI / NPCI rules</text>
+    <text x="100" y="528" font-size="11" fill="var(--ink-soft)">No messages between 9 p.m. and 9 a.m. No more than 3 in 14 days. Don&rsquo;t message DND customers.</text>
+    <text x="100" y="544" font-size="11" fill="var(--ink-soft)">If the action breaks a rule, the Guardian vetoes it. No exceptions.</text>
+  </g>
+
+  <g stroke="var(--leaf)" stroke-width="1.5" fill="none" marker-end="url(#arLeaf)">
+    <path d="M 550 556 L 550 576" />
+  </g>
+  <rect x="350" y="566" width="200" height="14" rx="3" fill="#fff"/>
+  <text x="450" y="577" text-anchor="middle" font-size="10" font-weight="600" fill="var(--leaf)">approved &rarr; send / schedule</text>
+
+  <!-- Step 5: the actual send -->
+  <g>
+    <rect x="80" y="580" width="940" height="76" rx="6" fill="var(--leaf-bg)" stroke="var(--leaf)" stroke-width="1.5"/>
+    <text x="100" y="602" font-weight="700" font-size="12" fill="var(--leaf)">5. The doer (executor) actually does it</text>
+    <text x="100" y="620" font-size="11" fill="var(--ink-soft)">WhatsApp / Email now &mdash; or schedule for payday at 10 a.m. (when the salary lands).</text>
+    <text x="100" y="635" font-size="11" fill="var(--ink-soft)">5 parallel ladders share the same engine: B2B invoices (5-rung chase), abandoned checkouts (3 nudges),</text>
+    <text x="100" y="650" font-size="11" fill="var(--ink-soft)">failed UPI mandates (3+ BANK_DOWN = &ldquo;switch banks&rdquo;), Hinglish voice notes (Sarvam Bulbul v2).</text>
+  </g>
+
+  <!-- ============== ARROW: Cadence -> WhatsApp/Email ============== -->
+  <g stroke="var(--water)" stroke-width="2" fill="none" marker-end="url(#ar)">
+    <path d="M 980 620 L 980 130" stroke-dasharray="4 3" />
+  </g>
+  <rect x="908" y="400" width="146" height="14" rx="3" fill="#fff"/>
+  <text x="980" y="411" text-anchor="middle" font-size="10" font-style="italic" fill="var(--water)">"Hinglish nudge, no more than 3, with payment link"</text>
+
+  <!-- ============== ARROW: WhatsApp -> Customer ============== -->
+  <g stroke="var(--ink-soft)" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+    <path d="M 980 110 L 980 80 L 220 80 L 220 110" />
+  </g>
+  <text x="600" y="74" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-style="italic">customer gets a Hinglish message with a payment link</text>
+
+  <!-- ============== ARROW: Customer -> Razorpay (tries again) ============== -->
+  <g stroke="var(--ink-soft)" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+    <path d="M 120 110 L 120 150 L 540 150 L 540 130" />
+  </g>
+  <text x="320" y="144" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-style="italic">customer pays the link</text>
+
+  <!-- ============== ARROW: Razorpay -> Cadence "payment.captured" ============== -->
+  <g stroke="var(--water)" stroke-width="2" fill="none" marker-end="url(#ar)">
+    <path d="M 560 130 L 560 100 L 1020 100 L 1020 80 L 1020 720" />
+  </g>
+  <rect x="640" y="92" width="240" height="14" rx="3" fill="#fff"/>
+  <text x="760" y="103" text-anchor="middle" font-size="10" font-style="italic" fill="var(--water)">"Hey, the customer paid! Close the journey."</text>
+
+  <!-- ============== the AUDIT LEDGER (bottom row) ============== -->
+  <g>
+    <rect x="40" y="700" width="1020" height="120" rx="10" fill="#fff" stroke="var(--ink-soft)" stroke-width="1.4"/>
+    <text x="60" y="726" font-weight="800" font-size="14" fill="var(--ink)">The audit ledger &mdash; one tamper-evident log of every step</text>
+  </g>
+
+  <!-- 4 mini events inside the ledger -->
+  <g>
+    <rect x="80" y="740" width="220" height="60" rx="5" fill="#fff7e3" stroke="var(--amber)" stroke-width="1"/>
+    <text x="190" y="758" text-anchor="middle" font-weight="700" font-size="10" fill="var(--amber)">event 1</text>
+    <text x="190" y="774" text-anchor="middle" font-size="10" fill="var(--ink-soft)">webhook received</text>
+    <text x="190" y="788" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">prev_hash: 0x00...0</text>
+    <text x="190" y="798" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">hash: 0xab12...7f</text>
+  </g>
+  <g>
+    <rect x="320" y="740" width="220" height="60" rx="5" fill="#fff7e3" stroke="var(--amber)" stroke-width="1"/>
+    <text x="430" y="758" text-anchor="middle" font-weight="700" font-size="10" fill="var(--amber)">event 2</text>
+    <text x="430" y="774" text-anchor="middle" font-size="10" fill="var(--ink-soft)">cause: NO_FUNDS</text>
+    <text x="430" y="788" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">prev_hash: 0xab12...7f</text>
+    <text x="430" y="798" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">hash: 0x9c33...2a</text>
+  </g>
+  <g>
+    <rect x="560" y="740" width="220" height="60" rx="5" fill="#fff7e3" stroke="var(--amber)" stroke-width="1"/>
+    <text x="670" y="758" text-anchor="middle" font-weight="700" font-size="10" fill="var(--amber)">event 3</text>
+    <text x="670" y="774" text-anchor="middle" font-size="10" fill="var(--ink-soft)">bandit: GRACE_OFFER</text>
+    <text x="670" y="788" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">prev_hash: 0x9c33...2a</text>
+    <text x="670" y="798" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">hash: 0x7f80...d4</text>
+  </g>
+  <g>
+    <rect x="800" y="740" width="220" height="60" rx="5" fill="#fff7e3" stroke="var(--amber)" stroke-width="1"/>
+    <text x="910" y="758" text-anchor="middle" font-weight="700" font-size="10" fill="var(--amber)">event 4</text>
+    <text x="910" y="774" text-anchor="middle" font-size="10" fill="var(--ink-soft)">guardian: approved</text>
+    <text x="910" y="788" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">prev_hash: 0x7f80...d4</text>
+    <text x="910" y="798" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="monospace">hash: 0x18c1...6b</text>
+  </g>
+
+  <!-- ============== ARROW: Cadence ledger ============== -->
+  <g stroke="var(--ink-soft)" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+    <path d="M 550 680 L 550 700" />
+  </g>
+  <rect x="450" y="680" width="200" height="14" rx="3" fill="#fff"/>
+  <text x="550" y="691" text-anchor="middle" font-size="10" font-weight="600" fill="var(--ink-soft)">every step is logged here</text>
+
+  <!-- ============== BOTTOM: where the data lives ============== -->
+  <g>
+    <rect x="40" y="850" width="1020" height="240" rx="10" fill="#fff" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="60" y="876" font-weight="800" font-size="14">The data lives here</text>
+  </g>
+
+  <!-- SQLite local box -->
+  <g>
+    <rect x="80" y="900" width="450" height="170" rx="8" fill="var(--paper2)" stroke="var(--amber)" stroke-width="1.4"/>
+    <text x="305" y="926" text-anchor="middle" font-weight="700" font-size="13" fill="var(--amber)">SQLite file on the laptop</text>
+    <text x="305" y="946" text-anchor="middle" font-size="11" fill="var(--ink-soft)">the source of truth. One file holds everything:</text>
+    <text x="305" y="968" text-anchor="middle" font-size="11" fill="var(--ink)">queue</text>
+    <text x="305" y="984" text-anchor="middle" font-size="11" fill="var(--ink)">event store (the audit ledger)</text>
+    <text x="305" y="1000" text-anchor="middle" font-size="11" fill="var(--ink)">journeys, preferences, RBI circulars</text>
+    <text x="305" y="1016" text-anchor="middle" font-size="11" fill="var(--ink)">4 recovery state machines (B2B, checkout, mandate, voice)</text>
+    <text x="305" y="1038" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-style="italic">same single file, no separate databases</text>
+    <text x="305" y="1054" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-style="italic">runs on a fresh git clone with zero API keys</text>
+  </g>
+
+  <!-- arrow: SQLite -> Supabase (one-way projection) -->
+  <g stroke="var(--water)" stroke-width="2" fill="none" marker-end="url(#ar)">
+    <path d="M 530 985 L 920 985" />
+  </g>
+  <rect x="595" y="968" width="260" height="14" rx="3" fill="#fff"/>
+  <text x="725" y="979" text-anchor="middle" font-size="10" font-weight="600" fill="var(--water)">one-way projection every 30 seconds</text>
+  <text x="725" y="1002" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-style="italic">SQLite is the source of truth; Supabase is read-only mirror</text>
+
+  <!-- Supabase box -->
+  <g>
+    <rect x="920" y="900" width="120" height="170" rx="8" fill="var(--water-bg)" stroke="var(--water)" stroke-width="1.4"/>
+    <text x="980" y="926" text-anchor="middle" font-weight="700" font-size="13" fill="var(--water)">Supabase</text>
+    <text x="980" y="946" text-anchor="middle" font-size="10" fill="var(--ink-soft)">mirror only</text>
+    <text x="980" y="968" text-anchor="middle" font-size="10" fill="var(--ink)">webhook_inbox</text>
+    <text x="980" y="984" text-anchor="middle" font-size="10" fill="var(--ink)">journeys_mirror</text>
+    <text x="980" y="1000" text-anchor="middle" font-size="10" fill="var(--ink)">metrics_daily</text>
+    <text x="980" y="1026" text-anchor="middle" font-size="9" fill="var(--ink-soft)">RLS deny + REVOKE on</text>
+    <text x="980" y="1038" text-anchor="middle" font-size="9" fill="var(--ink-soft)">anon / authenticated.</text>
+    <text x="980" y="1050" text-anchor="middle" font-size="9" fill="var(--ink-soft)">Only service_role can</text>
+    <text x="980" y="1062" text-anchor="middle" font-size="9" fill="var(--ink-soft)">read or write.</text>
+  </g>
+
+  <!-- ============== HEADLINE NUMBER, bottom ============== -->
+  <g>
+    <rect x="40" y="1110" width="1020" height="100" rx="10" fill="#fff7e3" stroke="var(--amber)" stroke-width="1.5"/>
+    <text x="550" y="1136" text-anchor="middle" font-weight="800" font-size="16">The headline</text>
+    <text x="550" y="1158" text-anchor="middle" font-size="13" fill="var(--ink)">5,000 Indian subscribers, same failure mix, byte-identical seed:</text>
+    <text x="550" y="1180" text-anchor="middle" font-size="14" font-weight="700" fill="var(--leaf)">Cadence: &#8377;1.61M recovered (53.5%) &nbsp; vs &nbsp; naive retry: &#8377;1.15M (38.8%)</text>
+    <text x="550" y="1200" text-anchor="middle" font-size="12" font-style="italic" fill="var(--ink-soft)">+37.8% more money recovered &middot; zero LLM tokens &middot; zero compliance violations &middot; 2,560 Guardian vetoes</text>
+  </g>
+
+</svg>
+
+  <div class="sec-title">What to look at, in this order</div>
+  <div class="sec-body">
+    <div class="step">
+      <div class="step-head">Step 1: The doorman</div>
+      <div class="step-body">The first thing Cadence does is check that the notification really came from Razorpay. If someone tries to fake a payment failure (to scam a free month), this rejects them. The signature is a mathematical fingerprint only Razorpay could have produced.</div>
+    </div>
+    <div class="step">
+      <div class="step-head">Step 2: The classifier</div>
+      <div class="step-body">Read the error code. &ldquo;Not enough money&rdquo; needs a &ldquo;wait until payday&rdquo; response. &ldquo;Card expired&rdquo; needs a &ldquo;try a different card&rdquo; response. &ldquo;UPI app offline&rdquo; needs a &ldquo;try again in an hour&rdquo; response. Each cause needs a different next step &mdash; that&rsquo;s the whole point of the classifier.</div>
+    </div>
+    <div class="step">
+      <div class="step-head">Step 3: The Recovery Brain (the small AI)</div>
+      <div class="step-body">Picks the best next action from a legal menu of 7 options. Considers failure cause, customer history, time of day, day of month, amount. It&rsquo;s not an LLM &mdash; it&rsquo;s a small math function (a &ldquo;bandit&rdquo;) whose weights live in the source code. No tokens. No latency. No drift.</div>
+    </div>
+    <div class="step">
+      <div class="step-head">Step 4: The Policy Guardian</div>
+      <div class="step-body">The proposed action goes through 8 hard rules. &ldquo;No messages between 9 p.m. and 9 a.m.&rdquo; &ldquo;No more than 3 messages in 14 days.&rdquo; &ldquo;If on the DND list, don&rsquo;t message.&rdquo; If the action breaks a rule, the Guardian vetoes it. No exceptions. Pinned by 50 adversarial test cases.</div>
+    </div>
+    <div class="step">
+      <div class="step-head">Step 5: The executor</div>
+      <div class="step-body">Actually does it. Sends a WhatsApp / email now, or schedules one for payday at 10 a.m. (when the salary lands). Five parallel &ldquo;state machines&rdquo; share the same engine but each has its own ladder &mdash; B2B invoices (5-rung chase), abandoned checkouts (3 nudges over 14 days), failed UPI mandates (3+ BANK_DOWN = &ldquo;switch banks&rdquo;), Hinglish voice notes (Sarvam Bulbul v2).</div>
+    </div>
+    <div class="step">
+      <div class="step-head">The audit ledger (the bar)</div>
+      <div class="step-body">Every step is logged in a tamper-evident log. Each entry is mathematically chained to the previous one. If anyone &mdash; a regulator, a fraudster, even an engineer debugging late at night &mdash; edits a single row, the chain breaks visibly. <b>The &ldquo;bar&rdquo; in the Razorpay brief is this:</b> measured money recovered across a batch, with compliant escalation, stopping rules, and an audit trail. Cadence hits all four.</div>
+    </div>
+  </div>
+
+  <div class="sec-title">Where to read more (in increasing order of depth)</div>
+  <div class="sec-body">
+    <ol style="margin: 4px 0 0 18px; line-height: 1.8;">
+      <li><b>PLAIN-ENGLISH.md</b> &mdash; the same story, in 5 minutes of reading, no picture. Use it to explain the project verbally.</li>
+      <li><b>Cadence-how-it-works.html</b> &mdash; this file. One picture, seven story beats, no jargon. Use it for the first slide of the pitch.</li>
+      <li><b>Cadence-architecture.html</b> &mdash; the full 8-lane block diagram with every box and every arrow. Use it for the architecture slide.</li>
+      <li><b>ARCHITECTURE.md</b> &mdash; the prose version, with design rationale, integration details, and a mermaid fallback.</li>
+    </ol>
+  </div>
+</div>
+</body>
+</html>
