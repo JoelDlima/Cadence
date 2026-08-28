@@ -353,4 +353,42 @@ n8n (fair-code).
 
 ---
 
+## What Phase 9 actually changed (and what it didn't)
+
+Phase 9 added five layers of infrastructure around the engine. **None
+of them altered the engine's decision-making.** Concretely:
+
+| Phase 9 add | What it is | What it is not | Engine behavior changed? |
+|---|---|---|---|
+| Faker 10x cohort | Bigger eval fixture, same engine | Not a smarter engine | No |
+| Phoenix 20.4.0 sidecar | Observability (OpenTelemetry traces) | Not a policy decision-maker | No |
+| Sarvam AI as 4th LLMClient | More language coverage | Not a new autonomous actor | No (graceful no-op keyless) |
+| RBI / NPCI circulars ingestor | Data plane (regulatory text → DB) | Not the engine reading the DB at decision time yet | No (post-hackathon add) |
+| 50-case adversarial regression | Test, not a feature | Not a new behavior | No |
+
+**The five adds are: 1 CI badge (Faker), 1 test, 3 graceful no-ops
+(Phoenix, Sarvam, RBI circulars). The smart parts of Cadence — the
+deterministic fast path, the NPCI peak-hold detection, the per-cause
+timing research, the 8 hard-veto Guardian rules, the save-offer
+ladder, the hash-chained audit — were all in Phases 0–8 and are
+unchanged in Phase 9.** The smart agent is the deterministic policy
+engine. The LLM is a bounded fallback for unclassifiable inputs; it
+cannot invent new moves, the Guardian can always veto it, and the same
+fast path handles 95%+ of failures with zero LLM tokens.
+
+**The RBI / NPCI circulars ingestor is a data plane add, not a
+decision-plane add.** The data flows in: the engine stores regulatory
+text, source, title, date, reference, and an extracted list of
+rule-ish statements. The engine's first dynamic-rule reading —
+consuming the policy_circulars table at decision time and replacing
+hardcoded `LEGAL_MOVES` with regulatory-cited text — is a post-hackathon
+add. The data is ready; the engine's read path is a 1–2 day add.
+
+**The 5000-sub Faker headline (53.46% recovery, +37.8% uplift) is the
+same engine at 10x scale, not a smarter engine.** It proves the engine
+scales. It does not prove intelligence. The smartness is in the
+deterministic core.
+
+---
+
 *Your code speaks louder than your resume. Built during the night shift.*
