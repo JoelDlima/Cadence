@@ -53,6 +53,14 @@ class RazorpayLike(Protocol):
         reference_id: str,
     ) -> dict: ...
 
+    def fetch_payment_link(
+        self, *, payment_link_id: str
+    ) -> dict: ...
+
+    def list_payments_by_payment_link(
+        self, *, payment_link_id: str, count: int = 10
+    ) -> list[dict]: ...
+
     def simulate_mandate_retry(
         self, *, subscription_id: str, amount_minor: int, seed: str
     ) -> dict: ...
@@ -106,6 +114,37 @@ class SimulatedRazorpayClient:
             "method": "upi",
             "simulated": True,
         }
+
+    def fetch_payment_link(self, *, payment_link_id: str) -> dict:
+        """Simulated link status. The link is `paid` once the corresponding
+        payment id has been seen as captured (via the simulator's seeded
+        state). The simulator holds its own in-memory map of
+        {payment_link_id: status} for the demo."""
+        stored = getattr(self, "_link_status", {}).get(payment_link_id)
+        if stored is not None:
+            return {"id": payment_link_id, "status": stored, "simulated": True}
+        # Stable seed-based default: 'created' for half, 'paid' for the other half.
+        seed = _sha1_hex(payment_link_id)
+        status = "paid" if int(seed[1], 16) % 2 == 0 else "created"
+        return {
+            "id": payment_link_id,
+            "status": status,
+            "amount": 49900,
+            "currency": "INR",
+            "simulated": True,
+        }
+
+    def list_payments_by_payment_link(
+        self, *, payment_link_id: str, count: int = 10
+    ) -> list[dict]:
+        """Simulated list of payments under a payment link."""
+        return [{
+            "id": f"pay_sim_{_sha1_hex(payment_link_id)[:12]}",
+            "status": "captured",
+            "amount": 49900,
+            "currency": "INR",
+            "simulated": True,
+        }]
 
     def simulate_mandate_retry(
         self, *, subscription_id: str, amount_minor: int, seed: str
@@ -241,6 +280,41 @@ class LiveRazorpayClient:
         response = self._send(request)
         response.raise_for_status()
         return dict(response.json())
+
+    def fetch_payment_link(self, *, payment_link_id: str) -> dict:
+        """Fetch the live payment link state. Status is one of:
+          - 'paid'        -> customer paid, journey should close RECOVERED
+          - 'cancelled'   -> customer / merchant cancelled, journey should close unpaid
+          - 'expired'     -> link expired, journey should close unpaid
+          - 'created'/'issued'/'active' -> still waiting, retry the outcome check
+        """
+        request = httpx.Request(
+            "GET", f"{_BASE_URL}/payment_links/{payment_link_id}"
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        return dict(response.json())
+
+    def list_payments_by_payment_link(
+        self, *, payment_link_id: str, count: int = 10
+    ) -> list[dict]:
+        """Resolve a payment_link_id to its underlying payment id.
+
+        GET /v1/payments?payment_link_id={id} returns the list of
+        payments that were captured against this link. Used after
+        fetch_payment_link returns 'paid' to find the pay_ id.
+        """
+        request = httpx.Request(
+            "GET", f"{_BASE_URL}/payments",
+            params={"payment_link_id": payment_link_id, "count": count},
+        )
+        response = self._send(request)
+        response.raise_for_status()
+        data = response.json()
+        # Razorpay returns {"items": [...]}; normalize to a list.
+        if isinstance(data, dict) and "items" in data:
+            return list(data["items"])
+        return list(data)
 
     def simulate_mandate_retry(
         self, *, subscription_id: str, amount_minor: int, seed: str

@@ -68,6 +68,12 @@ OutcomeFn = Callable[[str], bool]
 _RETRY_INTERVENTIONS = frozenset({RETRY_NOW, RETRY_LATER, RETRY_PAYDAY})
 _CHANNEL_INTERVENTIONS = frozenset({SWITCH_METHOD, WHATSAPP_NUDGE, EMAIL_NUDGE})
 _OUTCOME_CHECK_DELAY = timedelta(seconds=20)  # PHASE 8: fast first check so the SPA flips to RECOVERED during the demo
+# W3: outcome-check backoff ladder. After the first check, if the link
+# status is still 'unknown', re-enqueue with these delays before the
+# final 'failed' verdict. 20s, 2m, 10m, 1h, 1h, 48h (last is the final
+# wait). _OUTCOME_MAX_CHECKS caps the total number of checks.
+_OUTCOME_BACKOFF_SECONDS: list[int] = [20, 120, 600, 3600, 3600, 172_800]
+_OUTCOME_MAX_CHECKS = 6
 _FAILURE_COOL_OFF = timedelta(seconds=60)
 _REPLY_WAIT = timedelta(hours=24)
 _SIMULATED_RECOVERY_RATE = 0.42
@@ -127,22 +133,24 @@ class Dispatcher:
     def resolve_outcome_check(self, payload: dict[str, Any]) -> None:
         """Runtime hook for ``outcome_check`` tasks: did the offered link get paid?
 
-        Live path (PHASE 2): if the journey has a stored Razorpay payment_id
-        from its payment-link action, call ``client.fetch_payment(payment_id)``
-        and read the live ``status`` field. If the link is captured, close
-        the journey RECOVERED. If the link is unpaid, loop the journey back
-        with an honest failure code so touch caps and the save ladder keep
-        governing cadence.
+        Live path (PHASE 2 + W3): the journey's last action was a payment
+        link; we hit the Razorpay GET /v1/payment_links/{id} endpoint as
+        the primary live signal. Status 'paid' -> close RECOVERED;
+        'cancelled' / 'expired' -> close unpaid. Anything else is
+        'unknown' and we re-enqueue the outcome check with backoff
+        (20s -> +2m -> +10m -> +1h -> +48h, max 6 checks). Only after
+        the final check may an unpaid link be declared failed.
 
-        Fallback: the legacy list-payments-by-reference probe, and finally the
-        injectable OutcomeFn for the keyless simulator. Unpaid means the
-        attempt did not convert.
+        Fallback: the legacy list-payments-by-reference probe, and finally
+        the injectable OutcomeFn for the keyless simulator. Unpaid means
+        the attempt did not convert.
         """
         journey = self._journeys.get(str(payload["journey_id"]))
         if journey is None or journey.state != STATE_WAITING_OUTCOME:
             return
         journey_id = journey.journey_id
         attempt_no = max(int(payload.get("attempt_no", 1)), 1)
+        check_no = max(int(payload.get("check_no", 1)), 1)
         reference_id = f"{journey_id}:{attempt_no}"
         won = self._fetch_outcome(reference_id, payload=payload, journey=journey)
         if won is True:
@@ -158,7 +166,19 @@ class Dispatcher:
                 description="payment link went unpaid",
             )
             return
-        # won is None -> unknown: do nothing this tick, the worker will re-poll.
+        # W3: won is None -> re-enqueue with backoff so the customer
+        # has a fair chance. Max 6 checks; only then declare failed.
+        if check_no >= _OUTCOME_MAX_CHECKS:
+            self._finish_retry_failed(
+                self._request_from(journey, attempt_no=attempt_no, intervention=PAYMENT_LINK),
+                code="payment_link_unpaid",
+                description=f"payment link still unknown after {check_no} checks",
+            )
+            return
+        delay = _OUTCOME_BACKOFF_SECONDS[min(check_no - 1, len(_OUTCOME_BACKOFF_SECONDS) - 1)]
+        self._requeue_outcome_check(
+            journey=journey, attempt_no=attempt_no, check_no=check_no + 1, delay_seconds=delay,
+        )
 
     def _fetch_outcome(
         self,
@@ -166,6 +186,7 @@ class Dispatcher:
         *,
         payload: dict[str, Any],
         journey: Any,
+        attempt_no: int = 1,
     ) -> bool | None:
         """Probe Razorpay (live) or the simulator (offline) for whether the
         payment attached to this journey captured.
@@ -173,7 +194,30 @@ class Dispatcher:
         Returns True on captured, False on confirmed unpaid, None on
         "can't tell yet" (Razorpay still processing, transport error, etc.).
         """
-        # PHASE 2 primary path: live Razorpay fetch by payment_id (single-call).
+        # W3 primary path: live Razorpay fetch_payment_link on the
+        # payment_link_id we stored on the journey's most recent
+        # payment-link action event. This is the source of truth for
+        # the link itself; it tells us paid / cancelled / expired /
+        # still-created. The previous implementation called
+        # fetch_payment with a plink_ id (404 -> None -> stranded
+        # journey); this version calls the correct endpoint.
+        live_link_id = self._last_link_id_for_journey(journey.journey_id)
+        if live_link_id and hasattr(self._client, "fetch_payment_link"):
+            try:
+                link = self._client.fetch_payment_link(payment_link_id=live_link_id)
+                link_status = str(link.get("status", "")).lower()
+                if link_status == "paid":
+                    return True
+                if link_status in ("cancelled", "expired"):
+                    return False
+                # 'created' / 'issued' / 'active' / 'partially_paid':
+                # link exists, customer has not paid yet -> retry later
+                return None
+            except Exception:
+                # transport error, 5xx, etc. -> fall through to payment_id probe
+                pass
+
+        # PHASE 2 secondary path: live Razorpay fetch by payment_id (single-call).
         # The payment_id was stored on the journey's most recent payment-link
         # action event when the link was created. This is exact, fast, and
         # race-free.
@@ -290,6 +334,19 @@ class Dispatcher:
                     return str(ref)
         return None
 
+    def _last_link_id_for_journey(self, journey_id: str) -> str | None:
+        """The Razorpay payment_link id (plink_...) for the most recent
+        link action. Used by W3 to call fetch_payment_link."""
+        events = sorted(
+            self._event_store.get_by_aggregate(AGG_JOURNEY, journey_id), key=lambda e: e.seq
+        )
+        for event in reversed(events):
+            if event.type == E_ACTION_EXECUTED and event.payload.get("kind") == PAYMENT_LINK:
+                plink = event.payload.get("payment_link_id") or event.payload.get("plink_id")
+                if plink:
+                    return str(plink)
+        return None
+
     def _now(self) -> str:
         return utc_iso(self._clock.now())
 
@@ -356,10 +413,21 @@ class Dispatcher:
             reference_id=f"{req.journey_id}:{req.attempt_no}",
         )
         ref = str(link["id"])
+        short_url = str(link.get("short_url") or "")
         self._emit(
             E_ACTION_EXECUTED,
             req.journey_id,
-            {"kind": req.intervention, "status": STATUS_EXECUTED, "ref": ref},
+            {
+                "kind": req.intervention,
+                "status": STATUS_EXECUTED,
+                "ref": ref,
+                # W3: store the link id and short_url so the outcome check
+                # can hit fetch_payment_link, and so the SPA's Evidence
+                # column can deep-link the judge to the live page.
+                "payment_link_id": ref,
+                "plink_id": ref,
+                "short_url": short_url,
+            },
         )
         self._advance(req, fsm.EVENT_ACTION_EXECUTED, {"attempts_used": req.attempt_no})
         self._enqueue_outcome_check(req)
@@ -374,10 +442,48 @@ class Dispatcher:
                 "journey_id": req.journey_id,
                 "subscription_id": req.subscription_id,
                 "attempt_no": req.attempt_no,
+                "check_no": 1,  # W3: first check; subsequent checks re-enqueue with check_no+=1
             },
             available_at=utc_iso(self._clock.now() + _OUTCOME_CHECK_DELAY),
             created_at=self._now(),
-            idempotency_key=f"oc:{req.journey_id}:{req.attempt_no}",
+            idempotency_key=f"oc:{req.journey_id}:{req.attempt_no}:1",
+        )
+
+    def _requeue_outcome_check(
+        self,
+        *,
+        journey: Any,
+        attempt_no: int,
+        check_no: int,
+        delay_seconds: int,
+    ) -> None:
+        """W3: re-enqueue an outcome check with a backoff delay when the
+        previous check returned None (still unknown). The idempotency key
+        is unique per (journey, attempt, check_no) so the worker can run
+        the backoff ladder in order without double-processing.
+        """
+        from revive.executors.contracts import InterventionRequest
+        req = InterventionRequest(
+            journey_id=journey.journey_id,
+            subscription_id=journey.subscription_id,
+            customer_id=journey.customer_id,
+            amount_minor=journey.amount_minor,
+            currency=journey.currency or "INR",
+            attempt_no=attempt_no,
+            intervention=PAYMENT_LINK,
+            scheduled_at="",
+        )
+        self._queue.enqueue(
+            task_type=TASK_OUTCOME_CHECK,
+            payload={
+                "journey_id": req.journey_id,
+                "subscription_id": req.subscription_id,
+                "attempt_no": attempt_no,
+                "check_no": check_no,
+            },
+            available_at=utc_iso(self._clock.now() + timedelta(seconds=delay_seconds)),
+            created_at=self._now(),
+            idempotency_key=f"oc:{req.journey_id}:{attempt_no}:{check_no}",
         )
 
     def _exec_channel_nudge(self, req: InterventionRequest) -> InterventionResult:

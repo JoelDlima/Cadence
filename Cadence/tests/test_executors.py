@@ -147,11 +147,14 @@ def test_payment_link_executes_and_schedules_outcome_check(
     rows = _pending_tasks(tmp_db)
     assert [row["task_type"] for row in rows] == [TASK_OUTCOME_CHECK]
     assert rows[0]["available_at"] == utc_iso(fake_clock.now() + timedelta(seconds=20))
-    assert json.loads(rows[0]["payload"]) == {
-        "journey_id": "j-1",
-        "subscription_id": "sub-1",
-        "attempt_no": 1,
-    }
+    # W3: payload now carries check_no for the backoff ladder. The first
+    # check is always check_no=1; later re-queues increment it.
+    payload = json.loads(rows[0]["payload"])
+    assert payload["journey_id"] == "j-1"
+    assert payload["subscription_id"] == "sub-1"
+    assert payload["attempt_no"] == 1
+    assert payload["check_no"] == 1
+    assert rows[0]["idempotency_key"].endswith(":1")
 
 
 def test_retry_success_recovers_and_closes_journey(tmp_db: Database, fake_clock: Any) -> None:
