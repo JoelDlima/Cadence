@@ -32,6 +32,7 @@ E_PTP_COMMITTED = "ptp.committed"
 E_TIMER_SET = "timer.set"
 E_BANDIT_RANKED = "bandit.ranked"
 E_KILL_SWITCH_CHANGED = "killswitch.changed"
+E_LLM_THINKING = "agent.thinking"  # PHASE 6: LLM-in-loop traces
 
 EVENT_TYPES: frozenset[str] = frozenset(
     {
