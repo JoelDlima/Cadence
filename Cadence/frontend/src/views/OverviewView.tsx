@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -138,6 +138,34 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   const upliftPct = evalSummary?.uplift_pct ?? 0;
   const contactsPerRecovery = evalSummary?.contacts_recovery_revive ?? 0;
   const naiveContactsPerRecovery = evalSummary?.contacts_recovery_naive ?? 0;
+
+  const anomaly = useMemo(() => {
+    const buckets: Record<string, { count: number; latest: number }> = {};
+    const now = Date.now();
+    for (const j of journeys) {
+      const t = new Date(j.opened_at).getTime();
+      if (now - t > 10 * 60 * 1000) continue;
+      const k = j.root_cause || "unknown";
+      const b = buckets[k] ?? { count: 0, latest: 0 };
+      b.count += 1;
+      b.latest = Math.max(b.latest, t);
+      buckets[k] = b;
+    }
+    const notes: { cause: string; count: number; severity: "info" | "warn" | "alert" }[] = [];
+    if ((buckets["NO_FUNDS"]?.count ?? 0) >= 3) {
+      notes.push({ cause: "NO_FUNDS", count: buckets["NO_FUNDS"].count, severity: "warn" });
+    }
+    if ((buckets["BANK_DOWN"]?.count ?? 0) >= 3) {
+      notes.push({ cause: "BANK_DOWN", count: buckets["BANK_DOWN"].count, severity: "alert" });
+    }
+    if ((buckets["BAD_VPA"]?.count ?? 0) >= 3) {
+      notes.push({ cause: "BAD_VPA", count: buckets["BAD_VPA"].count, severity: "info" });
+    }
+    if ((buckets["CUSTOMER_ABORTED"]?.count ?? 0) >= 3) {
+      notes.push({ cause: "CUSTOMER_ABORTED", count: buckets["CUSTOMER_ABORTED"].count, severity: "info" });
+    }
+    return notes;
+  }, [journeys]);
 
   return (
     <div className="space-y-6">
@@ -308,7 +336,28 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       </Stagger>
 
       {/* Main Analysis Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+            {anomaly.length > 0 && (
+        <Card className="p-5 border-2 border-[var(--color-coral)]/30 bg-[var(--color-coral)]/5">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 text-[var(--color-coral)]" />
+            <div>
+              <div className="text-sm font-medium text-[var(--color-ink)]">Anomaly in the last 10 minutes</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {anomaly.map((a) => (
+                  <Badge key={a.cause} tone={a.severity === "alert" ? "rejected" : a.severity === "warn" ? "pending" : "info"}>
+                    {a.cause}: {a.count}
+                  </Badge>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-[var(--color-ink-subtle)]">
+                Cadence will not chase these customers for ~4 hours — let the issuing bank or UPI rail settle.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
         <Card className="lg:col-span-2">
           <CardHeader
             title="Decline Root-Cause Distribution"

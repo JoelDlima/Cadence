@@ -172,5 +172,39 @@ Revive/
 ## 📄 License & Compliance
 
 Developed for **Razorpay AI Buildathon 2026 (Track 3: AI Revenue Recovery)**.  
+## Implementation status (PHASE 1-11)
+
+The build has shipped in 11 phases on the `submission-clean` branch:
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | Adaptive Recovery Brain (LinUCB bandit) | shipped |
+| 2 | LLM in the visible loop (Hinglish writer, support summary) | shipped |
+| 3 | Agent reasoning chat-style UI panel | shipped |
+| 4 | Big red STOP button in the SPA header | shipped |
+| 5 | RBI/NPCI 18-h UPI cooling rule (Guardian 9th hard-veto) | shipped |
+| 6 | Hinglish/English message writer + summary endpoint | shipped |
+| 7 | Agent reasoning chat panel + replay animation | shipped |
+| 8 | `payment_link.paid` ingestion + 20-s first-outcome check | shipped |
+| 9 | Supabase Edge Functions + secret pusher + audit DLQ | shipped |
+| 10 | Merchant Dashboard SPA tab + `/api/merchant/summary` endpoint | shipped |
+| 11 | Anomaly card in Overview (NO_FUNDS / BANK_DOWN burst detection) | shipped |
+
+### Live endpoints
+- `GET /api/merchant/summary` — daily aggregate (8 journeys, 2 recovered, INR 998).
+- `GET /api/journey/{id}/summary` — LLM-generated one-line merchant summary.
+- `GET /api/journey/{id}/reasoning` — 3-step agent reasoning trace.
+- `GET /api/bandit/ranked` — current bandit posteriors ranked by expected recovery.
+- `GET /api/cloud/status` — Supabase mirror state.
+
+### Supabase live mirror
+The 30-s `cloud_sync` background thread pushes every important table to
+Supabase: `journeys_mirror`, `metrics_daily`, `audit_dlq`,
+`journey_summaries`, `cadence_edge_log`. The PHASE 9 Edge Functions
+(`webhook-collector`, `cadence-llm-summary`) live at
+`https://vzrasadomyrycafbzdwg.functions.supabase.co/...` once deployed.
+
+---
+
 Licensed under the **MIT License**.
 
