@@ -821,6 +821,7 @@ class RecoveryEngine:
                 attempts_used=journey.attempts_used,
                 touches_used=journey.touches_used,
                 window_started_at=journey.window_started_at,
+                last_retry_at=journey.last_retry_at,
             ),
             cfg=self._cfg,
             clock=self._clock,

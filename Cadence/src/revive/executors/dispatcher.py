@@ -441,8 +441,26 @@ class Dispatcher:
         self._emit(
             E_ACTION_EXECUTED,
             req.journey_id,
-            {"kind": req.intervention, "status": STATUS_EXECUTED, "ref": ref},
+            {
+                "kind": req.intervention,
+                "status": STATUS_EXECUTED,
+                "ref": ref,
+                "attempt_no": req.attempt_no,
+            },
         )
+        # PHASE 5: record when the most recent successful retry happened
+        # so the Guardian can enforce the NPCI 18h UPI cooling rule on the
+        # next attempt. We update only when the retry is genuinely sent (i.e.
+        # the action is executed); failed outcomes that the simulator rolls
+        # separately do not consume the 18h window.
+        try:
+            self._journeys.update_fields(
+                req.journey_id,
+                {"last_retry_at": self._now()},
+                updated_at=self._now(),
+            )
+        except Exception:
+            pass  # noqa: BLE001
         self._advance(req, fsm.EVENT_ACTION_EXECUTED, {"attempts_used": req.attempt_no})
         recovered = self._outcome_fn(f"{req.subscription_id}:{req.attempt_no}")
         if recovered:

@@ -53,6 +53,7 @@ class Journey:
     opened_at: str
     updated_at: str
     closed_at: str | None
+    last_retry_at: str | None = None  # PHASE 5: NPCI 18h UPI cooling
 
 
 class JourneyRepo:
@@ -130,8 +131,8 @@ class JourneyRepo:
             (STATE_RECOVERED, STATE_CLOSED_UNRECOVERED, limit),
         ).fetchall()
         return [self._to_journey(r) for r in rows]
-
-    def update_fields(self, journey_id: str, fields: dict[str, Any], *, updated_at: str) -> None:
+    def update_fields(self, journey_id: str, fields: dict[str, Any], *,
+                     updated_at: str) -> None:
         """Patch allowed projection columns. Rejects unknown keys (fail fast)."""
         allowed = {
             "state",
@@ -143,6 +144,7 @@ class JourneyRepo:
             "touches_used",
             "window_started_at",
             "closed_at",
+            "last_retry_at",  # PHASE 5: NPCI 18h UPI cooling
         }
         unknown = set(fields) - allowed
         if unknown:
@@ -179,6 +181,7 @@ class JourneyRepo:
             opened_at=row["opened_at"],
             updated_at=row["updated_at"],
             closed_at=row["closed_at"],
+            last_retry_at=row["last_retry_at"],
         )
 
 

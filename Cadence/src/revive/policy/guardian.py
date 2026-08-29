@@ -58,6 +58,10 @@ class JourneyContext:
     window_started_at: str | None
     dnd: bool = False
     predebit_notified: bool = False
+    last_retry_at: str | None = None  # PHASE 5: NPCI 18h UPI cooling
+
+
+_NPCI_UPI_18H = timedelta(hours=18)
 
 
 @dataclass(frozen=True)
@@ -158,6 +162,22 @@ def _hard_veto(
         return Decision(approved=False, reason=_COST_CEILING_REASON)
     if _is_retry(proposal.intervention) and ctx.attempts_used >= cfg.max_retry_attempts:
         return Decision(approved=False, reason="attempts_exhausted")
+    # PHASE 5: NPCI 18-hour cooling rule. UPI mandates cannot be retried
+    # on the same VPA within 18 hours; this vetoes any retry whose last
+    # attempt is within the window and defers it to the boundary. The
+    # first attempt of the day is always allowed (no last_retry_at yet).
+    if (
+        _is_retry(proposal.intervention)
+        and ctx.last_retry_at is not None
+    ):
+        last = parse_iso(ctx.last_retry_at)
+        boundary = last + _NPCI_UPI_18H
+        if clock.now() < boundary:
+            return Decision(
+                approved=False,
+                reason="upi_18h_cooling",
+                defer_until=utc_iso(boundary),
+            )
     if ctx.touches_used >= cfg.touch_cap_per_window:
         return Decision(approved=False, reason="touch_cap_reached")
     if _window_expired(ctx, cfg=cfg, clock=clock):
