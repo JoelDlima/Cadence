@@ -10,7 +10,7 @@ import {
   Download
 } from 'lucide-react';
 import { Card, CardHeader, Badge, Button, Input, Select, PageHeader, EmptyState } from '../components/primitives';
-import { Journey, TimelineEvent, AuditVerify } from '../types';
+import { Journey, TimelineEvent, AuditVerify, AgentReasoning } from '../types';
 import { api, formatINR } from '../services/api';
 
 interface JourneysViewProps {
@@ -26,6 +26,10 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const [reasoning, setReasoning] = useState<AgentReasoning | null>(null);
+  const [reasoningLoading, setReasoningLoading] = useState(false);
+  const [reasonPlaying, setReasonPlaying] = useState(false);
+  const [shownSteps, setShownSteps] = useState(0);
   const [audit, setAudit] = useState<AuditVerify | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
 
@@ -285,7 +289,83 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
               </div>
 
               <div>
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)] mb-3">
+                <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
+                    Agent Reasoning (chat trace)
+                  </h4>
+                  {reasoning && reasoning.steps.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShownSteps(0);
+                        setReasonPlaying(true);
+                        for (let i = 1; i <= reasoning.steps.length; i++) {
+                          setTimeout(() => setShownSteps(i), i * 700);
+                        }
+                        setTimeout(() => setReasonPlaying(false), reasoning.steps.length * 700 + 600);
+                      }}
+                    >
+                      {reasonPlaying ? "Replaying…" : "Replay chat trace"}
+                    </Button>
+                  )}
+                </div>
+
+                {reasoningLoading && (
+                  <div className="space-y-2">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="h-12 rounded bg-[var(--color-line)] animate-pulse" />
+                    ))}
+                  </div>
+                )}
+
+                {!reasoningLoading && reasoning && reasoning.steps.length === 0 && (
+                  <div className="text-[12px] text-[var(--color-ink-subtle)] p-3 border border-dashed border-[var(--color-line)] rounded">
+                    No reasoning trace captured for this journey yet.
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {(reasoning?.steps ?? []).slice(0, shownSteps || reasoning?.steps.length || 0).map((s: any, i: number) => (
+                    <div
+                      key={i}
+                      className={
+                        "p-3 rounded-md border text-[12.5px] leading-relaxed " +
+                        (s.role === "observation"
+                          ? "bg-[var(--color-info-wash)] border-[var(--color-info)] text-[var(--color-ink)]"
+                          : s.role === "decision"
+                            ? "bg-[var(--color-surface)] border-[var(--color-line)] text-[var(--color-ink)]"
+                            : s.role === "action"
+                              ? "bg-[var(--color-approved-wash)] border-[var(--color-approved)] text-[var(--color-ink)]"
+                              : "bg-[var(--color-ink-subtle)]/10 border-[var(--color-line-strong)] text-[var(--color-ink)] italic")
+                      }
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-[11px]">Step {s.step}: {s.title}</span>
+                        {s.source && (
+                          <span className="text-[10px] font-mono text-[var(--color-ink-subtle)]">
+                            [{s.source}]
+                          </span>
+                        )}
+                        {s.channel && (
+                          <span className="text-[10px] font-mono text-[var(--color-ink-subtle)]">
+                            channel={s.channel}
+                          </span>
+                        )}
+                      </div>
+                      <div>{s.detail}</div>
+                      {s.event_refs && s.event_refs.length > 0 && (
+                        <div className="text-[10px] text-[var(--color-ink-subtle)] mt-1 font-mono">
+                          events: {s.event_refs.map((r: any) => `#${r.seq} ${r.type}`).join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)] mb-3">
                   Cryptographic Event Stream (SQLite WAL)
                 </h4>
 

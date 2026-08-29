@@ -186,3 +186,21 @@ export interface BanditRanking {
   reason: string[];
   feature_importances: Record<string, Record<string, number>>;
 }
+
+
+export interface ReasoningStep {
+  step: number;
+  role: "observation" | "decision" | "action" | "agent_thinking";
+  title: string;
+  detail: string;
+  event_refs: { seq: number; type: string; ts: string }[];
+  timestamp?: string;
+  source?: string;
+  channel?: string;
+}
+
+export interface AgentReasoning {
+  journey_id: string;
+  steps: ReasoningStep[];
+  has_llm_thought: boolean;
+}

@@ -1176,6 +1176,118 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             "generated_at": clock.now().astimezone().isoformat(),
         }
 
+    @app.get("/api/journey/{journey_id}/reasoning")
+    def get_journey_reasoning(journey_id: str) -> dict[str, Any]:
+        """PHASE 7: chat-style 3-step agent reasoning chain for the SPA.
+
+        Returns:
+        {
+          "journey_id": "...",
+          "steps": [
+            {"step": 1, "role": "observation", "title": "I saw",       "detail": "...", "event_refs": [...], "timestamp": "..."},
+            {"step": 2, "role": "decision",    "title": "I considered","detail": "...", "event_refs": [...]},
+            {"step": 3, "role": "action",      "title": "I acted",     "detail": "...", "event_refs": [...]},
+          ],
+          "has_llm_thought": bool,
+        }
+        The SPA renders each step as a chat bubble (PHASE 7) and the user
+        can press Replay to animate the sequence. agent.thinking events
+        (PHASE 6 LLM) are surfaced as additional optional bubbles.
+        """
+        journey = journeys.get(journey_id) or journeys.get_by_subscription(journey_id)
+        if journey is None:
+            raise HTTPException(status_code=404, detail="unknown journey key")
+        events = store.get_by_aggregate(AGG_JOURNEY, journey.subscription_id)
+        # Step 1: what the agent saw
+        saw = {
+            "step": 1, "role": "observation", "title": "I saw",
+            "event_refs": [], "timestamp": "",
+        }
+        for ev in events:
+            if ev.type == "classification.completed":
+                saw["detail"] = (
+                    f"A payment of Rs.{journey.amount_minor / 100:.2f} failed with "
+                    f"`{ev.payload.get('matched_code', '?')}` — root cause "
+                    f"classified as `{ev.payload.get('root_cause', '?')}` "
+                    f"(confidence={ev.payload.get('confidence', 0)})."
+                )
+                saw["event_refs"].append({"seq": ev.seq, "type": ev.type, "ts": ev.occurred_at})
+                saw["timestamp"] = ev.occurred_at
+                break
+        if not saw["detail"]:
+            saw["detail"] = (
+                f"Journey {journey.subscription_id} started in state {journey.state}."
+            )
+        # Step 2: what the agent considered
+        considered = {
+            "step": 2, "role": "decision", "title": "I considered",
+            "event_refs": [], "timestamp": "",
+        }
+        for ev in events:
+            if ev.type == "bandit.ranked":
+                ranked = ev.payload.get("ranked", ev.payload.get("top_actions", []))
+                top = ranked[:3] if isinstance(ranked, list) else []
+                fi = ev.payload.get("feature_importances", {})
+                feats = ", ".join(
+                    f"{k}={v}" for k, v in list(fi.items())[:3]
+                ) if isinstance(fi, dict) else ""
+                considered["detail"] = (
+                    f"The bandit ranked {len(ranked)} legal moves. "
+                    f"Top 3: {', '.join(top) if top else 'n/a'}. "
+                    + (f"Key features: {feats}." if feats else "")
+                )
+                considered["event_refs"].append({"seq": ev.seq, "type": ev.type, "ts": ev.occurred_at})
+                considered["timestamp"] = ev.occurred_at
+                break
+        if not considered["detail"]:
+            considered["detail"] = "Bandit ranking event not found in audit chain."
+        # Intervened vetoes (Guardian blocked choices)
+        vetoes = [
+            {
+                "step": 2, "role": "decision", "title": "Guardian vetoed",
+                "event_refs": [{"seq": ev.seq, "ts": ev.occurred_at}],
+                "timestamp": ev.occurred_at,
+                "detail": f"`{ev.payload.get('intervention', '?')}` "
+                           f"vetoed: {ev.payload.get('reason', '?')}",
+            }
+            for ev in events if ev.type == "intervention.vetoed"
+        ]
+        # Step 3: what the agent acted
+        acted = {
+            "step": 3, "role": "action", "title": "I acted",
+            "event_refs": [], "timestamp": "",
+        }
+        for ev in events:
+            if ev.type == "intervention.approved":
+                acted["detail"] = (
+                    f"`{ev.payload.get('intervention', '?')}` approved and dispatched. "
+                    f"Reason: {ev.payload.get('reason', 'Guardian OK')}. "
+                    f"Scheduled at {ev.payload.get('scheduled_at', '?')}."
+                )
+                acted["event_refs"].append({"seq": ev.seq, "type": ev.type, "ts": ev.occurred_at})
+                acted["timestamp"] = ev.occurred_at
+                break
+        if not acted["detail"]:
+            acted["detail"] = "No approved intervention event found yet."
+        # Optional: LLM thinking bubble (from PHASE 6 writer)
+        llm_steps = [
+            {
+                "step": 4, "role": "agent_thinking", "title": "LLM:",
+                "event_refs": [{"seq": ev.seq, "ts": ev.occurred_at}],
+                "timestamp": ev.occurred_at,
+                "detail": ev.payload.get("body", "(no body)"),
+                "source": ev.payload.get("source", "?"),
+                "channel": ev.payload.get("channel", ""),
+            }
+            for ev in events if ev.type == "agent.thinking"
+        ]
+        steps = [saw, considered, *vetoes, acted, *llm_steps]
+        return {
+            "journey_id": journey.subscription_id,
+            "steps": steps,
+            "has_llm_thought": bool(llm_steps),
+        }
+
     @app.get("/api/trace/recent")
     def get_recent_traces(limit: int = 20) -> dict[str, Any]:
         """Return recent OpenTelemetry spans if the Phoenix sidecar is installed.

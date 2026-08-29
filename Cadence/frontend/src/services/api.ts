@@ -17,6 +17,7 @@ import {
   InjectRequest,
   InjectResponse,
   AgentCompare,
+  AgentReasoning,
 } from '../types';
 
 export const inrFormatter = new Intl.NumberFormat('en-IN', {
@@ -253,5 +254,9 @@ export const api = {
     return postJson(`/api/pay/${encodeURIComponent(journeyId)}/simulate-paid`, {
       note: note ?? null,
     });
+  },
+
+  async getJourneyReasoning(journeyId: string): Promise<AgentReasoning> {
+    return jsonFetch<AgentReasoning>(`/api/journey/${encodeURIComponent(journeyId)}/reasoning`);
   },
 };
