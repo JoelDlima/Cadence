@@ -54,6 +54,7 @@ EVENT_TYPES: frozenset[str] = frozenset(
         E_TIMER_SET,
         E_BANDIT_RANKED,
         E_KILL_SWITCH_CHANGED,
+        E_LLM_THINKING,
     }
 )
 

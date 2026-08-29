@@ -166,6 +166,7 @@ def write_nudge(
             store=store, clock=clock, agent="nudge_writer",
             aggregate_id=journey_id,
             payload={
+                "agent": "nudge_writer",
                 "channel": channel, "provider": None,
                 "system": _NUDGE_SYSTEM,
                 "prompt": "(no LLM configured; using static template)",
