@@ -257,6 +257,22 @@ def process_delivery(
             dedupe_key=dedupe_key,
             now_iso=now_iso,
         )
+    elif event_name == "payment_link.paid":
+        # PHASE 8: customer paid the Razorpay Payment Link. Same
+        # close path as payment.captured -- write the recovered
+        # event and enqueue the update task. The 20s first
+        # outcome check (PHASE 8) then sees the closed journey
+        # on the very next worker tick.
+        _append_payment_recovered(
+            store=store, pay=pay, subscription_id=subscription_id, now_iso=now_iso
+        )
+        _enqueue_capture_task(
+            queue=queue,
+            pay=pay,
+            subscription_id=subscription_id,
+            dedupe_key=dedupe_key,
+            now_iso=now_iso,
+        )
     return 200, {"status": "accepted"}
 
 

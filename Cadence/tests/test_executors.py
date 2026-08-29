@@ -146,7 +146,7 @@ def test_payment_link_executes_and_schedules_outcome_check(
     assert journeys.get("j-1").state == STATE_WAITING_OUTCOME
     rows = _pending_tasks(tmp_db)
     assert [row["task_type"] for row in rows] == [TASK_OUTCOME_CHECK]
-    assert rows[0]["available_at"] == utc_iso(fake_clock.now() + timedelta(hours=48))
+    assert rows[0]["available_at"] == utc_iso(fake_clock.now() + timedelta(seconds=20))
     assert json.loads(rows[0]["payload"]) == {
         "journey_id": "j-1",
         "subscription_id": "sub-1",

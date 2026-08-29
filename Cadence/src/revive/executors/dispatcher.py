@@ -67,7 +67,7 @@ OutcomeFn = Callable[[str], bool]
 
 _RETRY_INTERVENTIONS = frozenset({RETRY_NOW, RETRY_LATER, RETRY_PAYDAY})
 _CHANNEL_INTERVENTIONS = frozenset({SWITCH_METHOD, WHATSAPP_NUDGE, EMAIL_NUDGE})
-_OUTCOME_CHECK_DELAY = timedelta(hours=48)
+_OUTCOME_CHECK_DELAY = timedelta(seconds=20)  # PHASE 8: fast first check so the SPA flips to RECOVERED during the demo
 _FAILURE_COOL_OFF = timedelta(seconds=60)
 _REPLY_WAIT = timedelta(hours=24)
 _SIMULATED_RECOVERY_RATE = 0.42
