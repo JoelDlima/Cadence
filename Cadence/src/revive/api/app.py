@@ -1397,18 +1397,27 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             "ORDER BY seq DESC LIMIT ?",
             ("bandit.ranked", limit),
         ).fetchall()
-        rankings = [
-            {
-                "occurred_at": r[1],
-                "cause": r[0].get("cause"),
-                "top": r[0].get("top"),
-                "ranked": r[0].get("ranked", []),
-                "scores": r[0].get("scores", {}),
-                "reason": r[0].get("reason", []),
-                "feature_importances": r[0].get("feature_importances", {}),
-            }
-            for r in rows
-        ]
+        rankings = []
+        for r in rows:
+            payload_raw = r[0]
+            if isinstance(payload_raw, (str, bytes, bytearray)):
+                try:
+                    payload = json.loads(payload_raw)
+                except Exception:
+                    continue
+            else:
+                payload = payload_raw or {}
+            rankings.append(
+                {
+                    "occurred_at": r[1],
+                    "cause": payload.get("cause"),
+                    "top": payload.get("top"),
+                    "ranked": payload.get("ranked", []),
+                    "scores": payload.get("scores", {}),
+                    "reason": payload.get("reason", []),
+                    "feature_importances": payload.get("feature_importances", {}),
+                }
+            )
         return {"rankings": rankings, "count": len(rankings)}
 
     @app.get("/api/nudge/preview")
