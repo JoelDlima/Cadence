@@ -26,6 +26,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const [pollingClosed, setPollingClosed] = useState(false);
   const [reasoning, setReasoning] = useState<AgentReasoning | null>(null);
   const [reasoningLoading, setReasoningLoading] = useState(false);
   const [reasonPlaying, setReasonPlaying] = useState(false);
@@ -72,6 +73,22 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
     try {
       const events = await api.getTimeline(journey.journey_id);
       setTimeline(events);
+      if (journey.state === 'WAITING_OUTCOME' || journey.state === 'INTERVENING') {
+        const started = journey.state;
+        const pollId = window.setInterval(async () => {
+          try {
+            const refreshed = await api.getJourney(journey.journey_id);
+            if (refreshed.state === 'RECOVERED' || refreshed.state === 'CLOSED_UNRECOVERED' || refreshed.state === 'HUMAN_REVIEW') {
+              setSelectedJourney(refreshed);
+              if (started === 'INTERVENING' && refreshed.state === 'RECOVERED') {
+                setPollingClosed(true);
+              }
+              window.clearInterval(pollId);
+            }
+          } catch (_e) { /* network blip, retry next tick */ }
+        }, 2000);
+        setTimeout(() => window.clearInterval(pollId), 60_000);
+      }
     } catch (e: any) {
       setTimelineError(e?.message ?? 'timeline unavailable');
       setTimeline([]);
@@ -258,6 +275,12 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                   <Badge tone={selectedJourney.state === 'RECOVERED' ? 'approved' : 'info'}>
                     {selectedJourney.state}
                   </Badge>
+                  {(selectedJourney.state === 'WAITING_OUTCOME' || selectedJourney.state === 'INTERVENING') && (
+                    <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-coral)] font-medium">
+                      <span className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral)] animate-pulse" />
+                      Waiting for payment webhook… (auto-refresh)
+                    </span>
+                  )}
                 </div>
                 <p className="numeric text-[12px] text-[var(--color-ink-subtle)] mt-0.5">
                   Journey: {selectedJourney.journey_id}
