@@ -54,6 +54,7 @@ from revive.api.schemas import (
     JourneyOut,
     KillSwitchIn,
     LlmSpendOut,
+    MerchantSummaryOut,
     MetricsOut,
     PayLinkOut,
     PaySimulateIn,
@@ -534,6 +535,83 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="unknown journey key")
         events = _journey_events(store, key=key, journey=journey)
         return {"events": [_event_out(e) for e in events]}
+
+    @app.get("/api/merchant/summary", response_model=MerchantSummaryOut)
+    def merchant_summary() -> MerchantSummaryOut:
+        """Aggregate merchant-facing recovery stats over the entire
+        journey history. Powers the Merchant Dashboard tab."""
+        from collections import Counter
+        from datetime import datetime, timezone
+        all_rows = (
+            journeys.list_open(limit=JOURNEYS_CAP)
+            + journeys.list_closed(limit=JOURNEYS_CAP)
+        )
+        total = len(all_rows)
+        if total == 0:
+            return MerchantSummaryOut(
+                total_journeys=0, total_recovered=0, total_lost=0,
+                recovery_rate_pct=0.0, recovered_amount_inr=0.0,
+                lost_amount_inr=0.0, avg_time_to_recover_minutes=0.0,
+                top_root_causes=[], state_distribution={},
+                intervention_performance=[],
+                generated_at=datetime.now(timezone.utc).isoformat(),
+            )
+        recovered = [r for r in all_rows if r.state == "RECOVERED"]
+        lost = [r for r in all_rows if r.state in ("CLOSED_UNRECOVERED", "ESCALATED")]
+        rec_amount = sum((r.amount_minor or 0) for r in recovered) / 100.0
+        lost_amount = sum((r.amount_minor or 0) for r in lost) / 100.0
+        rec_count = len(recovered)
+        rate = round((rec_count / total) * 100, 2)
+        # avg time to recover
+        delta_min = []
+        for r in recovered:
+            try:
+                t0 = datetime.fromisoformat(r.opened_at.replace("Z", "+00:00"))
+                t1 = datetime.fromisoformat(r.updated_at.replace("Z", "+00:00"))
+                delta_min.append(max(0.0, (t1 - t0).total_seconds() / 60.0))
+            except Exception:
+                continue
+        avg = round(sum(delta_min) / len(delta_min), 1) if delta_min else 0.0
+        # top root causes
+        cause_groups: dict[str, dict] = {}
+        for r in all_rows:
+            cause = r.root_cause or "unknown"
+            g = cause_groups.setdefault(cause, {"root_cause": cause, "count": 0, "recovered": 0, "lost": 0})
+            g["count"] += 1
+            if r.state == "RECOVERED":
+                g["recovered"] += 1
+            elif r.state in ("CLOSED_UNRECOVERED", "ESCALATED"):
+                g["lost"] += 1
+        top_causes = sorted(cause_groups.values(), key=lambda x: -x["count"])[:8]
+        state_dist = dict(Counter(r.state for r in all_rows))
+        # intervention performance from the events table
+        interv: dict[str, dict] = {}
+        recovered_ids = {r.journey_id for r in recovered}
+        interv_rows = db.conn.execute(
+            "SELECT aggregate_id, type, payload FROM events "
+            "WHERE type LIKE 'agent.intervene%'"
+        ).fetchall()
+        for j_id, ev_type, ev_payload in interv_rows:
+            try:
+                payload = json.loads(ev_payload) if ev_payload else {}
+            except Exception:
+                payload = {}
+            inter_name = payload.get("intervention", ev_type.split(".")[-1] if ev_type else "unknown")
+            g = interv.setdefault(inter_name, {"intervention": inter_name, "count": 0, "recovered": 0})
+            g["count"] += 1
+            if j_id in recovered_ids:
+                g["recovered"] += 1
+        interv_list = sorted(interv.values(), key=lambda x: -x["count"])
+        return MerchantSummaryOut(
+            total_journeys=total, total_recovered=rec_count,
+            total_lost=len(lost), recovery_rate_pct=rate,
+            recovered_amount_inr=round(rec_amount, 2),
+            lost_amount_inr=round(lost_amount, 2),
+            avg_time_to_recover_minutes=avg,
+            top_root_causes=top_causes, state_distribution=state_dist,
+            intervention_performance=interv_list,
+            generated_at=datetime.now(timezone.utc).isoformat(),
+        )
 
     @app.get("/api/metrics", response_model=MetricsOut)
     def metrics() -> MetricsOut:

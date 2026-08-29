@@ -211,6 +211,19 @@ class CircularIngestResultOut(BaseModel):
     circulars: list[CircularOut]
 
 
+class MerchantSummaryOut(BaseModel):
+    total_journeys: int
+    total_recovered: int
+    total_lost: int
+    recovery_rate_pct: float
+    recovered_amount_inr: float
+    lost_amount_inr: float
+    avg_time_to_recover_minutes: float
+    top_root_causes: list[dict]   # [{root_cause, count, recovered, lost}]
+    state_distribution: dict      # {state: count}
+    intervention_performance: list[dict]  # [{intervention, count, recovered}]
+    generated_at: str
+
 class KillSwitchIn(BaseModel):
     enabled: bool
 
