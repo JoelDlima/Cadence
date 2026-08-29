@@ -195,6 +195,9 @@ def _build_runtime(config: AppConfig) -> _Runtime:
         clock=clock,
         channels={"whatsapp": MockWhatsApp(), "email": EmailChannel(cfg=config.channels)},
         page_base_url=config.channels.page_base_url,
+        llm=LLMClient(cfg=config.llm, db=db, clock=clock)
+        if config.llm_available
+        else None,  # PHASE 6: nudges go through the LLM when available
     )
     handlers: dict[str, Callable[[dict], None]] = {
         TASK_EXECUTE_INTENT: lambda payload: dispatcher.execute(request_from_payload(payload)),
@@ -1129,6 +1132,49 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         if journey is None:
             raise HTTPException(status_code=404, detail="unknown journey key")
         return _journey_out(journey)
+
+    @app.get("/api/journey/{journey_id}/summary")
+    def get_journey_summary(journey_id: str) -> dict[str, Any]:
+        """PHASE 6: LLM-generated 3-sentence merchant support summary."""
+        from revive.agents.message_writer import summarize_journey
+        journey = journeys.get(journey_id) or journeys.get_by_subscription(journey_id)
+        if journey is None:
+            raise HTTPException(status_code=404, detail="unknown journey key")
+        events = store.get_by_aggregate(AGG_JOURNEY, journey.subscription_id)
+        last_action = None
+        last_outcome = "no outcome yet"
+        for event in reversed(events):
+            if event.type == "action.executed" and not last_action:
+                last_action = event.payload.get("kind", "unknown")
+            if event.type == "payment.recovered" and last_outcome == "no outcome yet":
+                last_outcome = "recovered"
+            if event.type == "journey.closed" and last_outcome == "no outcome yet":
+                last_outcome = "closed"
+            if last_action and last_outcome != "no outcome yet":
+                break
+        if not last_action:
+            last_action = "save offer" if journey.attempts_used > 0 else "initial assessment"
+        llm_available = bool(
+            llm_client and llm_client._cfg.provider_order
+            and any(llm_client._cfg.key_for(p) for p in llm_client._cfg.provider_order)
+        )
+        summary = summarize_journey(
+            store=store,
+            llm=llm_client if llm_available else None,
+            clock=clock,
+            journey_id=journey.subscription_id,
+            cause=journey.root_cause or journey.failure_code or "unknown",
+            amount_minor=int(journey.amount_minor or 0),
+            last_intervention=last_action,
+            last_outcome=last_outcome,
+            state=journey.state,
+        )
+        return {
+            "journey_id": journey.subscription_id,
+            "summary": summary,
+            "source": "llm" if llm_available else "deterministic",
+            "generated_at": clock.now().astimezone().isoformat(),
+        }
 
     @app.get("/api/trace/recent")
     def get_recent_traces(limit: int = 20) -> dict[str, Any]:
