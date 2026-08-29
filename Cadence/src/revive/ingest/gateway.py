@@ -38,6 +38,7 @@ ACCEPTED_EVENTS: frozenset[str] = frozenset(
         "subscription.halted",
         "payment.failed",
         "payment.captured",
+        "payment_link.paid",
     }
 )
 FAILURE_EVENTS: frozenset[str] = frozenset(
@@ -258,18 +259,57 @@ def process_delivery(
             now_iso=now_iso,
         )
     elif event_name == "payment_link.paid":
-        # PHASE 8: customer paid the Razorpay Payment Link. Same
-        # close path as payment.captured -- write the recovered
-        # event and enqueue the update task. The 20s first
-        # outcome check (PHASE 8) then sees the closed journey
-        # on the very next worker tick.
+        # PHASE 8 + W2: customer paid the Razorpay Payment Link. A
+        # payment_link.paid webhook carries no payload.subscription; the
+        # only way back to the journey is payload.payment_link.entity
+        # .reference_id, which we set to "{journey_id}:{attempt_no}" when
+        # the link was created. Parse it, look up the journey, and use
+        # that journey's subscription_id as the aggregate for both the
+        # recovered event and the capture task. If the reference is
+        # unparseable or the journey is unknown, fall back to the
+        # legacy dedupe_key path and log a warning so an operator can
+        # see the leak.
+        pl_ref = (
+            body.get("payload", {})
+            .get("payment_link", {})
+            .get("entity", {})
+            .get("reference_id")
+        )
+        sub_for_recovery = subscription_id  # default
+        if isinstance(pl_ref, str) and ":" in pl_ref:
+            journey_id_guess, _, _attempt_str = pl_ref.rpartition(":")
+            try:
+                from revive.store.journey_repo import JourneyRepo
+                jr = JourneyRepo(db)
+                journey = jr.get(journey_id_guess)
+                if journey is not None:
+                    sub_for_recovery = journey.subscription_id
+                    log.info(
+                        "payment_link.paid reference_id=%s -> journey=%s subscription=%s",
+                        pl_ref, journey.journey_id, journey.subscription_id,
+                    )
+                else:
+                    log.warning(
+                        "payment_link.paid reference_id=%s parsed to journey_id=%s but no such journey",
+                        pl_ref, journey_id_guess,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                log.warning(
+                    "payment_link.paid reference_id=%s journey lookup failed: %r",
+                    pl_ref, exc,
+                )
+        else:
+            log.warning(
+                "payment_link.paid missing or malformed reference_id: %r",
+                pl_ref,
+            )
         _append_payment_recovered(
-            store=store, pay=pay, subscription_id=subscription_id, now_iso=now_iso
+            store=store, pay=pay, subscription_id=sub_for_recovery, now_iso=now_iso
         )
         _enqueue_capture_task(
             queue=queue,
             pay=pay,
-            subscription_id=subscription_id,
+            subscription_id=sub_for_recovery,
             dedupe_key=dedupe_key,
             now_iso=now_iso,
         )
