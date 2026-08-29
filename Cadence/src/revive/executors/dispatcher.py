@@ -97,6 +97,7 @@ class Dispatcher:
         outcome_fn: OutcomeFn = DEFAULT_OUTCOME_FN,
         channels: dict[str, Any] | None = None,
         page_base_url: str | None = None,
+        llm: LLMClient | None = None,  # PHASE 6: optional message-writer LLM
     ) -> None:
         self._db = db
         self._event_store = event_store
@@ -108,6 +109,7 @@ class Dispatcher:
         self._outcome_fn = outcome_fn
         self._channels = channels
         self._page_base_url = page_base_url
+        self._llm = llm
 
     def execute(self, req: InterventionRequest) -> InterventionResult:
         if req.intervention == GRACE_OFFER:
@@ -411,10 +413,25 @@ class Dispatcher:
         return f"{self._page_base_url.rstrip('/')}/pay/{journey_ref}"
 
     def _nudge_text(self, req: InterventionRequest) -> str:
+        """PHASE 6: route through the LLM message writer when an LLM is
+        configured. Fallback to the static templates if no LLM is set, the
+        LLM fails, or the response is invalid. The writer also records an
+        agent.thinking event in the audit chain for every call."""
+        from revive.agents.message_writer import write_nudge
+
         page_url = self._page_url(req.journey_id)
-        if req.intervention == WHATSAPP_NUDGE:
-            return whatsapp_nudge_text(req.amount_minor, page_url=page_url)
-        return email_nudge_text(req.amount_minor, page_url=page_url)
+        channel = _CHANNEL_FOR_INTERVENTION[req.intervention]
+        body, _subject = write_nudge(
+            store=self._event_store,
+            llm=self._llm,
+            clock=self._clock,
+            journey_id=req.journey_id,
+            channel=channel,
+            amount_minor=req.amount_minor,
+            attempt_no=req.attempt_no,
+            link_url=page_url,
+        )
+        return body
 
     def _enqueue_reply_wait(self, req: InterventionRequest, channel_name: str) -> None:
         self._queue.enqueue(
