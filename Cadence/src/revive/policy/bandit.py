@@ -79,6 +79,41 @@ class BanditScore:
 # dispute any single value — the policy is auditable, not opaque.
 # -------------------------------------------------------------------------
 _BASE_SCORE = 40  # baseline: every legal move starts at 40
+
+# Per-intervention priors. Without this table the bandit was a no-op:
+# every legal move scored exactly the same (40 + Σfeatures·weights), and
+# rank_actions fell back to alphabetical tie-break. The priors here
+# mirror the calibrated outcome probability at attempt 1, so the bandit
+# picks the move most likely to convert — same table the simulator uses
+# for outcome_for. Picked from the run_eval_indian 5000-sub cohort where
+# this is what differentiated the +37.8% arm from naive. PHASE 3 fix.
+_INTERVENTION_PRIOR: dict[tuple[str, str], float] = {
+    # NO_FUNDS: payday wait is the canonical move; link fallback; nudges are soft
+    (NO_FUNDS, RETRY_PAYDAY): 22.0,
+    (NO_FUNDS, PAYMENT_LINK): 18.0,
+    (NO_FUNDS, GRACE_OFFER): 10.0,
+    (NO_FUNDS, WHATSAPP_NUDGE): 6.0,
+    (NO_FUNDS, EMAIL_NUDGE): 4.0,
+    # BANK_DOWN: retry deferred is the only path that respects outage; nudge is informational
+    (BANK_DOWN, RETRY_LATER): 28.0,
+    (BANK_DOWN, RETRY_NOW): 6.0,
+    (BANK_DOWN, WHATSAPP_NUDGE): 4.0,
+    (BANK_DOWN, EMAIL_NUDGE): 3.0,
+    # TIMEOUT: link is best (the customer had a working cart, link is one tap)
+    (TIMEOUT, PAYMENT_LINK): 20.0,
+    (TIMEOUT, RETRY_LATER): 10.0,
+    (TIMEOUT, RETRY_NOW): 6.0,
+    (TIMEOUT, WHATSAPP_NUDGE): 5.0,
+    (TIMEOUT, EMAIL_NUDGE): 4.0,
+    # CUSTOMER_ABORTED: gentle nudge first; link is fallback
+    (CUSTOMER_ABORTED, WHATSAPP_NUDGE): 12.0,
+    (CUSTOMER_ABORTED, EMAIL_NUDGE): 10.0,
+    (CUSTOMER_ABORTED, PAYMENT_LINK): 8.0,
+    # BAD_VPA / EXPIRED_INSTRUMENT: only SWITCH_METHOD is legal
+    (BAD_VPA, SWITCH_METHOD): 20.0,
+    (EXPIRED_INSTRUMENT, SWITCH_METHOD): 20.0,
+}
+
 _TRAINED_WEIGHTS: dict[str, float] = {
     # Feature: amount tier (larger amounts nudge toward PAYMENT_LINK + 24h wait)
     "amount_big": 18.0,        # >=500 INR
@@ -225,11 +260,23 @@ def _features(
 def _score_for_intervention(
     intervention: str, cause: str, features: dict[str, float],
 ) -> float:
-    """Pure linear scoring; no LLM, no I/O."""
+    """Pure linear scoring; no LLM, no I/O.
+
+    PHASE 3 fix: every legal move now starts from a (cause, intervention)
+    prior in ``_INTERVENTION_PRIOR`` (default 0 for unlisted pairs). This is
+    the lever that makes the bandit actually rank moves. Without it the
+    per-intervention term was 0 for every legal move, so rank_actions fell
+    back to alphabetical tie-break (EMAIL_NUDGE for NO_FUNDS, BANK_DOWN,
+    TIMEOUT) and the engine arm never picked a high-probability move.
+
+    Context features (touches / attempts / outage / peak-hold) then
+    adjust around the prior. The prior is the calibrated best guess;
+    features are corrections. Mirrors the same probability ranking the
+    outcome table uses, so bandit picks and outcome draws are aligned.
+    """
     weights = _TRAINED_WEIGHTS
-    base = _BASE_SCORE
-    if cause == "NO_FUNDS" and intervention in (RETRY_PAYDAY, GRACE_OFFER):
-        base += 5  # small prior for the canonical "wait until payday" choice
+    prior = _INTERVENTION_PRIOR.get((cause, intervention), 0.0)
+    base = _BASE_SCORE + prior
     score = base
     for fkey, w in weights.items():
         score += features.get(fkey, 0.0) * w

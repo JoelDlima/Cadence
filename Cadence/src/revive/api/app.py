@@ -1058,47 +1058,70 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         is essentially this with rate-tuned p values; we use a deterministic
         variant so the comparison is reproducible on the buildathon laptop).
 
-        n is capped at 200 to keep the live endpoint under 5s on the
-        buildathon laptop.
+        n is capped at 200 and floored at 10. For the live SPA chart we
+        cap at 50 by default (the previous full-100 cohort was too slow
+        for an HTTP response). Cached by (n, seed) for 60s so re-runs
+        are instant; the SPA's "Run comparison" button works on cached
+        results when params match.
         """
         import time as _t
         from revive.sim.experiment import run_arm_naive, run_arm_revive
         from revive.sim.cohort import generate_cohort
         from revive.sim.experiment import _arm_metrics
         import tempfile
+        import threading
 
-        n = max(10, min(int(n), 200))
-        seed = int(seed)
-        cohort = generate_cohort(n, seed)
+        n_eff = max(10, min(int(n), 200))
+        seed_eff = int(seed)
+        # Cap the LIVE request at 50 to keep the response under 10s.
+        n_live = min(n_eff, 50)
+
+        # Tiny in-process cache: (n, seed) -> AgentCompareOut dict.
+        # Keeps the SPA snappy on the demo video.
+        cache: dict[tuple[int, int], dict] = getattr(app.state, "_eval_cache", None) or {}
+        cache_key = (n_live, seed_eff)
+        now = _t.time()
+        if cache_key in cache:
+            entry = cache[cache_key]
+            if now - entry["ts"] < 60:
+                return AgentCompareOut(**entry["data"])
+
+        cohort = generate_cohort(n_live, seed_eff)
         with tempfile.TemporaryDirectory(prefix="revive_compare_") as tmp:
             t0 = _t.time()
             naive = run_arm_naive(cohort, Path(tmp) / "naive")
             revive = run_arm_revive(cohort, Path(tmp) / "revive")
             runtime_ms = int((_t.time() - t0) * 1000)
 
-        naive_m = _arm_metrics(naive, n)
-        revive_m = _arm_metrics(revive, n)
+        naive_m = _arm_metrics(naive, n_live)
+        revive_m = _arm_metrics(revive, n_live)
         naive_pct = float(naive_m["recovery_rate_pct"])
         revive_pct = float(revive_m["recovery_rate_pct"])
         uplift = round((revive_pct - naive_pct) / naive_pct * 100, 1) if naive_pct > 0 else 0.0
-        return AgentCompareOut(
-            n=n,
-            seed=seed,
-            naive_recovered_inr=float(naive_m["recovered_inr_major"]),
-            naive_recovery_pct=naive_pct,
-            naive_contacts=int(naive_m["contacts"]),
-            naive_attempts=int(naive_m["attempts"]),
-            revive_recovered_inr=float(revive_m["recovered_inr_major"]),
-            revive_recovery_pct=revive_pct,
-            revive_contacts=int(revive_m["contacts"]),
-            revive_attempts=int(revive_m["attempts"]),
-            uplift_pct=uplift,
-            recovered_delta=float(revive_m["recovered_inr_major"]) - float(naive_m["recovered_inr_major"]),
-            fast_path_pct=float(revive_m.get("fast_path_pct", 100.0)),
-            cohort="indian",
-            runtime_ms=runtime_ms,
-            source="live_experiment",
-        )
+        data = {
+            "n": n_live,
+            "seed": seed_eff,
+            "naive_recovered_inr": float(naive_m["recovered_inr_major"]),
+            "naive_recovery_pct": naive_pct,
+            "naive_contacts": int(naive_m["contacts"]),
+            "naive_attempts": int(naive_m["attempts"]),
+            "revive_recovered_inr": float(revive_m["recovered_inr_major"]),
+            "revive_recovery_pct": revive_pct,
+            "revive_contacts": int(revive_m["contacts"]),
+            "revive_attempts": int(revive_m["attempts"]),
+            "uplift_pct": uplift,
+            "recovered_delta": float(revive_m["recovered_inr_major"]) - float(naive_m["recovered_inr_major"]),
+            "fast_path_pct": float(revive_m.get("fast_path_pct", 100.0)),
+            "cohort": "indian",
+            "runtime_ms": runtime_ms,
+            "source": "live_experiment",
+        }
+        # Cache the result and prune old entries.
+        cache[cache_key] = {"ts": _t.time(), "data": data}
+        for k in [k for k, v in cache.items() if now - v["ts"] > 120]:
+            cache.pop(k, None)
+        setattr(app.state, "_eval_cache", cache)
+        return AgentCompareOut(**data)
 
     @app.get("/api/journey/{journey_id}", response_model=JourneyOut)
     def get_journey(journey_id: str) -> JourneyOut:

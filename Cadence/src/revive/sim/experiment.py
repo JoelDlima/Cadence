@@ -262,17 +262,29 @@ def _build_stack(
     queue = QueueRepo(db)
     cause_lookup = {sid: root_cause_of(sub) for sid, sub in sub_by_id.items()}
     last_intervention: dict[str, str] = {}
+    attempt_in_progress: dict[str, int] = {}  # sub_id -> attempt_no of current action
 
     def outcome_fn(seed: str) -> bool:
         subscription_id, _, attempt_text = seed.rpartition(":")
+        # The attempt_no from the seed can be 0 (selfserve) or missing
+        # (post-1 retry with selfserve in the middle). Always fall back to
+        # the in-progress attempt counter for the subscription so the
+        # outcome probability uses the correct calibration row.
+        try:
+            attempt_no = int(attempt_text or 1)
+        except ValueError:
+            attempt_no = 1
+        if attempt_no < 1:
+            attempt_no = attempt_in_progress.get(subscription_id, 1)
         cause = cause_lookup.get(subscription_id, UNKNOWN)
         intervention = last_intervention.get(subscription_id, "")
         rng = random.Random(f"outcome:{seed}")
-        return outcome_for(rng, cause, intervention, int(attempt_text or 1))
+        return outcome_for(rng, cause, intervention, attempt_no)
 
     def dispatch(payload: dict[str, Any]) -> None:
         request = request_from_payload(payload)
         last_intervention[request.subscription_id] = request.intervention
+        attempt_in_progress[request.subscription_id] = int(request.attempt_no or 1)
         dispatcher.execute(request)
 
     def handle_failed(payload: dict[str, Any]) -> None:

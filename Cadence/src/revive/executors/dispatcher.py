@@ -310,6 +310,11 @@ class Dispatcher:
         self._journeys.update_fields(req.journey_id, fields, updated_at=self._now())
 
     def _exec_grace_offer(self, req: InterventionRequest) -> InterventionResult:
+        """Grant a 7-day grace period. Critically: also enqueue a +7d follow-up
+        so the journey re-enters the engine after the grace window. Without
+        this, a granted grace would strand the journey in INTERVENING forever.
+        PHASE 3 fix.
+        """
         self._emit(
             E_ACTION_EXECUTED,
             req.journey_id,
@@ -319,6 +324,24 @@ class Dispatcher:
                 "detail": "grace period granted",
                 "attempt_no": req.attempt_no,
             },
+        )
+        # Re-fire payment_failed after the 7-day grace so the engine picks
+        # a real recovery move (link, retry-payday, etc.) — the sim's
+        # calibrated (NO_FUNDS, grace) = 0.10 already accounts for some
+        # in-window conversion, but most grace recipients need a follow-up.
+        self._queue.enqueue(
+            task_type=TASK_HANDLE_PAYMENT_FAILED,
+            payload={
+                "subscription_id": req.subscription_id,
+                "customer_id": req.customer_id,
+                "failure_code": "save_window_expiry",
+                "error_description": "save window expiry",
+                "amount_minor": req.amount_minor,
+                "currency": req.currency,
+            },
+            available_at=utc_iso(self._clock.now() + timedelta(days=7)),
+            created_at=self._now(),
+            idempotency_key=f"save_grace:{req.journey_id}:{req.attempt_no}",
         )
         return InterventionResult(status=STATUS_EXECUTED, detail="grace period granted")
 

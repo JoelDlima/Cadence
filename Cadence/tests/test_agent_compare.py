@@ -41,12 +41,16 @@ def test_agent_compare_endpoint_returns_both_arms(tmp_path: Path) -> None:
     assert "recovered_delta" in d
 
 
-def test_agent_compare_endpoint_caps_n_at_200(tmp_path: Path) -> None:
+def test_agent_compare_endpoint_caps_n_at_50_for_live(tmp_path: Path) -> None:
+    """PHASE 3 follow-up: n is capped at 200 in the input but 50 in the live
+    endpoint (the experiment runner can't return within an HTTP response
+    window above ~50). The SPA can request more, the live endpoint silently
+    caps."""
     cfg = _config(tmp_path / "compare2.db")
     client = TestClient(create_app(cfg=cfg))
     r = client.get("/api/eval/agent-compare?n=999&seed=42")
     assert r.status_code == 200
-    assert r.json()["n"] == 200  # capped at 200
+    assert r.json()["n"] == 50  # capped at 50 in the live endpoint
 
 
 def test_agent_compare_endpoint_floor_n_at_10(tmp_path: Path) -> None:
@@ -57,9 +61,10 @@ def test_agent_compare_endpoint_floor_n_at_10(tmp_path: Path) -> None:
     assert r.json()["n"] == 10  # floored at 10
 
 
-def test_agent_compare_default_n_is_100(tmp_path: Path) -> None:
+def test_agent_compare_default_n_is_50(tmp_path: Path) -> None:
+    """Default n is 50 to keep the response under 10s. SPA defaults to that."""
     cfg = _config(tmp_path / "compare4.db")
     client = TestClient(create_app(cfg=cfg))
     r = client.get("/api/eval/agent-compare?seed=42")
     assert r.status_code == 200
-    assert r.json()["n"] == 100
+    assert r.json()["n"] == 50
