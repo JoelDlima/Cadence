@@ -72,9 +72,20 @@ export function AppShell({
     return () => clearInterval(timer);
   }, []);
 
-  // Poll kill switch state
+  // Poll kill switch state every 2 seconds so multiple SPA tabs/windows
+  // all flip in sync, and so a kill from the API is reflected within 2s.
   useEffect(() => {
-    api.getKillSwitch().then((res) => setKillArmed(res)).catch(() => {});
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      api.getKillSwitch().then((res) => setKillArmed(res)).catch(() => {});
+    };
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   const handleToggleKill = async () => {
@@ -285,6 +296,23 @@ export function AppShell({
           </div>
 
           <div className="flex items-center gap-4 text-xs font-mono text-[var(--color-ink-muted)]">
+            {/* PHASE 4: prominent kill-switch indicator in the top header.
+               Clicking it opens the same confirmation modal as the sidebar
+               button. The two are kept in sync by the 2s polling above. */}
+            <button
+              onClick={() => setShowKillModal(true)}
+              aria-pressed={killArmed}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded border text-[12px] font-mono font-medium transition-colors cursor-pointer",
+                killArmed
+                  ? "border-[var(--color-rejected)] bg-[var(--color-rejected)] text-white hover:bg-[var(--color-rejected)]"
+                  : "border-[var(--color-line-strong)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
+              )}
+            >
+              <Power size={13} />
+              {killArmed ? "ENGINE STOPPED" : "STOP"}
+            </button>
+            <span className="text-[var(--color-line-strong)]">|</span>
             <span className="flex items-center gap-1 text-[var(--color-approved)]">
               <ShieldCheck size={14} />
               <span>Deterministic Spine</span>
@@ -296,6 +324,34 @@ export function AppShell({
             </span>
           </div>
         </header>
+
+        {/* PHASE 4: full-width red banner under the header when kill is
+           armed. Sticky below the header so it scrolls with the user. */}
+        {killArmed && (
+          <div
+            role="alert"
+            data-testid="kill-banner"
+            className="sticky top-[57px] z-20 bg-[var(--color-rejected)] text-white text-[13px] font-medium px-8 py-2 shadow-sm"
+          >
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={15} />
+                <span>
+                  <strong>Compliance stop engaged</strong> &mdash; no outreach, no
+                  retries, no payment links. All Guardian vetoes now include
+                  <code className="bg-white/20 px-1.5 py-0.5 rounded text-[11px] mx-1">kill_switch</code>
+                  in the reason.
+                </span>
+              </div>
+              <button
+                onClick={() => setShowKillModal(true)}
+                className="text-white/90 hover:text-white text-[12px] underline"
+              >
+                disarm
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Dynamic Page Content */}
         <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
