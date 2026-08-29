@@ -25,3 +25,25 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Tooling backups
+.kit_backup/
+.opencode/
+.claude/
+.agents/
+
+# Local DB (the engine rebuilds it from migrations on first boot)
+data/
+
+# Live verification logs
+Cadence/api.out
+Cadence/api.err
+
+# Build artifacts in repos that don't get added
+*.bak
+*.tmp
+*.swp
+.~*
+.vscode/
+.idea/
+

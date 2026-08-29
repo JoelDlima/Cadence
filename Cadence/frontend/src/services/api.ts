@@ -18,6 +18,7 @@ import {
   InjectResponse,
   AgentCompare,
   AgentReasoning,
+  MerchantSummary,
 } from '../types';
 
 export const inrFormatter = new Intl.NumberFormat('en-IN', {
@@ -93,6 +94,10 @@ export const api = {
     return jsonFetch<{ rankings: BanditRanking[]; count: number }>(
       `/api/bandit/ranked?limit=${limit}`,
     );
+  },
+
+  async getMerchantSummary(): Promise<MerchantSummary> {
+    return jsonFetch<MerchantSummary>('/api/merchant/summary');
   },
 
   async getNudgePreview(

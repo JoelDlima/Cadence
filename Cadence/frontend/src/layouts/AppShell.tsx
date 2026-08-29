@@ -29,6 +29,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'merchant', label: 'Merchant', icon: Briefcase },
   { id: 'journeys', label: 'Journeys & Audit', icon: FileClock },
   { id: 'guardian', label: 'Policy Guardian', icon: ShieldCheck },
   { id: 'brain', label: 'Recovery Brain', icon: Brain },

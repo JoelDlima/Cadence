@@ -7,6 +7,7 @@ import { TestbenchView } from './views/TestbenchView';
 import { PayPortalView } from './views/PayPortalView';
 import { RecoveryBrainView } from './views/RecoveryBrainView';
 import { AgentCompareView } from './views/AgentCompareView';
+import { MerchantDashboard } from './views/MerchantDashboard';
 import { CheckoutView } from './views/CheckoutView';
 import { B2BView } from './views/B2BView';
 import { MandateView } from './views/MandateView';
@@ -101,6 +102,10 @@ export const App: React.FC = () => {
 
       {currentTab === 'brain' && (
         <RecoveryBrainView />
+      )}
+
+      {currentTab === 'merchant' && (
+        <MerchantDashboard />
       )}
 
       {currentTab === 'agentcompare' && (

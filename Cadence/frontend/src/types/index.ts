@@ -204,3 +204,17 @@ export interface AgentReasoning {
   steps: ReasoningStep[];
   has_llm_thought: boolean;
 }
+
+export interface MerchantSummary {
+  total_journeys: number;
+  total_recovered: number;
+  total_lost: number;
+  recovery_rate_pct: number;
+  recovered_amount_inr: number;
+  lost_amount_inr: number;
+  avg_time_to_recover_minutes: number;
+  top_root_causes: { root_cause: string; count: number; recovered: number; lost: number }[];
+  state_distribution: Record<string, number>;
+  intervention_performance: { intervention: string; count: number; recovered: number }[];
+  generated_at: string;
+}
