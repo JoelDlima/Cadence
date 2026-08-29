@@ -14,7 +14,8 @@ import {
   Brain,
   ShoppingCart,
   Briefcase,
-  GitBranch
+  GitBranch,
+  GitCompare
 } from 'lucide-react';
 import { Badge, Button, cn } from '../components/primitives';
 import { api } from '../services/api';
@@ -30,9 +31,10 @@ const navItems: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'journeys', label: 'Journeys & Audit', icon: FileClock },
   { id: 'guardian', label: 'Policy Guardian', icon: ShieldCheck },
+  { id: 'brain', label: 'Recovery Brain', icon: Brain },
+  { id: 'agentcompare', label: 'Agent vs Naive', icon: GitCompare },
   { id: 'testbench', label: 'Simulation & Chaos', icon: FlaskConical },
   { id: 'pay', label: 'Payment Portal', icon: CreditCard },
-  { id: 'brain', label: 'Recovery Brain', icon: Brain },
   { id: 'checkout', label: 'Checkout Recovery', icon: ShoppingCart },
   { id: 'b2b', label: 'B2B Receivables', icon: Briefcase },
   { id: 'mandate', label: 'Mandate Sequencer', icon: GitBranch },

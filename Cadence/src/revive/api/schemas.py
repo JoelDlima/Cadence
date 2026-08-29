@@ -109,6 +109,29 @@ class EvalSummaryOut(BaseModel):
     source: str  # "live" (re-ran) or "cached" (read eval-metrics.json)
 
 
+class AgentCompareOut(BaseModel):
+    """PHASE 3: live comparison of Cadence vs Razorpay Smart Retries baseline
+    on a fresh small cohort (n<=200). Designed for the SPA's live
+    "your agent vs the default" chart.
+    """
+    n: int
+    seed: int
+    naive_recovered_inr: float
+    naive_recovery_pct: float
+    naive_contacts: int
+    naive_attempts: int
+    revive_recovered_inr: float
+    revive_recovery_pct: float
+    revive_contacts: int
+    revive_attempts: int
+    uplift_pct: float
+    recovered_delta: float
+    fast_path_pct: float
+    cohort: str  # "indian" (Faker Indian), "generic", or path to JSON file
+    runtime_ms: int
+    source: str  # "live_experiment"
+
+
 class ChaosResultOut(BaseModel):
     drill: str
     passed: bool

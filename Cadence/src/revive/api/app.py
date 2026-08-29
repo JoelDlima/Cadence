@@ -37,6 +37,7 @@ from fastapi.staticfiles import StaticFiles
 from revive.agents.llm_client import LLMClient
 from revive.agents.planner import PlannerAgent
 from revive.api.schemas import (
+    AgentCompareOut,
     AttentionOut,
     AuditVerifyOut,
     BanksOut,
@@ -935,16 +936,6 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
 
     @app.get("/api/eval-summary", response_model=EvalSummaryOut)
     def get_eval_summary() -> EvalSummaryOut:
-        """Read the latest eval summary from disk.
-
-        Order of preference (most recent first):
-          1. ``docs/eval-metrics-large.json`` (5,000-sub Faker Indian cohort, the
-             "scaled run" number for the pitch deck)
-          2. ``docs/eval-metrics.json`` (500-sub canonical, the headline number
-             cited in the README and ARCHITECTURE.md)
-          3. ``Cadence/docs/eval-metrics.json`` (fallback if a CWD-shifted build
-             expects a different root)
-        """
         from pathlib import Path as _P
         # The large cohort is preferred when present (the pitch-deck slide
         # cites "5,000 subscribers"); otherwise we fall back to the 500-sub
@@ -1052,6 +1043,61 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             http_status=status,
             body=body_out,
             signature_prefix=sig[:8],
+        )
+
+    @app.get("/api/eval/agent-compare", response_model=AgentCompareOut)
+    def get_agent_compare(n: int = 100, seed: int = 42) -> AgentCompareOut:
+        """PHASE 3: live head-to-head comparison Cadence vs Razorpay Smart
+        Retries baseline. Runs the SAME cohort (n subscribers, Indian Faker)
+        through both arms and returns the deltas. Designed for the SPA's
+        "your agent vs the default" chart in the 5-min pitch.
+
+        Cadence is run on a real engine (deterministic bandit's picks flow
+        through the simulator's outcome table). The baseline is the
+        "blind retry +24h then d1/d3/d5 emails" policy (Razorpay Smart Retries
+        is essentially this with rate-tuned p values; we use a deterministic
+        variant so the comparison is reproducible on the buildathon laptop).
+
+        n is capped at 200 to keep the live endpoint under 5s on the
+        buildathon laptop.
+        """
+        import time as _t
+        from revive.sim.experiment import run_arm_naive, run_arm_revive
+        from revive.sim.cohort import generate_cohort
+        from revive.sim.experiment import _arm_metrics
+        import tempfile
+
+        n = max(10, min(int(n), 200))
+        seed = int(seed)
+        cohort = generate_cohort(n, seed)
+        with tempfile.TemporaryDirectory(prefix="revive_compare_") as tmp:
+            t0 = _t.time()
+            naive = run_arm_naive(cohort, Path(tmp) / "naive")
+            revive = run_arm_revive(cohort, Path(tmp) / "revive")
+            runtime_ms = int((_t.time() - t0) * 1000)
+
+        naive_m = _arm_metrics(naive, n)
+        revive_m = _arm_metrics(revive, n)
+        naive_pct = float(naive_m["recovery_rate_pct"])
+        revive_pct = float(revive_m["recovery_rate_pct"])
+        uplift = round((revive_pct - naive_pct) / naive_pct * 100, 1) if naive_pct > 0 else 0.0
+        return AgentCompareOut(
+            n=n,
+            seed=seed,
+            naive_recovered_inr=float(naive_m["recovered_inr_major"]),
+            naive_recovery_pct=naive_pct,
+            naive_contacts=int(naive_m["contacts"]),
+            naive_attempts=int(naive_m["attempts"]),
+            revive_recovered_inr=float(revive_m["recovered_inr_major"]),
+            revive_recovery_pct=revive_pct,
+            revive_contacts=int(revive_m["contacts"]),
+            revive_attempts=int(revive_m["attempts"]),
+            uplift_pct=uplift,
+            recovered_delta=float(revive_m["recovered_inr_major"]) - float(naive_m["recovered_inr_major"]),
+            fast_path_pct=float(revive_m.get("fast_path_pct", 100.0)),
+            cohort="indian",
+            runtime_ms=runtime_ms,
+            source="live_experiment",
         )
 
     @app.get("/api/journey/{journey_id}", response_model=JourneyOut)

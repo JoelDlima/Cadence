@@ -118,6 +118,25 @@ export interface EvalSummary {
   source: 'live' | 'cached' | 'missing';
 }
 
+export interface AgentCompare {
+  n: number;
+  seed: number;
+  naive_recovered_inr: number;
+  naive_recovery_pct: number;
+  naive_contacts: number;
+  naive_attempts: number;
+  revive_recovered_inr: number;
+  revive_recovery_pct: number;
+  revive_contacts: number;
+  revive_attempts: number;
+  uplift_pct: number;
+  recovered_delta: number;
+  fast_path_pct: number;
+  cohort: string;
+  runtime_ms: number;
+  source: 'live_experiment';
+}
+
 export interface ChaosResult {
   drill: string;
   passed: boolean;

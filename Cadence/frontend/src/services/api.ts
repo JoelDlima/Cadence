@@ -16,6 +16,7 @@ import {
   BanditRanking,
   InjectRequest,
   InjectResponse,
+  AgentCompare,
 } from '../types';
 
 export const inrFormatter = new Intl.NumberFormat('en-IN', {
@@ -207,6 +208,12 @@ export const api = {
 
   async getEvalSummary(): Promise<EvalSummary> {
     return jsonFetch<EvalSummary>('/api/eval-summary');
+  },
+
+  async getAgentCompare(n: number = 100, seed: number = 42): Promise<AgentCompare> {
+    return jsonFetch<AgentCompare>(
+      `/api/eval/agent-compare?n=${n}&seed=${seed}`
+    );
   },
 
   async runChaosDrill(drill: string): Promise<ChaosResult> {

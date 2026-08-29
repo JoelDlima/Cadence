@@ -6,6 +6,7 @@ import { GuardianView } from './views/GuardianView';
 import { TestbenchView } from './views/TestbenchView';
 import { PayPortalView } from './views/PayPortalView';
 import { RecoveryBrainView } from './views/RecoveryBrainView';
+import { AgentCompareView } from './views/AgentCompareView';
 import { CheckoutView } from './views/CheckoutView';
 import { B2BView } from './views/B2BView';
 import { MandateView } from './views/MandateView';
@@ -100,6 +101,10 @@ export const App: React.FC = () => {
 
       {currentTab === 'brain' && (
         <RecoveryBrainView />
+      )}
+
+      {currentTab === 'agentcompare' && (
+        <AgentCompareView />
       )}
 
       {currentTab === 'checkout' && (
