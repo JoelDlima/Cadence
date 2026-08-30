@@ -27,7 +27,11 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-WEBHOOK_SECRET_DEFAULT = "cadence_webhook_secret_dev"
+# S1: the previous default was a real-looking Razorpay webhook
+# secret. The new default is empty and the parser fails fast if the
+# env var is missing. Real callers must set RZP_WEBHOOK_SECRET in
+# their shell (or Cadence/.env, which is gitignored).
+WEBHOOK_SECRET_DEFAULT = ""
 RAZORPAY_BASE = "https://api.razorpay.com/v1"
 CADENCE_WEBHOOK_URL = "http://127.0.0.1:8000/webhooks/razorpay"
 

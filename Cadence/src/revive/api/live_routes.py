@@ -64,7 +64,12 @@ class LiveFailureOut(BaseModel):
 
 class LivePaymentPaidIn(BaseModel):
     reference_id: str
-    payment_id: str = "pay_LIVE_DEMO"
+    # B-fix: the previous default of 'pay_LIVE_DEMO' deduplicated the
+    # capture task on the second call (the queue's idempotency_key was
+    # built from payment_id) so the worker silently dropped the task
+    # and the journey stayed INTERVENING forever. The route now
+    # generates a unique id when the caller does not supply one.
+    payment_id: str | None = None
 
 
 def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
@@ -218,6 +223,10 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         if j is None:
             raise HTTPException(status_code=404, detail=f"unknown journey {journey_id}")
         subscription_id = j.subscription_id
+        # B-fix: a fresh payment id per call prevents the queue's
+        # idempotency_key (which is built from payment_id) from
+        # suppressing a second-run capture task.
+        payment_id = body.payment_id or f"pay_live_{uuid.uuid4().hex[:12]}"
         body_dict = {
             "id": event_id,
             "event": "payment_link.paid",
@@ -227,7 +236,7 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                     "reference_id": body.reference_id,
                 }},
                 "payment": {"entity": {
-                    "id": body.payment_id,
+                    "id": payment_id,
                     "amount": 49900, "currency": "INR", "status": "captured",
                 }},
             },
@@ -246,7 +255,10 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         except Exception as exc:  # noqa: BLE001
             log.warning("post_payment_paid process_delivery failed: %r", exc)
             raise HTTPException(status_code=500, detail=f"webhook ingest failed: {exc!r}")
+        # B-fix: echo the generated payment_id so the SPA + verify
+        # script can assert two calls produced distinct ids.
         return {"status": body_out.get("status", "unknown"), "http": status, "event_id": event_id,
-                "journey_id": journey_id, "subscription_id": subscription_id}
+                "journey_id": journey_id, "subscription_id": subscription_id,
+                "payment_id_used": payment_id}
 
     return router

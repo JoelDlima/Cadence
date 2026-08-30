@@ -121,7 +121,10 @@ def main() -> int:
         overall &= _check("short_url", bool(d.get("short_url")), f"short_url={d.get('short_url')}")
 
     # 1c. send a payment.failed webhook TO the engine (real shape) and verify HMAC
-    webhook_secret = "cadence_webhook_secret_dev"
+    webhook_secret = os.environ.get("RZP_WEBHOOK_SECRET")
+    if not webhook_secret:
+        print("  SKIP: RZP_WEBHOOK_SECRET not set in env.")
+        return 0
     failed_payload = {
         "entity": "event",
         "account_id": "acc_TEST",
@@ -207,7 +210,7 @@ def main() -> int:
         method="POST",
         body={
             "from": "Cadence Smoke <onboarding@resend.dev>",
-            "to": ["joelinternshipaitd@gmail.com"],
+            "to": [os.environ.get("BUILDATHON_TEST_EMAIL", "demo@cadence.local")],
             "subject": f"Cadence LIVE smoke @ {time.strftime('%H:%M:%S')}",
             "text": "All systems green. - Cadence",
         },

@@ -79,8 +79,7 @@ def main() -> int:
           f"short_url {fail['payment_link']['short_url']}")
     print(f"                 plink.simulated={fail['payment_link']['simulated']}")
     s, pp = post("/api/live/payment-paid",
-                 {"reference_id": fail["payment_link"]["reference_id"],
-                  "payment_id": "pay_D4"})
+                 {"reference_id": fail["payment_link"]["reference_id"]})
     print(f"    [4c] paid       http {s}  status={pp.get('status')}  http={pp.get('http')}")
     print(f"                 event_id {pp.get('event_id')}")
 

@@ -118,9 +118,12 @@ export const LiveRecoveryView: React.FC = () => {
     if (!failure) return;
     setRecoverDisabled(true);
     try {
+      // B-fix: let the backend generate a unique payment_id per
+      // call (the old constant 'pay_LIVE_DEMO' deduplicated the
+      // capture task on the second run, stranding the journey in
+      // INTERVENING).
       await api.simulateLivePaymentLinkPaid({
         reference_id: failure.payment_link.reference_id,
-        payment_id: 'pay_LIVE_DEMO',
       });
     } catch (e: any) {
       setError(e?.message ?? 'simulate_paid failed');

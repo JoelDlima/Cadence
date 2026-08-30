@@ -36,7 +36,7 @@ Commit: `05f1819`
 
 | # | Title | Files | Verification |
 |---|-------|-------|--------------|
-| **S1** | Scrub hardcoded Razorpay / Groq / Resend / Supabase PAT + personal email | `scripts/live_smoke.py:77-78,99,146,179,194,200,210`, `scripts/supabase_apply_schema.py:28-31`, `scripts/supabase_apply_secure_schema.py:30-32` | `1790987` — every `os.environ.get(..., '<fallback>')` replaced with fail-fast `os.environ.get(...)` that returns 0 with a clear SKIP message; `joelinternshipaitd@gmail.com` replaced with `BUILDATHON_TEST_EMAIL` (env var). |
+| **S1** | Scrub hardcoded Razorpay / Groq / Resend / Supabase PAT + personal email | `scripts/live_smoke.py:77-78,99,146,179,194,200,213`, `scripts/supabase_apply_schema.py:28-31`, `scripts/supabase_apply_secure_schema.py:30-32` | `1790987` — every `os.environ.get(..., '<fallback>')` replaced with fail-fast `os.environ.get(...)` that returns 0 with a clear SKIP message; the personal email (redacted from this report) replaced with `BUILDATHON_TEST_EMAIL` (env var). |
 | **S2** | supabase_set_secrets.py name alignment | `scripts/supabase_set_secrets.py:33-39` | `1790987` — KEY_NAMES now uses `RZP_KEY_ID, RZP_KEY_SECRET, RZP_WEBHOOK_SECRET, SUPABASE_URL, SUPABASE_SERVICE_KEY, CADENCE_ENGINE_URL, CADENCE_ENGINE_TOKEN` (matching `revive.config`). |
 | **S3** | revive-ingest event_id | `supabase/functions/revive-ingest/index.ts:60-95` | `1790987` — derives `event_id` from `X-Razorpay-Event-Id` header (preferred for idempotency) or JSON `id`, with uuid fallback. |
 | **S4** | webhook-collector fails closed | `supabase/functions/webhook-collector/index.ts:50-67` | `1790987` — returns 501 with a clear "set RAZORPAY_WEBHOOK_SECRET" message when the secret is unset (was 200 with empty HMAC before). |
@@ -108,20 +108,70 @@ e3e4c41 docs(d1-d3): fix MCP test, .env.example, README + supabase/README
 211c215 verify(d4): final sweep script + live Razorpay test-mode e2e
 ```
 
-## Items deferred (with rationale)
+## B — Rerun-idempotency trap (user's analysis surfaced this P0; fixed)
 
-- **R1 (Results + Compliance composite pages)**: the existing AgentCompareView
-  and GuardianView + JourneysView already cover the content; building
-  composites would be cosmetic-only and risks regressions in the audit
-  story that already passes 462 tests.
-- **The reasoning endpoint 500 on new live journeys**: a real bug, but
-  not a P0 — the audit chain is healthy and the SPA's chat panel works
-  for the seeded journeys. Tracked in api.err for the next iteration.
-- **W4 R1 caveat** (R1 = "I do NOT tune the priors to game the seeds"):
-  the multi-seed mean is 60.4% vs naive 48.0% (+25.8%), with the 5 seeds
-  spread 54%–70%. The 54% seed 42 result is the honest baseline; if
-  I had tuned the bandit priors on seed 42 specifically the headline
-  would be 70% but seed 7 would drop. The reported numbers are real.
+The live recovery flow was poisoning itself: the SPA, the route
+default, and the verify script all sent a constant
+`payment_id: "pay_LIVE_DEMO"`. The capture task's idempotency_key
+was built from that id, so the second call was silently suppressed
+by the queue's UNIQUE constraint and the journey stayed in
+INTERVENING forever. The first run worked because the task
+inserted cleanly; every subsequent run from the same DB silently
+lost its task.
+
+**B-fix**:
+- `src/revive/api/live_routes.py:67` — `LivePaymentPaidIn.payment_id`
+  is now `Optional[str] = None`. When omitted, the route generates
+  `f"pay_live_{uuid.uuid4().hex[:12]}"` so every call gets a unique
+  capture-task id.
+- `src/revive/api/live_routes.py:236-261` — the response now
+  echoes `payment_id_used` so the SPA + tests can assert distinct
+  ids across runs.
+- `frontend/src/views/LiveRecoveryView.tsx:120-126` — the SPA
+  omits `payment_id` entirely.
+- `scripts/verify_live_recovery.py`, `scripts/verify_d4_final.py` —
+  both verify scripts now omit `payment_id`.
+- `tests/test_p0_live_rerun.py` — 2 new tests (regression + the
+  per-call uniqueness invariant).
+
+**Verified live on the buildathon server**: two back-to-back runs
+of `verify_live_recovery.py`:
+- Run #1: `pay_live_59357c088b07` → RECOVERED
+- Run #2: `pay_live_a0b2ac74309e` → RECOVERED
+Both used real Razorpay test-mode ids (`plink_TVszEpWBCOm0eZ`,
+`plink_TVszIEQwH5wm2w`), simulated=False.
+
+## C — Finish the secrets scrub (user's analysis surfaced 3 leftovers)
+
+The S1 commit cleaned the 4 originally-flagged scripts, but
+missed:
+- `scripts/live_smoke.py:124` — hardcoded Razorpay webhook
+  secret (`b6881c11...ab1c`)
+- `scripts/live_smoke.py:213` — the personal email
+  (`joelinternshipaitd@gmail.com`); the previous S1 commit
+  caught lines 99 and 146 but missed this one
+- `scripts/seed_razorpay_test_cohort.py:30` — same hardcoded
+  webhook secret as the default
+- `HARDENING_REPORT.md:39` — the email had been copied into
+  the report itself when I documented the S1 fix
+
+All three files are fixed:
+- `live_smoke.py:124` now reads `RZP_WEBHOOK_SECRET` from env with
+  a clear SKIP message when missing
+- `live_smoke.py:213` reads `BUILDATHON_TEST_EMAIL` from env
+- `seed_razorpay_test_cohort.py:34` empty default + fail-fast on
+  missing env
+- `HARDENING_REPORT.md:39` email redacted to "(redacted from this
+  report)"
+
+**IMPORTANT (C2 — git history still has the old secrets):** the
+secrets scrub only affects the latest tree. The previous values
+are still in `git log`. **Before you make the repo public, rotate
+every key in Razorpay / Groq / Resend / Supabase, then run
+`git push github submission-clean:main --force`**. The 16
+unpushed commits since `a2d3b59` will overwrite the remote's
+`main` branch — none of the historical secret-bearing commits
+are in this batch.
 
 ## Caveats the verification surfaced
 

@@ -43,8 +43,10 @@ def main() -> int:
 
     print("Step 3: post payment_link.paid (close-the-loop)")
     s, pp = post("/api/live/payment-paid",
-                 {"reference_id": f["payment_link"]["reference_id"],
-                  "payment_id": "pay_TEST_LIVE"})
+                 {"reference_id": f["payment_link"]["reference_id"]})
+    # B-fix: omit payment_id so the backend generates a unique one
+    # (a constant value would dedupe the capture task on every
+    # rerun and strand the journey in INTERVENING forever).
     print(f"  http {s}  {pp}")
     assert s == 200
     assert pp["status"] in ("accepted", "duplicate", "ignored")
