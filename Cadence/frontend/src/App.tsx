@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppShell } from './layouts/AppShell';
 import { OverviewView } from './views/OverviewView';
+import { LiveRecoveryView } from './views/LiveRecoveryView';
 import { JourneysView } from './views/JourneysView';
 import { GuardianView } from './views/GuardianView';
 import { TestbenchView } from './views/TestbenchView';
@@ -80,6 +81,10 @@ export const App: React.FC = () => {
           journeys={journeys}
           onSelectTab={handleTabChange}
         />
+      )}
+
+      {currentTab === 'live' && (
+        <LiveRecoveryView />
       )}
 
       {currentTab === 'journeys' && (

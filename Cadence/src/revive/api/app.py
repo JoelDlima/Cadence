@@ -132,6 +132,8 @@ class _Runtime:
     handlers: dict[str, Callable[[dict], None]]
     poller: SupabaseInboxPoller
     cloud_sync: CloudSync
+    config: AppConfig  # R2: live recovery endpoints need the Razorpay config
+    client: Any = None  # R2: optional Razorpay client (LiveRazorpayClient)
 
 
 def _rehydrated_failure_payload(store: EventStore, payload: dict) -> dict:
@@ -186,13 +188,16 @@ def _build_runtime(config: AppConfig) -> _Runtime:
         if config.llm_available
         else None
     )
+    # R2: build the Razorpay client once so the live_routes can use it
+    # for create_customer / create_payment_link.
+    client = build_client(config.razorpay)
     engine = RecoveryEngine(db, store, journeys, queue, config.policy, clock, planner=planner)
     dispatcher = Dispatcher(
         db=db,
         event_store=store,
         journeys=journeys,
         queue=queue,
-        client=build_client(config.razorpay),
+        client=client,
         cfg=config.policy,
         clock=clock,
         channels={"whatsapp": MockWhatsApp(), "email": EmailChannel(cfg=config.channels)},
@@ -224,6 +229,8 @@ def _build_runtime(config: AppConfig) -> _Runtime:
             cfg=config.cloud, db=db, clock=clock, process_fn=_inbox_process_fn(config, db, clock)
         ),
         cloud_sync=CloudSync(cfg=config.cloud, db=db, clock=clock),
+        config=config,
+        client=client,
     )
 
 
@@ -523,6 +530,11 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             db=db, webhook_secret=config.razorpay.webhook_secret, clock=runtime.clock
         )
     )
+    # R2: live recovery endpoints (3-step guided demo). The router is
+    # bound to the runtime so it can call into the engine's real
+    # client, journey repo, event store, queue, and clock.
+    from revive.api.live_routes import create_live_router
+    app.include_router(create_live_router(app=app, db=db, runtime=runtime))
 
     @app.get("/api/journeys", response_model=list[JourneyOut])
     def list_journeys() -> list[JourneyOut]:

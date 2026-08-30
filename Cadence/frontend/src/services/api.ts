@@ -107,6 +107,29 @@ export const api = {
     );
   },
 
+  // R2: live recovery endpoints.
+  async createLiveCustomer(body: { name?: string; email?: string; contact?: string } = {}): Promise<{
+    id: string; email: string; contact: string; simulated: boolean;
+  }> {
+    return postJson('/api/live/customer', body);
+  },
+
+  async createLiveFailure(body: { customer_id: string }): Promise<{
+    journey_id: string; event_id: string; subscription_id: string;
+    payment_link: {
+      id: string; short_url: string; reference_id: string;
+      amount_minor: number; status: string; simulated: boolean;
+    };
+  }> {
+    return postJson('/api/live/failure', body);
+  },
+
+  async simulateLivePaymentLinkPaid(body: { reference_id: string; payment_id?: string }): Promise<{
+    status: string; http: number; event_id: string; journey_id: string; subscription_id: string;
+  }> {
+    return postJson('/api/live/payment-paid', body);
+  },
+
   async getNudgePreview(
     language: string = 'hinglish',
     amount_minor: number = 49900,

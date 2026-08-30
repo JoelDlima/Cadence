@@ -1,13 +1,13 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
-import { 
-  BarChart3, 
-  FileClock, 
-  ShieldCheck, 
-  FlaskConical, 
-  CreditCard, 
-  Power, 
-  Menu, 
-  X, 
+import {
+  BarChart3,
+  FileClock,
+  ShieldCheck,
+  FlaskConical,
+  CreditCard,
+  Power,
+  Menu,
+  X,
   ShieldAlert,
   Server,
   Activity,
@@ -15,7 +15,8 @@ import {
   ShoppingCart,
   Briefcase,
   GitBranch,
-  GitCompare
+  GitCompare,
+  Play,
 } from 'lucide-react';
 import { Badge, Button, cn } from '../components/primitives';
 import { api } from '../services/api';
@@ -28,6 +29,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  { id: 'live', label: 'Live Recovery', icon: Play },
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'merchant', label: 'Merchant', icon: Briefcase },
   { id: 'journeys', label: 'Journeys & Audit', icon: FileClock },
