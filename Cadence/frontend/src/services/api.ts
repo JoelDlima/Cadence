@@ -19,6 +19,7 @@ import {
   AgentCompare,
   AgentReasoning,
   MerchantSummary,
+  Anomaly,
 } from '../types';
 
 export const inrFormatter = new Intl.NumberFormat('en-IN', {
@@ -98,6 +99,12 @@ export const api = {
 
   async getMerchantSummary(): Promise<MerchantSummary> {
     return jsonFetch<MerchantSummary>('/api/merchant/summary');
+  },
+
+  async getAnomaly(windowMinutes: number = 10, threshold: number = 3): Promise<Anomaly[]> {
+    return jsonFetch<Anomaly[]>(
+      `/api/anomaly?window_minutes=${windowMinutes}&threshold=${threshold}`
+    );
   },
 
   async getNudgePreview(

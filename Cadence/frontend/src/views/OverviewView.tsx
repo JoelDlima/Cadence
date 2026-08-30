@@ -50,22 +50,26 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   const [banks, setBanks] = useState<Bank[]>([]);
   const [evalSummary, setEvalSummary] = useState<EvalSummary | null>(null);
   const [guardian, setGuardian] = useState<GuardianStats | null>(null);
+  // W5: live anomaly data from /api/anomaly (uses policy/outage.py).
+  const [anomalies, setAnomalies] = useState<{ cause: string; count: number; severity: string; recommendation: string }[]>([]);
 
   useEffect(() => {
     let mounted = true;
     const fetchExtras = async () => {
       try {
-        const [a, b, e, g] = await Promise.all([
+        const [a, b, e, g, an] = await Promise.all([
           api.getAttention().catch(() => []),
           api.getBanks().catch(() => []),
           api.getEvalSummary().catch(() => null),
           api.getGuardianStats().catch(() => null),
+          api.getAnomaly().catch(() => []),
         ]);
         if (mounted) {
           setAttention(a);
           setBanks(b);
           setEvalSummary(e);
           setGuardian(g);
+          setAnomalies(an);
         }
       } catch {
         // keep prior state
@@ -139,7 +143,18 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   const contactsPerRecovery = evalSummary?.contacts_recovery_revive ?? 0;
   const naiveContactsPerRecovery = evalSummary?.contacts_recovery_naive ?? 0;
 
+  // W5: prefer the live API anomalies; fall back to the local
+  // client-side heuristic when the endpoint is empty/unavailable
+  // (e.g. in offline mode or when there are simply no anomalies).
   const anomaly = useMemo(() => {
+    if (anomalies.length > 0) {
+      return anomalies.map((a) => ({
+        cause: a.cause,
+        count: a.count,
+        severity: a.severity as "info" | "warn" | "alert",
+        recommendation: a.recommendation,
+      }));
+    }
     const buckets: Record<string, { count: number; latest: number }> = {};
     const now = Date.now();
     for (const j of journeys) {
@@ -151,21 +166,33 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       b.latest = Math.max(b.latest, t);
       buckets[k] = b;
     }
-    const notes: { cause: string; count: number; severity: "info" | "warn" | "alert" }[] = [];
+    const notes: { cause: string; count: number; severity: "info" | "warn" | "alert"; recommendation: string }[] = [];
     if ((buckets["NO_FUNDS"]?.count ?? 0) >= 3) {
-      notes.push({ cause: "NO_FUNDS", count: buckets["NO_FUNDS"].count, severity: "warn" });
+      notes.push({
+        cause: "NO_FUNDS", count: buckets["NO_FUNDS"].count, severity: "warn",
+        recommendation: "Funds crunch pattern: most customers will recover by their next payday. Defer WhatsApp; use EMAIL_NUDGE.",
+      });
     }
     if ((buckets["BANK_DOWN"]?.count ?? 0) >= 3) {
-      notes.push({ cause: "BANK_DOWN", count: buckets["BANK_DOWN"].count, severity: "alert" });
+      notes.push({
+        cause: "BANK_DOWN", count: buckets["BANK_DOWN"].count, severity: "alert",
+        recommendation: "Issuing bank outage suspected. Cadence will not chase these customers for ~4 hours.",
+      });
     }
     if ((buckets["BAD_VPA"]?.count ?? 0) >= 3) {
-      notes.push({ cause: "BAD_VPA", count: buckets["BAD_VPA"].count, severity: "info" });
+      notes.push({
+        cause: "BAD_VPA", count: buckets["BAD_VPA"].count, severity: "info",
+        recommendation: "UPI ID health issue: surface a 'verify your VPA' banner for these customers in the next nudge.",
+      });
     }
     if ((buckets["CUSTOMER_ABORTED"]?.count ?? 0) >= 3) {
-      notes.push({ cause: "CUSTOMER_ABORTED", count: buckets["CUSTOMER_ABORTED"].count, severity: "info" });
+      notes.push({
+        cause: "CUSTOMER_ABORTED", count: buckets["CUSTOMER_ABORTED"].count, severity: "info",
+        recommendation: "Checkout UX signal: check the latest drop-off reasons; consider a single-click retry.",
+      });
     }
     return notes;
-  }, [journeys]);
+  }, [journeys, anomalies]);
 
   return (
     <div className="space-y-6">
@@ -340,8 +367,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <Card className="p-5 border-2 border-[var(--color-coral)]/30 bg-[var(--color-coral)]/5">
           <div className="flex items-start gap-3">
             <ShieldAlert className="h-5 w-5 text-[var(--color-coral)]" />
-            <div>
-              <div className="text-sm font-medium text-[var(--color-ink)]">Anomaly in the last 10 minutes</div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-[var(--color-ink)]">
+                Anomaly in the last 10 minutes
+                <span className="ml-2 text-[10px] text-[var(--color-ink-subtle)] font-mono">
+                  /api/anomaly
+                </span>
+              </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {anomaly.map((a) => (
                   <Badge key={a.cause} tone={a.severity === "alert" ? "rejected" : a.severity === "warn" ? "pending" : "info"}>
@@ -349,9 +381,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   </Badge>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-[var(--color-ink-subtle)]">
-                Cadence will not chase these customers for ~4 hours — let the issuing bank or UPI rail settle.
-              </p>
+              <ul className="mt-2 space-y-1">
+                {anomaly.map((a) => (
+                  <li key={`${a.cause}-text`} className="text-xs text-[var(--color-ink-muted)]">
+                    <span className="font-semibold text-[var(--color-ink)]">{a.cause}</span>: {a.recommendation}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </Card>

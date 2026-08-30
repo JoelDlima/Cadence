@@ -55,6 +55,7 @@ from revive.api.schemas import (
     KillSwitchIn,
     LlmSpendOut,
     MerchantSummaryOut,
+    AnomalyOut,
     MetricsOut,
     PayLinkOut,
     PaySimulateIn,
@@ -621,6 +622,93 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             llm_requests_today=_llm_requests_today(db, clock),
             violations=_violations(db),
         )
+
+    @app.get("/api/anomaly", response_model=list[AnomalyOut])
+    def anomaly(window_minutes: int = 10, threshold: int = 3) -> list[AnomalyOut]:
+        """W5: cohort anomaly detection.
+
+        Counts journeys opened per root cause in the last ``window_minutes``
+        minutes. If a cause hits ``threshold`` or more, it is reported as
+        an anomaly with a severity (BANK_DOWN -> alert; NO_FUNDS -> warn;
+        others -> info) and a human-readable recommendation. Backed by
+        revive.policy.outage.detect_cause_outage for the thresholding
+        logic so the testbed and the production endpoint share a single
+        source of truth.
+        """
+        from datetime import datetime as _dt, timezone as _tz
+        from revive.policy.outage import detect_cause_outage
+        now = clock.now()
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=_tz.utc)
+        # Read recent journeys with opened_at in the window.
+        try:
+            rows = db.conn.execute(
+                "SELECT failure_code, opened_at FROM journeys "
+                "WHERE opened_at IS NOT NULL "
+                "ORDER BY opened_at DESC LIMIT 500"
+            ).fetchall()
+        except Exception:
+            rows = []
+        # Filter by window.
+        recent: list[str] = []
+        for code, opened_at in rows:
+            try:
+                t = _dt.fromisoformat(opened_at.replace("Z", "+00:00"))
+            except Exception:
+                continue
+            age_min = (now - t).total_seconds() / 60
+            if age_min <= window_minutes:
+                recent.append(str(code) if code else "unknown")
+        # Threshold per cause.
+        causes = ["NO_FUNDS", "BANK_DOWN", "BAD_VPA", "CUSTOMER_ABORTED",
+                  "EXPIRED_INSTRUMENT", "TIMEOUT"]
+        results: list[AnomalyOut] = []
+        for cause in causes:
+            if detect_cause_outage(
+                recent_failure_causes=recent,
+                cause=cause,
+                window_minutes=window_minutes,
+                threshold=threshold,
+            ):
+                count = recent.count(cause)
+                if cause == "BANK_DOWN":
+                    severity = "alert"
+                    recommendation = (
+                        "Issuing bank outage suspected. Cadence will not "
+                        "chase these customers for ~4 hours; let the "
+                        "bank settle."
+                    )
+                elif cause == "NO_FUNDS":
+                    severity = "warn"
+                    reminder_day = (now + timedelta(days=2)).strftime("%a %b %d")
+                    recommendation = (
+                        f"Funds crunch pattern: most customers will be paid "
+                        f"by {reminder_day}. Use EMAIL_NUDGE; defer WhatsApp."
+                    )
+                elif cause == "BAD_VPA":
+                    severity = "info"
+                    recommendation = (
+                        "UPI ID health issue: surface a 'verify your VPA' "
+                        "banner for these customers in the next nudge."
+                    )
+                elif cause == "CUSTOMER_ABORTED":
+                    severity = "info"
+                    recommendation = (
+                        "Checkout UX signal: check the latest checkout drop-off "
+                        "reasons; consider a single-click retry."
+                    )
+                else:
+                    severity = "info"
+                    recommendation = (
+                        f"Spike in {cause}. Review the agent reasoning for "
+                        "a sample of these journeys."
+                    )
+                results.append(AnomalyOut(
+                    cause=cause, count=count, severity=severity,
+                    window_minutes=window_minutes, threshold=threshold,
+                    recommendation=recommendation,
+                ))
+        return results
 
     @app.get("/api/flags/kill-switch")
     def get_kill_switch() -> dict[str, bool]:

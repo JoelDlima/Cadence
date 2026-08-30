@@ -235,6 +235,16 @@ class MerchantSummaryOut(BaseModel):
     intervention_performance: list[dict]  # [{intervention, count, recovered}]
     generated_at: str
 
+class AnomalyOut(BaseModel):
+    """W5: a single cohort anomaly detected in the last 10 minutes."""
+    cause: str
+    count: int
+    severity: str  # "info" | "warn" | "alert"
+    window_minutes: int
+    threshold: int
+    recommendation: str  # human-readable next step
+
+
 class KillSwitchIn(BaseModel):
     enabled: bool
 

@@ -235,3 +235,12 @@ export interface MerchantSummary {
   intervention_performance: { intervention: string; count: number; recovered: number }[];
   generated_at: string;
 }
+
+export interface Anomaly {
+  cause: string;
+  count: number;
+  severity: string; // "info" | "warn" | "alert"
+  window_minutes: number;
+  threshold: number;
+  recommendation: string;
+}
