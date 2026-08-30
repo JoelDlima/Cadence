@@ -204,6 +204,42 @@ Supabase: `journeys_mirror`, `metrics_daily`, `audit_dlq`,
 (`webhook-collector`, `cadence-llm-summary`) live at
 `https://vzrasadomyrycafbzdwg.functions.supabase.co/...` once deployed.
 
+### Razorpay events integrated (D2)
+The engine ingests exactly these five Razorpay test-mode events:
+- `subscription.pending` (UPI AutoPay / card e-mandate pre-debit)
+- `subscription.halted` (mandate paused, escalation trigger)
+- `payment.failed` (decline -> classify -> open journey)
+- `payment.captured` (close journey RECOVERED)
+- `payment_link.paid` (close journey RECOVERED with reference_id -> journey)
+
+The `Live Recovery` SPA page drives this end-to-end via
+`/api/live/customer`, `/api/live/failure`, and `/api/live/payment-paid`
+against a real Razorpay test-mode customer + payment link. Verified
+live on the buildathon laptop: real `cust_*` + `plink_*` ids returned
+by Razorpay, the journey flips to RECOVERED in ~4s after the
+`payment_link.paid` webhook.
+
+### Run the live demo (3 steps)
+1. **Start backend + SPA.** From `C:\Revive\Cadence`:
+   ```
+   .\.venv\Scripts\python.exe -m uvicorn revive.api.app:app --port 8000 --app-dir .
+   cd frontend && npm run dev
+   ```
+2. **Open the SPA** at `http://localhost:3000` and click the
+   **Live Recovery** tab (first nav item).
+3. **Click the three steps** in the left column:
+   - "Create real customer" — calls Razorpay `client.customer.create`.
+   - "Create payment link + post failure webhook" — calls
+     `client.payment_link.create`, opens a journey, posts a
+     HMAC-signed `payment.failed` webhook into the engine.
+   - "Simulate payment_link.paid" — posts the close-the-loop
+     webhook. The journey flips to `RECOVERED` in front of you.
+
+   The **test UPI id** is `success@razorpay` (auto-credited) or
+   `failure@razorpay` (auto-debited). See the Razorpay dashboard
+   links in the right-hand Evidence column to watch the live
+   payment link + payment on Razorpay's side.
+
 ---
 
 Licensed under the **MIT License**.

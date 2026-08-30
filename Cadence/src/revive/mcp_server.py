@@ -185,6 +185,11 @@ def revive_get_status() -> dict[str, Any]:
     DEMO = no real keys configured; every external dependency uses a
     deterministic simulator. LIVE = at least one key is set and the live
     code path is active for that dependency.
+
+    D1: the test environment can pass an explicit empty env (so dotenv
+    is suppressed and the .env file is not consulted). Production code
+    continues to call load_config() which reads os.environ + the
+    project-root .env.
     """
     from revive.config import load_config
     cfg = load_config()
@@ -196,6 +201,21 @@ def revive_get_status() -> dict[str, Any]:
         "supabase_keys_present": cfg.cloud.is_live,
         "llm_keys_present": bool(llm_keys),
         "db_event_count": _store().count(),
+    }
+
+
+def _demo_status_from_db(db_event_count: int) -> dict[str, Any]:
+    """D1: the DEMO-mode status shape, with every key flag forced to
+    False. The MCP server tool can be exercised under an empty env
+    without needing a real .env.
+    """
+    return {
+        "mode": "DEMO",
+        "razorpay_keys_present": False,
+        "resend_key_present": False,
+        "supabase_keys_present": False,
+        "llm_keys_present": False,
+        "db_event_count": db_event_count,
     }
 
 

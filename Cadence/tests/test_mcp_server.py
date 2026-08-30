@@ -153,10 +153,24 @@ async def test_revive_get_timeline_404_like_for_unknown_key(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_revive_get_status_reports_demo_mode_with_no_keys(seeded_db):
+async def test_revive_get_status_reports_demo_mode_with_no_keys(seeded_db, monkeypatch):
+    """D1: this test must pass on a machine with a real Cadence/.env.
+
+    The previous implementation called load_config() which read the
+    real .env. The fix: monkeypatch all key env vars to empty (so the
+    tool sees a fully-DEMO environment) and assert the DEMO shape
+    without weakening any assertion.
+    """
     from mcp.shared.memory import create_connected_server_and_client_session
     from revive.mcp_server import _set_db
 
+    for var in ("RZP_KEY_ID", "RZP_KEY_SECRET", "RZP_WEBHOOK_SECRET",
+                 "GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY",
+                 "SARVAM_API_KEY", "LLM_PROVIDER_ORDER",
+                 "RESEND_API_KEY", "EMAIL_FROM",
+                 "SUPABASE_URL", "SUPABASE_SERVICE_KEY",
+                 "CLOUD_SYNC_ENABLED"):
+        monkeypatch.setenv(var, "")
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("revive_get_status", {})
@@ -165,6 +179,7 @@ async def test_revive_get_status_reports_demo_mode_with_no_keys(seeded_db):
     assert parsed["razorpay_keys_present"] is False
     assert parsed["llm_keys_present"] is False
     assert parsed["supabase_keys_present"] is False
+    assert parsed["resend_key_present"] is False
     assert parsed["db_event_count"] == 2  # the two seeded events
 
 

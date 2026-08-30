@@ -41,8 +41,11 @@ Tables created:
   engine; never read by anyone else).
 - `journeys_mirror` — one row per recovery journey, mirrored every 30s.
 - `metrics_daily` — one row per day with the headline KPIs.
-- `chaos_drill_runs` — optional; useful if you want a leaderboard of chaos
-  drill results in the cloud.
+
+The PHASE 9 migration `Cadence/supabase/migrations/V6__audit_dlq.sql`
+adds 3 more tables: `audit_dlq`, `journey_summaries`,
+`cadence_edge_log`. The `chaos_drill_runs` table is NOT in
+schema.sql and is not part of the public buildathon surface.
 
 ## 3. Get the service role key
 
