@@ -34,6 +34,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from dotenv import load_dotenv as _ld_env
+from pathlib import Path as _P_env
+_ld_env(_P_env(__file__).resolve().parents[2] / ".env", override=False)
+
 from revive.agents.llm_client import LLMClient
 from revive.agents.planner import PlannerAgent
 from revive.api.schemas import (
@@ -1722,15 +1726,21 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         returned base64-encoded WAV.
         """
         from revive.policy.nudge_templates import nudge_for_language as _nudge
-        # Defensive: ensure .env is loaded so ELEVENLABS/SARVAM keys are visible
-        from dotenv import load_dotenv as _ld
-        from pathlib import Path as _P
-        _ld(_P(__file__).resolve().parents[2] / ".env", override=False)
-        import os as _os
         from revive.policy.voice_tts import synthesize as _synth
         text = _nudge(language, amount_minor, link_url)
-        sarvam_key = getattr(config.llm, "sarvam_api_key", "")
-        tts = _synth(language=language, text=text, sarvam_api_key=sarvam_key or None)
+        # ElevenLabs: prefer if ELEVENLABS_API_KEY is in the env. Sarvam is the fallback.
+        # The env is loaded at module import (load_dotenv above) and again defensively here.
+        import os as _os
+        from dotenv import load_dotenv as _ld
+        from pathlib import Path as _Pp
+        _ld(_Pp(__file__).resolve().parents[2] / ".env", override=False)
+        eleven = _os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        sarvam_key = getattr(config.llm, "sarvam_api_key", "") or _os.environ.get("SARVAM_API_KEY", "")
+        tts = _synth(
+            language=language, text=text,
+            sarvam_api_key=sarvam_key or None,
+            elevenlabs_api_key=eleven or None,
+        )
         return {
             "language": tts.language,
             "text": tts.text,

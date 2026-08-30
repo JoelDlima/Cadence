@@ -312,7 +312,7 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "from": "Cadence <noreply@cadence.local>",
+                    "from": "Cadence <onboarding@resend.dev>",
                     "to": [body.to],
                     "subject": subject,
                     "text": text,
