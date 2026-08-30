@@ -146,7 +146,7 @@ export const MerchantDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
               Recovered
             </span>
             <Badge tone="approved">Today</Badge>
@@ -154,20 +154,20 @@ export const MerchantDashboard: React.FC = () => {
           <p className="numeric text-3xl sm:text-4xl font-semibold text-[var(--color-approved)] mt-3">
             {inrFormatter.format(recoveredInr / 100)}
           </p>
-          <p className="text-[12px] text-[var(--color-ink-muted)] mt-2">
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-2">
             of {inrFormatter.format(totalAtRisk / 100)} total at risk
           </p>
-          <p className="text-[12px] text-[var(--color-ink-muted)] mt-0.5">
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-0.5">
             <span className="font-medium text-[var(--color-ink)]">
               {recoveryPct.toFixed(1)}%
             </span>{' '}
-            recovery rate
+            recovered
           </p>
         </Card>
 
         <Card className="p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
               Journeys
             </span>
             <Badge tone="info">Today</Badge>
@@ -194,7 +194,7 @@ export const MerchantDashboard: React.FC = () => {
                   strokeDasharray={`${ringDash} ${ringCircumference}`}
                 />
               </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-[var(--color-ink-muted)] tabular-nums">
+              <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-[var(--color-ink-muted)] tabular-nums">
                 {Math.round(ringPct)}%
               </span>
             </div>
@@ -202,10 +202,10 @@ export const MerchantDashboard: React.FC = () => {
               <p className="numeric text-3xl sm:text-4xl font-semibold text-[var(--color-ink)] leading-none">
                 {totalJourneys}
               </p>
-              <p className="text-[11px] text-[var(--color-ink-subtle)] mt-1">total today</p>
+              <p className="text-[12px] text-[var(--color-ink-subtle)] mt-1">total today</p>
             </div>
           </div>
-          <p className="text-[12px] text-[var(--color-ink-muted)] mt-3">
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-3">
             <span className="text-[var(--color-approved)] font-medium">{recoveredCount} recovered</span>
             {' · '}
             <span className="text-[var(--color-rejected)] font-medium">{lostCount} lost</span>
@@ -216,7 +216,7 @@ export const MerchantDashboard: React.FC = () => {
 
         <Card className="p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
               Avg time to recover
             </span>
             <Badge tone="pending">End-to-end</Badge>
@@ -225,7 +225,7 @@ export const MerchantDashboard: React.FC = () => {
             {avgMinutes.toFixed(1)}
             <span className="text-base font-normal text-[var(--color-ink-muted)] ml-1">minutes</span>
           </p>
-          <p className="text-[12px] text-[var(--color-ink-muted)] mt-2">
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-2">
             end-to-end including payment_link.paid wait
           </p>
         </Card>
@@ -241,19 +241,19 @@ export const MerchantDashboard: React.FC = () => {
           }
         />
         {rootCauses.length === 0 ? (
-          <div className="px-5 py-10 text-center text-[12px] text-[var(--color-ink-subtle)]">
+          <div className="px-5 py-10 text-center text-[13px] text-[var(--color-ink-subtle)]">
             No decline events recorded yet today.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-[12.5px]">
+            <table className="w-full text-[13px]">
               <thead>
                 <tr className="text-left text-[var(--color-ink-muted)] border-b border-[var(--color-line)]">
                   <th className="font-semibold py-2.5 px-5">Cause</th>
                   <th className="font-semibold py-2.5 px-3 text-right">Count</th>
                   <th className="font-semibold py-2.5 px-3 text-right">Recovered</th>
                   <th className="font-semibold py-2.5 px-3 text-right">Lost</th>
-                  <th className="font-semibold py-2.5 px-5 text-right">Recovery %</th>
+                  <th className="font-semibold py-2.5 px-5 text-right">Recovered %</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,7 +296,7 @@ export const MerchantDashboard: React.FC = () => {
           />
           <div className="p-5 space-y-2.5">
             {stateRows.length === 0 ? (
-              <div className="text-[12px] text-[var(--color-ink-subtle)]">
+              <div className="text-[13px] text-[var(--color-ink-subtle)]">
                 No journeys yet today.
               </div>
             ) : (
@@ -309,7 +309,7 @@ export const MerchantDashboard: React.FC = () => {
                   ? Math.max(2, (row.count / maxStateCount) * 100)
                   : 0;
                 return (
-                  <div key={row.state} className="text-[12.5px]">
+                  <div key={row.state} className="text-[13px]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[var(--color-ink-muted)]">
                         {labelFor(row.state, STATE_LABEL)}
@@ -341,7 +341,7 @@ export const MerchantDashboard: React.FC = () => {
           />
           <div className="p-5 space-y-2.5">
             {interventions.length === 0 ? (
-              <div className="text-[12px] text-[var(--color-ink-subtle)]">
+              <div className="text-[13px] text-[var(--color-ink-subtle)]">
                 No interventions fired yet today.
               </div>
             ) : (
@@ -351,7 +351,7 @@ export const MerchantDashboard: React.FC = () => {
                   : 0;
                 const recoveryPct = iv.count > 0 ? (iv.recovered / iv.count) * 100 : 0;
                 return (
-                  <div key={iv.intervention} className="text-[12.5px]">
+                  <div key={iv.intervention} className="text-[13px]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-mono text-[var(--color-ink)] truncate pr-2">
                         {iv.intervention}
@@ -366,7 +366,7 @@ export const MerchantDashboard: React.FC = () => {
                         style={{ width: `${widthPct}%` }}
                       />
                     </div>
-                    <div className="text-[10.5px] text-[var(--color-ink-subtle)] mt-0.5 font-mono tabular-nums">
+                    <div className="text-[11px] text-[var(--color-ink-subtle)] mt-0.5 font-mono tabular-nums">
                       {recoveryPct.toFixed(0)}% recovered
                     </div>
                   </div>
@@ -377,7 +377,7 @@ export const MerchantDashboard: React.FC = () => {
         </Card>
       </div>
 
-      <p className="text-[11px] text-[var(--color-ink-subtle)] font-mono">
+      <p className="text-[12px] text-[var(--color-ink-subtle)] font-mono">
         generated_at {summary.generated_at}
       </p>
 
@@ -428,16 +428,16 @@ export const MerchantDashboard: React.FC = () => {
             action={<Badge tone="neutral">{recentJourneys.length}</Badge>}
           />
           {recentJourneys.length === 0 ? (
-            <div className="px-5 py-6 text-[12px] text-[var(--color-ink-subtle)]">
+            <div className="px-5 py-6 text-[13px] text-[var(--color-ink-subtle)]">
               No journeys yet.
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-line)]">
               {recentJourneys.map((j) => (
-                <div key={j.journey_id} className="px-5 py-2.5 text-[12px] flex items-center justify-between gap-2">
+                <div key={j.journey_id} className="px-5 py-2.5 text-[13px] flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-mono text-[var(--color-ink)] truncate">{j.journey_id}</div>
-                    <div className="text-[10.5px] text-[var(--color-ink-subtle)] truncate">
+                    <div className="text-[11px] text-[var(--color-ink-subtle)] truncate">
                       {j.root_cause ?? 'UNKNOWN'} · {j.subscription_id}
                     </div>
                   </div>

@@ -78,7 +78,7 @@ export const PayPortalView: React.FC = () => {
           title="Customer Payment Resolution"
           description="Self-service recovery experience shown to subscribers (`/pay/{journey_id}`). Converts involuntary churn into instant resolution."
         />
-        <div className="flex justify-center py-12 text-[13px] text-[var(--color-ink-subtle)]">
+        <div className="flex justify-center py-12 text-[14px] text-[var(--color-ink-subtle)]">
           Loading…
         </div>
       </div>
@@ -90,15 +90,15 @@ export const PayPortalView: React.FC = () => {
       <div className="space-y-6">
         <PageHeader
           title="Customer Payment Resolution"
-          description="Open with `?journey=<id>` or after firing a webhook from the Testbench."
+          description="Open with `?journey=<id>` or after firing a webhook from the Test Lab."
         />
         <div className="max-w-md mx-auto">
           <Card className="p-6 glass-modal border border-[var(--color-line-strong)] text-center space-y-2">
             <AlertCircle size={32} className="mx-auto text-[var(--color-rejected)]" />
             <h3 className="text-base font-semibold text-[var(--color-ink)]">No journey loaded</h3>
-            <p className="text-[12.5px] text-[var(--color-ink-muted)]">{error}</p>
-            <p className="text-[11px] text-[var(--color-ink-subtle)] pt-2">
-              Add <code className="font-mono">?journey=&lt;id&gt;</code> to the URL, or jump to the Testbench to inject one.
+            <p className="text-[13px] text-[var(--color-ink-muted)]">{error}</p>
+            <p className="text-[12px] text-[var(--color-ink-subtle)] pt-2">
+              Add <code className="font-mono">?journey=&lt;id&gt;</code> to the URL, or jump to the Test Lab to inject one.
             </p>
           </Card>
         </div>
@@ -117,7 +117,7 @@ export const PayPortalView: React.FC = () => {
         <div className="max-w-md mx-auto">
           <Card className="p-6 glass-modal border border-[var(--color-line-strong)] text-center space-y-2">
             <h3 className="text-base font-semibold text-[var(--color-ink)]">Pick a journey</h3>
-            <p className="text-[12.5px] text-[var(--color-ink-muted)]">
+            <p className="text-[13px] text-[var(--color-ink-muted)]">
               Open with <code className="font-mono">?journey=&lt;id&gt;</code> in the URL, or pick one from the Case Ledger.
             </p>
           </Card>
@@ -150,14 +150,14 @@ export const PayPortalView: React.FC = () => {
                       {merchant} ✓
                     </span>
                   </div>
-                  <p className="text-[11px] text-[var(--color-ink-subtle)]">
+                  <p className="text-[12px] text-[var(--color-ink-subtle)]">
                     Sub: {journey.subscription_id} · Journey: {journey.journey_id}
                   </p>
                 </div>
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-medium">
+                <span className="text-[11px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-medium">
                   Amount due
                 </span>
                 <p className="numeric text-2xl font-bold text-[var(--color-ink)]">
@@ -172,22 +172,22 @@ export const PayPortalView: React.FC = () => {
                   <CheckCircle2 size={24} />
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--color-ink)]">Payment successful</h3>
-                <p className="text-xs text-[var(--color-ink-muted)] max-w-xs mx-auto leading-relaxed">
-                  Your payment of {formatINR(journey.amount_minor)} has been cleared via Razorpay. Your UPI AutoPay mandate remains active and your subscription services are uninterrupted.
+                <p className="text-[13px] text-[var(--color-ink-muted)] max-w-xs mx-auto leading-relaxed">
+                  Your payment of {formatINR(journey.amount_minor)} has been cleared via Razorpay. Your UPI auto-pay mandate remains active and your subscription services are uninterrupted.
                 </p>
-                <p className="text-[10px] text-[var(--color-ink-subtle)] numeric">
+                <p className="text-[11px] text-[var(--color-ink-subtle)] numeric">
                   Journey state: {journey.state}
                 </p>
               </div>
             ) : (
               <>
-                <div className="p-3.5 rounded-md bg-[var(--color-info-wash)] border border-[var(--color-info)]/20 text-xs space-y-1">
+                <div className="p-3.5 rounded-md bg-[var(--color-info-wash)] border border-[var(--color-info)]/20 text-[13px] space-y-1">
                   <div className="flex items-center gap-1.5 text-[var(--color-info)] font-semibold">
                     <AlertCircle size={14} />
                     <span>AutoPay Debit Paused · {journey.root_cause ?? 'UNKNOWN'}</span>
                   </div>
                   <p className="text-[var(--color-ink)] leading-relaxed">
-                    Your scheduled AutoPay debit was paused. Clear this now in 1 tap to maintain continuous billing. Service remains active.
+                    Your scheduled auto-pay debit was paused. Clear this now in 1 tap to maintain continuous billing. Service remains active.
                   </p>
                 </div>
 
@@ -206,8 +206,8 @@ export const PayPortalView: React.FC = () => {
                   >
                     <Smartphone size={18} className="text-[var(--color-ink)]" />
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-[var(--color-ink)]">1-tap UPI app</p>
-                      <p className="text-[11px] text-[var(--color-ink-subtle)]">Google Pay, PhonePe, Paytm, BHIM</p>
+                      <p className="text-[13px] font-semibold text-[var(--color-ink)]">1-tap UPI app</p>
+                      <p className="text-[12px] text-[var(--color-ink-subtle)]">Google Pay, PhonePe, Paytm, BHIM</p>
                     </div>
                     {selectedMethod === 'upi' && <CheckCircle2 size={15} className="text-[var(--color-approved)]" />}
                   </div>
@@ -222,8 +222,8 @@ export const PayPortalView: React.FC = () => {
                   >
                     <CreditCard size={18} className="text-[var(--color-ink)]" />
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-[var(--color-ink)]">Update E-Mandate Card</p>
-                      <p className="text-[11px] text-[var(--color-ink-subtle)]">Visa, Mastercard, RuPay</p>
+                      <p className="text-[13px] font-semibold text-[var(--color-ink)]">Update E-Mandate Card</p>
+                      <p className="text-[12px] text-[var(--color-ink-subtle)]">Visa, Mastercard, RuPay</p>
                     </div>
                     {selectedMethod === 'card' && <CheckCircle2 size={15} className="text-[var(--color-approved)]" />}
                   </div>
@@ -242,12 +242,12 @@ export const PayPortalView: React.FC = () => {
                 </Button>
 
                 {error && (
-                  <p className="text-[11px] text-[var(--color-rejected)] text-center">{error}</p>
+                  <p className="text-[12px] text-[var(--color-rejected)] text-center">{error}</p>
                 )}
               </>
             )}
 
-            <div className="pt-4 border-t border-[var(--color-line)] flex items-center justify-between text-[10.5px] text-[var(--color-ink-subtle)] font-mono">
+            <div className="pt-4 border-t border-[var(--color-line)] flex items-center justify-between text-[11px] text-[var(--color-ink-subtle)] font-mono">
               <span className="flex items-center gap-1">
                 <Lock size={11} />
                 <span>256-Bit SSL</span>

@@ -123,7 +123,7 @@ export const CheckoutView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Checkout Drop-off Recovery"
-        description="Razorpay payment_link started but not paid within 30 min. The chaser sends a soft reminder (T+0, T+24h, T+7d) that respects NPCI quiet hours and the touch cap. The 3rd nudge carries a 5% discount signal. Same Guardian + Adaptive Recovery Brain as the consumer path."
+        description="Razorpay payment_link started but not paid within 30 min. The chaser sends a soft reminder (T+0, T+24h, T+7d) that respects NPCI's 18-hour quiet-hours rule and the touch cap. The 3rd follow-up carries a 5% discount signal. Same AI agent + rule engine as the consumer path."
         action={
           <div className="flex gap-2">
             <Button onClick={simulateAbandon} disabled={busy} variant="secondary">
@@ -141,8 +141,8 @@ export const CheckoutView: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {(['OPEN', 'ABANDONED', 'NUDGED', 'RECOVERED', 'EXPIRED'] as const).map((status) => (
           <Card key={status} className="p-4 text-center">
-            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-              {status}
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
+              {status.replace('_', ' ')}
             </div>
             <div className="text-2xl font-semibold mt-1 font-mono" style={{ color: STATUS_COLOR[status] }}>
               {funnel[status] ?? 0}
@@ -154,19 +154,19 @@ export const CheckoutView: React.FC = () => {
       <Card className="p-0 overflow-hidden">
         <CardHeader
           title="Recent sessions"
-          subtitle="Most recent first. The chaser ladder: OPEN -> ABANDONED -> NUDGED (up to 3 times) -> RECOVERED or EXPIRED after 14 days."
+          subtitle="Most recent first. The follow-up ladder: OPEN -> ABANDONED -> NUDGED (up to 3 times) -> RECOVERED or EXPIRED after 14 days."
         />
         <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-[var(--color-ink-muted)]">
                 <th className="font-semibold py-2 px-3">Session</th>
                 <th className="font-semibold py-2 px-3">Customer</th>
                 <th className="font-semibold py-2 px-3 text-right">Amount</th>
                 <th className="font-semibold py-2 px-3">Status</th>
-                <th className="font-semibold py-2 px-3 text-right">Nudges</th>
+                <th className="font-semibold py-2 px-3 text-right">Follow-up messages</th>
                 <th className="font-semibold py-2 px-3">Started</th>
-                <th className="font-semibold py-2 px-3 text-right">Action</th>
+                <th className="font-semibold py-2 px-3 text-right">What we'll do next</th>
               </tr>
             </thead>
             <tbody>
@@ -189,9 +189,9 @@ export const CheckoutView: React.FC = () => {
                       <button
                         onClick={() => recoverOne(s.id)}
                         disabled={busy}
-                        className="text-[11px] text-[var(--color-accent)] font-semibold hover:underline disabled:opacity-50"
+                        className="text-[12px] text-[var(--color-accent)] font-semibold hover:underline disabled:opacity-50"
                       >
-                        mark recovered
+                        Mark recovered
                       </button>
                     )}
                   </td>

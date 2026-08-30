@@ -65,6 +65,8 @@
     background-color: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
     font-feature-settings: 'cv05' 1, 'ss03' 1;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;

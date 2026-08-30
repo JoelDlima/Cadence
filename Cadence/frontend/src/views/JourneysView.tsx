@@ -161,16 +161,16 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by Journey, Subscription, or Customer ID..."
-              className="pl-9 h-8 text-[13px]"
+              className="pl-9 h-9 text-[14px]"
             />
           </div>
 
-          <div className="flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)]">
+          <div className="flex items-center gap-2 text-[13px] text-[var(--color-ink-muted)]">
             <span>State:</span>
             <Select
               value={stateFilter}
               onChange={(e) => setStateFilter(e.target.value)}
-              className="h-8 w-36 text-[12px]"
+              className="h-9 w-36 text-[13px]"
             >
               <option value="all">All States</option>
               <option value="RECOVERED">RECOVERED</option>
@@ -181,12 +181,12 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)]">
+          <div className="flex items-center gap-2 text-[13px] text-[var(--color-ink-muted)]">
             <span>Root Cause:</span>
             <Select
               value={causeFilter}
               onChange={(e) => setCauseFilter(e.target.value)}
-              className="h-8 w-44 text-[12px]"
+              className="h-9 w-44 text-[13px]"
             >
               <option value="all">All Root Causes</option>
               <option value="NO_FUNDS">Insufficient Balance</option>
@@ -198,7 +198,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
             </Select>
           </div>
 
-          <span className="text-[12px] text-[var(--color-ink-subtle)] ml-auto numeric">
+          <span className="text-[13px] text-[var(--color-ink-subtle)] ml-auto numeric">
             {filteredJourneys.length} of {journeys.length} cases
           </span>
         </div>
@@ -216,13 +216,13 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
             title={journeys.length === 0 ? 'No journeys yet' : 'No matching journeys found'}
             description={
               journeys.length === 0
-                ? 'Fire a webhook from the Testbench tab, or POST one with the dev curl in the README.'
-                : 'Adjust your search filters or simulate a new webhook in the Testbench.'
+                ? 'Fire a webhook from the Test Lab tab, or POST one with the dev curl in the README.'
+                : 'Adjust your search filters or simulate a new webhook in the Test Lab.'
             }
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-[13px]">
+            <table className="w-full text-left border-collapse text-[13.5px]">
               <thead>
                 <tr className="border-b border-[var(--color-line)] bg-[var(--color-surface-subtle)] text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
                   <th className="py-3 px-5">Journey ID / Subscription</th>
@@ -248,7 +248,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                     >
                       <td className="py-3 px-5">
                         <span className="numeric font-medium text-[var(--color-ink)]">{j.journey_id}</span>
-                        <p className="text-[11px] text-[var(--color-ink-subtle)]">{j.subscription_id}</p>
+                        <p className="text-[12px] text-[var(--color-ink-subtle)]">{j.subscription_id}</p>
                       </td>
                       <td className="py-3 px-4 text-[var(--color-ink-muted)]">
                         {j.customer_id}
@@ -299,13 +299,13 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                     {selectedJourney.state}
                   </Badge>
                   {(selectedJourney.state === 'WAITING_OUTCOME' || selectedJourney.state === 'INTERVENING') && (
-                    <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-coral)] font-medium">
+                    <span className="flex items-center gap-1.5 text-[12px] text-[var(--color-coral)] font-medium">
                       <span className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral)] animate-pulse" />
                       Waiting for payment webhook… (auto-refresh)
                     </span>
                   )}
                 </div>
-                <p className="numeric text-[12px] text-[var(--color-ink-subtle)] mt-0.5">
+                <p className="numeric text-[13px] text-[var(--color-ink-subtle)] mt-0.5">
                   Journey: {selectedJourney.journey_id}
                 </p>
               </div>
@@ -320,15 +320,15 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
 
             <div className="p-6 space-y-6 flex-1 bg-[var(--color-paper)]">
               <div className="p-4 rounded-md bg-[var(--color-surface)] border border-[var(--color-line)] shadow-xs space-y-2">
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="text-[var(--color-ink-subtle)]">Customer Entity:</span>
                   <span className="font-mono text-[var(--color-ink)] font-medium">{selectedJourney.customer_id}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="text-[var(--color-ink-subtle)]">Amount Due:</span>
                   <span className="numeric font-semibold text-[var(--color-ink)]">{formatINR(selectedJourney.amount_minor)}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="text-[var(--color-ink-subtle)]">Root Cause:</span>
                   <Badge tone="neutral">{selectedJourney.root_cause ?? 'UNKNOWN'}</Badge>
                 </div>
@@ -338,7 +338,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                 <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-                    Agent Reasoning (chat trace)
+                    AI thought process (chat trace)
                   </h4>
                   {reasoning && reasoning.steps.length > 0 && (
                     <Button
@@ -367,7 +367,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                 )}
 
                 {!reasoningLoading && reasoning && reasoning.steps.length === 0 && (
-                  <div className="text-[12px] text-[var(--color-ink-subtle)] p-3 border border-dashed border-[var(--color-line)] rounded">
+                  <div className="text-[13px] text-[var(--color-ink-subtle)] p-3 border border-dashed border-[var(--color-line)] rounded">
                     No reasoning trace captured for this journey yet.
                   </div>
                 )}
@@ -377,7 +377,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                     <div
                       key={i}
                       className={
-                        "p-3 rounded-md border text-[12.5px] leading-relaxed " +
+                        "p-3 rounded-md border text-[13px] leading-relaxed " +
                         (s.role === "observation"
                           ? "bg-[var(--color-info-wash)] border-[var(--color-info)] text-[var(--color-ink)]"
                           : s.role === "decision"
@@ -388,21 +388,21 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                       }
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-[11px]">Step {s.step}: {s.title}</span>
+                        <span className="font-semibold text-[12px]">Step {s.step}: {s.title}</span>
                         {s.source && (
-                          <span className="text-[10px] font-mono text-[var(--color-ink-subtle)]">
+                          <span className="text-[11px] font-mono text-[var(--color-ink-subtle)]">
                             [{s.source}]
                           </span>
                         )}
                         {s.channel && (
-                          <span className="text-[10px] font-mono text-[var(--color-ink-subtle)]">
+                          <span className="text-[11px] font-mono text-[var(--color-ink-subtle)]">
                             channel={s.channel}
                           </span>
                         )}
                       </div>
                       <div>{s.detail}</div>
                       {s.event_refs && s.event_refs.length > 0 && (
-                        <div className="text-[10px] text-[var(--color-ink-subtle)] mt-1 font-mono">
+                        <div className="text-[11px] text-[var(--color-ink-subtle)] mt-1 font-mono">
                           events: {s.event_refs.map((r: any) => `#${r.seq} ${r.type}`).join(", ")}
                         </div>
                       )}
@@ -432,14 +432,14 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                 )}
 
                 {!whyLoading && whyError && (
-                  <div className="p-3 rounded border border-dashed border-[var(--color-line)] text-[12px] text-[var(--color-ink-subtle)]">
-                    Bandit feed unavailable: {whyError}
+                  <div className="p-3 rounded border border-dashed border-[var(--color-line)] text-[13px] text-[var(--color-ink-subtle)]">
+                    Why-this-choice feed unavailable: {whyError}
                   </div>
                 )}
 
                 {!whyLoading && !why && !whyError && (
-                  <div className="p-3 rounded border border-dashed border-[var(--color-line)] text-[12px] text-[var(--color-ink-subtle)]">
-                    No bandit ranking captured for this journey yet.
+                  <div className="p-3 rounded border border-dashed border-[var(--color-line)] text-[13px] text-[var(--color-ink-subtle)]">
+                    No why-this-choice ranking captured for this journey yet.
                   </div>
                 )}
 
@@ -447,7 +447,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                   <div className="p-3.5 rounded-md bg-[var(--color-surface)] border border-[var(--color-line)] shadow-xs space-y-3">
                     <div>
                       <div className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-semibold mb-1.5">
-                        Top 3 ranked interventions
+                        Top 3 ranked follow-up messages
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {(why.ranked ?? []).slice(0, 3).map((candidate, j) => {
@@ -472,23 +472,23 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                           const causeKey = why.cause in importances ? why.cause : Object.keys(importances)[0];
                           const weights = (causeKey ? importances[causeKey] : {}) ?? {};
                           const entries = Object.entries(weights);
-                          if (entries.length === 0) {
-                            return (
-                              <div className="text-[11.5px] text-[var(--color-ink-subtle)]">
-                                No feature importances published for this cause.
-                              </div>
-                            );
-                          }
-                          const max = entries.reduce((m, [, v]) => Math.max(m, Math.abs(v)), 0) || 1;
-                          return entries
-                            .slice()
-                            .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-                            .slice(0, 8)
-                            .map(([feature, weight]) => {
-                              const pct = (Math.abs(weight) / max) * 100;
-                              const positive = weight >= 0;
+if (entries.length === 0) {
                               return (
-                                <div key={feature} className="text-[11.5px]">
+                                <div className="text-[12px] text-[var(--color-ink-subtle)]">
+                                  No feature importances published for this cause.
+                                </div>
+                              );
+                            }
+                            const max = entries.reduce((m, [, v]) => Math.max(m, Math.abs(v)), 0) || 1;
+                            return entries
+                              .slice()
+                              .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                              .slice(0, 8)
+                              .map(([feature, weight]) => {
+                                const pct = (Math.abs(weight) / max) * 100;
+                                const positive = weight >= 0;
+                                return (
+                                  <div key={feature} className="text-[12px]">
                                   <div className="flex items-center justify-between mb-0.5">
                                     <span className="font-mono text-[var(--color-ink)]">{feature}</span>
                                     <span
@@ -517,9 +517,9 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                     {why.reason && why.reason.length > 0 && (
                       <div>
                         <div className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-semibold mb-1.5">
-                          Bandit reason
+                          Why we picked this
                         </div>
-                        <p className="text-[12px] text-[var(--color-ink)] leading-relaxed">
+                        <p className="text-[13px] text-[var(--color-ink)] leading-relaxed">
                           {why.reason.join(' - ')}
                         </p>
                       </div>
@@ -539,7 +539,7 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                     ))}
                   </div>
                 ) : timelineError ? (
-                  <div className="p-3 rounded border border-[var(--color-rejected)] bg-[var(--color-rejected-wash)] text-[var(--color-rejected)] text-[12px]">
+                  <div className="p-3 rounded border border-[var(--color-rejected)] bg-[var(--color-rejected-wash)] text-[var(--color-rejected)] text-[13px]">
                     {timelineError}
                   </div>
                 ) : (
@@ -548,22 +548,22 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                       <div key={event.seq} className="relative flex items-start gap-4 pl-8">
                         <div className="absolute left-1.5 top-1 h-3.5 w-3.5 rounded-full bg-[var(--color-surface)] border-2 border-[var(--color-info)] shadow-xs" />
                         <div className="flex-1 p-3.5 rounded-md bg-[var(--color-surface)] border border-[var(--color-line)] shadow-xs space-y-1.5">
-                          <div className="flex items-center justify-between text-[12px]">
+                          <div className="flex items-center justify-between text-[13px]">
                             <span className="font-semibold text-[var(--color-ink)]">{event.type}</span>
-                            <span className="numeric text-[11px] text-[var(--color-ink-subtle)]">
+                            <span className="numeric text-[12px] text-[var(--color-ink-subtle)]">
                               Seq #{event.seq}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 text-[11px] text-[var(--color-ink-subtle)]">
-                            <span>Occurred:</span>
+                          <div className="flex items-center gap-2 text-[12px] text-[var(--color-ink-subtle)]">
+                            <span>When fired:</span>
                             <span className="numeric font-medium text-[var(--color-ink-muted)]">
                               {new Date(event.occurred_at).toLocaleTimeString('en-IN', { hour12: false })}
                             </span>
                           </div>
 
                           {event.payload && (
-                            <pre className="mt-2 p-2.5 rounded bg-[var(--color-paper)] border border-[var(--color-line)] text-[11px] font-mono text-[var(--color-ink)] overflow-x-auto leading-relaxed">
+                            <pre className="mt-2 p-2.5 rounded bg-[var(--color-paper)] border border-[var(--color-line)] text-[12px] font-mono text-[var(--color-ink)] overflow-x-auto leading-relaxed">
                               {JSON.stringify(event.payload, null, 2)}
                             </pre>
                           )}
@@ -575,8 +575,8 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
               </div>
             </div>
 
-            <div className="p-4 border-t border-[var(--color-line)] bg-[var(--color-surface)] flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 font-mono font-medium text-[12px]"
+            <div className="p-4 border-t border-[var(--color-line)] bg-[var(--color-surface)] flex items-center justify-between text-[13px]">
+              <div className="flex items-center gap-1.5 font-mono font-medium text-[13px]"
                 style={{ color: audit?.chain_ok === false ? 'var(--color-rejected)' : 'var(--color-approved)' }}>
                 <ShieldCheck size={15} />
                 {auditLoading && !audit

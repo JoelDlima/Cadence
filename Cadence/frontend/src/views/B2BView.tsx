@@ -145,8 +145,8 @@ export const B2BView: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(['issued', 'paid', 'cancelled', 'in_dispute'] as const).map((status) => (
           <Card key={status} className="p-4 text-center">
-            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-              {status}
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
+              {status.replace('_', ' ')}
             </div>
             <div className="text-2xl font-semibold mt-1 font-mono">{funnel[status] ?? 0}</div>
           </Card>
@@ -156,10 +156,10 @@ export const B2BView: React.FC = () => {
       <Card className="p-0 overflow-hidden">
         <CardHeader
           title="Invoices (overdue first)"
-          subtitle="The chaser ladder stops at 'in_dispute' and at 'paid'. The action column shows the last chase action."
+          subtitle="The follow-up ladder stops at 'in_dispute' and at 'paid'. The last action column shows the most recent follow-up."
         />
         <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-[var(--color-ink-muted)]">
                 <th className="font-semibold py-2 px-3">Invoice</th>
@@ -167,9 +167,9 @@ export const B2BView: React.FC = () => {
                 <th className="font-semibold py-2 px-3 text-right">Amount</th>
                 <th className="font-semibold py-2 px-3">Due</th>
                 <th className="font-semibold py-2 px-3">Status</th>
-                <th className="font-semibold py-2 px-3 text-right">Chases</th>
-                <th className="font-semibold py-2 px-3">Last action</th>
-                <th className="font-semibold py-2 px-3 text-right">Trigger</th>
+                <th className="font-semibold py-2 px-3 text-right">Follow-up messages</th>
+                <th className="font-semibold py-2 px-3">Last follow-up sent</th>
+                <th className="font-semibold py-2 px-3 text-right">What we'll do next</th>
               </tr>
             </thead>
             <tbody>
@@ -180,7 +180,7 @@ export const B2BView: React.FC = () => {
                   <td className="py-2 px-3 text-right font-mono">
                     &#8377;{(inv.amount_minor / 100).toFixed(2)}
                   </td>
-                  <td className="py-2 px-3 text-[var(--color-ink-muted)] font-mono text-[11px]">
+                  <td className="py-2 px-3 text-[var(--color-ink-muted)] font-mono text-[12px]">
                     {inv.due_date.split('T')[0]}
                   </td>
                   <td className="py-2 px-3">
@@ -190,10 +190,10 @@ export const B2BView: React.FC = () => {
                   <td className="py-2 px-3">
                     {inv.last_chase_action && (
                       <span
-                        className="text-[11px] font-mono font-semibold"
+                        className="text-[12px] font-mono font-semibold"
                         style={{ color: ACTION_COLOR[inv.last_chase_action] || 'var(--color-ink-muted)' }}
                       >
-                        {inv.last_chase_action}
+                        {inv.last_chase_action.replace(/_/g, ' ')}
                       </span>
                     )}
                   </td>
@@ -202,9 +202,9 @@ export const B2BView: React.FC = () => {
                       <button
                         onClick={() => chaseOne(inv.id)}
                         disabled={busy}
-                        className="text-[11px] text-[var(--color-accent)] font-semibold hover:underline disabled:opacity-50"
+                        className="text-[12px] text-[var(--color-accent)] font-semibold hover:underline disabled:opacity-50"
                       >
-                        chase now
+                        Send follow-up now
                       </button>
                     )}
                   </td>

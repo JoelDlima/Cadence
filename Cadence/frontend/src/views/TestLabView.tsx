@@ -152,10 +152,10 @@ const TestLabView: React.FC = () => {
       <Card>
         <CardHeader
           title="Agent vs Razorpay default"
-          subtitle="Same Indian cohort through both arms. Naive arm is Razorpay Smart Retries. Cadence runs the bandit, Guardian, and LLM writer."
+          subtitle="Same Indian cohort through both arms. Naive arm is Razorpay's default retry policy. Cadence runs the AI agent, the rule engine, and the LLM writer."
           action={
             <div className="flex gap-2 items-end">
-              <label className="text-[11px] text-[var(--color-ink-muted)]">
+              <label className="text-[12px] text-[var(--color-ink-muted)]">
                 <div>n</div>
                 <input
                   type="number"
@@ -163,10 +163,10 @@ const TestLabView: React.FC = () => {
                   max={50}
                   value={n}
                   onChange={(e) => setN(parseInt(e.target.value || '50', 10))}
-                  className="w-20 px-2 py-1 border border-[var(--color-line)] rounded text-[12px] font-mono"
+                  className="w-20 px-2 py-1 border border-[var(--color-line)] rounded text-[13px] font-mono"
                 />
               </label>
-              <label className="text-[11px] text-[var(--color-ink-muted)] flex items-center gap-1.5">
+              <label className="text-[12px] text-[var(--color-ink-muted)] flex items-center gap-1.5">
                 <input
                   type="checkbox"
                   checked={useMultiSeed}
@@ -176,13 +176,13 @@ const TestLabView: React.FC = () => {
                 <span>5 seeds (mean)</span>
               </label>
               {!useMultiSeed && (
-                <label className="text-[11px] text-[var(--color-ink-muted)]">
+                <label className="text-[12px] text-[var(--color-ink-muted)]">
                   <div>seed</div>
                   <input
                     type="number"
                     value={seed}
                     onChange={(e) => setSeed(parseInt(e.target.value || '42', 10))}
-                    className="w-20 px-2 py-1 border border-[var(--color-line)] rounded text-[12px] font-mono"
+                    className="w-20 px-2 py-1 border border-[var(--color-line)] rounded text-[13px] font-mono"
                   />
                 </label>
               )}
@@ -217,22 +217,22 @@ const TestLabView: React.FC = () => {
         />
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="text-[12px] text-[var(--color-ink-muted)]">
+            <label className="text-[13px] text-[var(--color-ink-muted)]">
               <div className="mb-1">Subscription</div>
               <Input
                 value={subId}
                 onChange={(e) => setSubId(e.target.value)}
                 placeholder="sub_..."
-                className="numeric text-[13px]"
+                className="numeric text-[14px]"
               />
             </label>
-            <label className="text-[12px] text-[var(--color-ink-muted)]">
+            <label className="text-[13px] text-[var(--color-ink-muted)]">
               <div className="mb-1">Customer</div>
               <Input
                 value={custId}
                 onChange={(e) => setCustId(e.target.value)}
                 placeholder="cust_..."
-                className="numeric text-[13px]"
+                className="numeric text-[14px]"
               />
             </label>
           </div>
@@ -251,10 +251,10 @@ const TestLabView: React.FC = () => {
                     <div className="flex items-start gap-2 min-w-0">
                       <Icon size={14} className="text-[var(--color-ink-muted)] mt-0.5 shrink-0" />
                       <div className="min-w-0">
-                        <h4 className="text-xs font-semibold text-[var(--color-ink)]">
+                        <h4 className="text-[13px] font-semibold text-[var(--color-ink)]">
                           {meta.title}
                         </h4>
-                        <p className="text-[11.5px] text-[var(--color-ink-muted)]">
+                        <p className="text-[13px] text-[var(--color-ink-muted)]">
                           {meta.subtitle}
                         </p>
                       </div>
@@ -271,7 +271,7 @@ const TestLabView: React.FC = () => {
                   </div>
                   {drillState && drillState.status !== 'idle' && (
                     <div
-                      className="p-2.5 rounded border text-[11px] font-mono whitespace-pre-wrap"
+                      className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
                       style={{
                         backgroundColor:
                           drillState.status === 'running'
@@ -332,13 +332,13 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
               ? `Mean of ${result.per_seed.length} seeds, ${result.n} subscribers each (${result.seeds.join(', ')})`
               : `Head-to-head on ${result.n} Indian subscribers (seed ${result.seed})`}
           </span>
-          <span className="ml-auto text-[10px] text-[var(--color-ink-soft)] font-mono">
+          <span className="ml-auto text-[11px] text-[var(--color-ink-soft)] font-mono">
             ran in {result.runtime_ms}ms
           </span>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-5">
-          <Bar label={multiSeed ? 'Mean recovery %' : 'Recovery %'} naive={naivePct} revive={revivePct} max={maxPct} suffix="%" />
-          <Bar label="Contacts sent" naive={result.naive_contacts} revive={result.revive_contacts} max={Math.max(result.naive_contacts, result.revive_contacts, 1)} />
+          <Bar label={multiSeed ? 'Mean recovered %' : 'Recovered %'} naive={naivePct} revive={revivePct} max={maxPct} suffix="%" />
+          <Bar label="Follow-up messages" naive={result.naive_contacts} revive={result.revive_contacts} max={Math.max(result.naive_contacts, result.revive_contacts, 1)} />
           <Bar label="Recovery attempts" naive={result.naive_attempts} revive={result.revive_attempts} max={Math.max(result.naive_attempts, result.revive_attempts, 1)} />
         </div>
       </Card>
@@ -352,10 +352,10 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
             <thead>
               <tr className="text-left text-[var(--color-ink-muted)]">
                 <th className="py-1 pr-3">seed</th>
-                <th className="py-1 pr-3">naive %</th>
-                <th className="py-1 pr-3">revive %</th>
-                <th className="py-1 pr-3">revive INR</th>
-                <th className="py-1 pr-3">revive - naive INR</th>
+                <th className="py-1 pr-3">Razorpay default %</th>
+                <th className="py-1 pr-3">Cadence %</th>
+                <th className="py-1 pr-3">Cadence Rs.</th>
+                <th className="py-1 pr-3">Lift Rs.</th>
               </tr>
             </thead>
             <tbody>
@@ -384,31 +384,31 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
         <div className="grid grid-cols-2 gap-6">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
-              Naive (Razorpay Smart Retries baseline)
+              Razorpay's default retry policy
             </div>
             <div className="text-3xl font-semibold text-[var(--color-ink)] mt-2 font-mono">
               Rs.{result.naive_recovered_inr.toFixed(2)}
             </div>
-            <div className="text-[12px] text-[var(--color-ink-muted)] mt-1">
-              {naivePct.toFixed(1)}% recovery rate
+            <div className="text-[13px] text-[var(--color-ink-muted)] mt-1">
+              {naivePct.toFixed(1)}% recovered
             </div>
-            <div className="text-[11px] text-[var(--color-ink-soft)] mt-3">
+            <div className="text-[12px] text-[var(--color-ink-soft)] mt-3">
               Blind retry +24h, then d1/d3/d5 emails. Same customer, every
               customer, every time.
             </div>
           </div>
           <div>
             <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold flex items-center gap-2">
-              Cadence (deterministic bandit + Guardian)
+              Cadence (AI agent + rules)
               <Trophy size={14} className="text-[var(--color-accent)]" />
             </div>
             <div className="text-3xl font-semibold text-[var(--color-accent)] mt-2 font-mono">
               Rs.{result.revive_recovered_inr.toFixed(2)}
             </div>
-            <div className="text-[12px] text-[var(--color-ink-muted)] mt-1">
-              {revivePct.toFixed(1)}% recovery rate
+            <div className="text-[13px] text-[var(--color-ink-muted)] mt-1">
+              {revivePct.toFixed(1)}% recovered
             </div>
-            <div className="text-[11px] text-[var(--color-ink-soft)] mt-3">
+            <div className="text-[12px] text-[var(--color-ink-soft)] mt-3">
               Cause-aware decision: only contacts within touch cap, no
               messages 9pm-9am IST, deterministic weights in source.
             </div>
@@ -418,7 +418,7 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
         <div className="border-t border-[var(--color-line)] mt-5 pt-4 flex items-center gap-3">
           <div className="flex-1">
             <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
-              Uplift
+              Average improvement
             </div>
             <div className="text-2xl font-semibold text-[var(--color-accent)] mt-1 font-mono">
               +{uplift.toFixed(1)}%
@@ -447,9 +447,9 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
       </Card>
 
       <Card className="p-4 mt-4">
-        <div className="text-[10px] text-[var(--color-ink-soft)] font-mono">
+        <div className="text-[11px] text-[var(--color-ink-soft)] font-mono">
           source: {result.source} &middot; cohort: {result.cohort} &middot; n: {result.n} &middot;
-          {multiSeed ? ` seeds: ${result.seeds.join(',')} &middot; mean uplift: +${result.mean_uplift_pct.toFixed(1)}%` : ` seed: ${result.seed}`}
+          {multiSeed ? ` seeds: ${result.seeds.join(',')} &middot; average improvement: +${result.mean_uplift_pct.toFixed(1)}%` : ` seed: ${result.seed}`}
           &middot; runtime: {result.runtime_ms}ms
         </div>
       </Card>
@@ -473,20 +473,20 @@ const Bar: React.FC<{
       </div>
       <div className="mt-2 space-y-1.5">
         <div className="flex items-center gap-2">
-          <span className="w-12 text-[10px] text-[var(--color-ink-muted)] font-mono">naive</span>
+          <span className="w-16 text-[11px] text-[var(--color-ink-muted)] font-mono">Razorpay</span>
           <div className="flex-1 h-3 bg-[var(--color-paper-2)] rounded overflow-hidden">
             <div className="h-full bg-[var(--color-ink-soft)]" style={{ width: `${naiveW}%` }} />
           </div>
-          <span className="w-16 text-right text-[11px] font-mono">
+          <span className="w-16 text-right text-[12px] font-mono">
             {naive.toFixed(0)}{suffix}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-12 text-[10px] text-[var(--color-ink-muted)] font-mono">Cadence</span>
+          <span className="w-16 text-[11px] text-[var(--color-ink-muted)] font-mono">Cadence</span>
           <div className="flex-1 h-3 bg-[var(--color-paper-2)] rounded overflow-hidden">
             <div className="h-full bg-[var(--color-accent)]" style={{ width: `${reviveW}%` }} />
           </div>
-          <span className="w-16 text-right text-[11px] font-mono">
+          <span className="w-16 text-right text-[12px] font-mono">
             {revive.toFixed(0)}{suffix}
           </span>
         </div>

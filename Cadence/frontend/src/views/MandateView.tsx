@@ -78,24 +78,24 @@ export const MandateView: React.FC = () => {
   if (loading && decisions.length === 0) {
     return (
       <EmptyState
-        title="Waiting for the mandate sequencer to fire..."
-        description="Click 'Simulate a UPI mandate failure' to record a failure and watch the sequencer pick the next action."
+        title="Waiting for the UPI auto-pay sequencer to fire..."
+        description="Click 'Simulate a UPI auto-pay failure' to record a failure and watch the sequencer pick the next action."
       />
     );
   }
   if (error) {
-    return <EmptyState title="Mandate ID sequencer unavailable" description={error} />;
+    return <EmptyState title="UPI auto-pay sequencer unavailable" description={error} />;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Mandate ID Retry Sequencer"
-        description="A failed UPI AutoPay or card e-mandate needs cross-channel cadence. The sequencer ladder: RETRY_NOW (cause != BANK_DOWN) -> RETRY_24H (BANK_DOWN) -> REMITTER_OUTREACH (3+ BANK_DOWN in 7d) -> SWITCH_METHOD (mandate paused > 14d) -> STOP_AND_HUMAN_REVIEW (3+ distinct causes). Every decision is replayable from the hash-chained audit log."
+        title="UPI Auto-pay Retry Sequencer"
+        description="A failed UPI auto-pay or card e-mandate needs cross-channel cadence. The sequencer ladder: RETRY_NOW (cause != BANK_DOWN) -> RETRY_24H (BANK_DOWN) -> REMITTER_OUTREACH (3+ BANK_DOWN in 7d) -> SWITCH_METHOD (mandate paused > 14d) -> STOP_AND_HUMAN_REVIEW (3+ distinct causes). Every decision is replayable from the hash-chained audit log."
         action={
           <Button onClick={simulateBankDown} disabled={busy} variant="secondary">
             <Play size={14} className="inline-block mr-1" />
-            Simulate a UPI mandate failure
+            Simulate a UPI auto-pay failure
           </Button>
         }
       />
@@ -103,8 +103,8 @@ export const MandateView: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {(['RETRY_NOW', 'RETRY_24H', 'REMITTER_OUTREACH', 'SWITCH_METHOD', 'STOP_AND_HUMAN_REVIEW'] as const).map((action) => (
           <Card key={action} className="p-4 text-center">
-            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)] font-mono">
-              {action}
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)] font-mono">
+              {action.replace(/_/g, ' ')}
             </div>
             <div
               className="text-2xl font-semibold mt-1 font-mono"
@@ -122,14 +122,14 @@ export const MandateView: React.FC = () => {
           subtitle="Each row is one failure event + the action the sequencer chose. The reason is the audit chain's plain-text explanation."
         />
         <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-[var(--color-ink-muted)]">
-                <th className="font-semibold py-2 px-3">Mandate ID</th>
+                <th className="font-semibold py-2 px-3">Mandate</th>
                 <th className="font-semibold py-2 px-3">What we'll do next</th>
-                <th className="font-semibold py-2 px-3 text-right">When (seconds)</th>
+                <th className="font-semibold py-2 px-3 text-right">When (seconds from now)</th>
                 <th className="font-semibold py-2 px-3">Why</th>
-                <th className="font-semibold py-2 px-3">Fired at</th>
+                <th className="font-semibold py-2 px-3">When fired</th>
               </tr>
             </thead>
             <tbody>
@@ -138,19 +138,19 @@ export const MandateView: React.FC = () => {
                   <td className="py-2 px-3 font-mono">{d.mandate_id}</td>
                   <td className="py-2 px-3">
                     <span
-                      className="text-[11px] font-mono font-semibold"
+                      className="text-[12px] font-mono font-semibold"
                       style={{ color: ACTION_COLOR[d.action] || 'var(--color-ink-muted)' }}
                     >
-                      {d.action}
+                      {d.action.replace(/_/g, ' ')}
                     </span>
                   </td>
                   <td className="py-2 px-3 text-right font-mono">
                     {d.schedule_after_seconds}
                   </td>
-                  <td className="py-2 px-3 text-[var(--color-ink-muted)] font-mono text-[11px]">
+                  <td className="py-2 px-3 text-[var(--color-ink-muted)] font-mono text-[12px]">
                     {d.reason}
                   </td>
-                  <td className="py-2 px-3 text-[var(--color-ink-muted)] font-mono text-[11px]">
+                  <td className="py-2 px-3 text-[var(--color-ink-muted)] font-mono text-[12px]">
                     {d.ran_at}
                   </td>
                 </tr>

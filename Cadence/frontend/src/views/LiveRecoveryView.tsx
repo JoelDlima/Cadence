@@ -35,7 +35,7 @@ const Copyable: React.FC<{ value: string; label?: string }> = ({ value, label })
         type="button"
         onClick={() => { copyToClipboard(value); setCopied(true); setTimeout(() => setCopied(false), 1200); }}
         title={`Copy ${value}`}
-        className="text-[10px] text-[var(--color-accent)] hover:underline"
+        className="text-[12px] text-[var(--color-accent)] hover:underline"
       >
         {copied ? 'copied' : 'copy'}
       </button>
@@ -273,7 +273,7 @@ export const LiveRecoveryView: React.FC = () => {
               </Button>
             ) : (
               <div className="space-y-1">
-                <div className="text-[12px] text-[var(--color-ink-muted)]">id</div>
+                <div className="text-[13px] text-[var(--color-ink-muted)]">customer id</div>
                 <Copyable value={customer.id} />
                 {customer.simulated && (
                   <Badge tone="info">simulated (no Razorpay keys)</Badge>
@@ -293,9 +293,9 @@ export const LiveRecoveryView: React.FC = () => {
                 Create payment link + post failure webhook
               </Button>
             ) : failure ? (
-              <div className="space-y-1 text-[12px] font-mono">
+              <div className="space-y-1 text-[13px] font-mono">
                 <div>journey <Copyable value={failure.journey_id} /></div>
-                <div>link <Copyable value={failure.payment_link.id} /></div>
+                <div>payment link id <Copyable value={failure.payment_link.id} /></div>
                 <div>ref <Copyable value={failure.payment_link.reference_id} /></div>
                 <a
                   href={failure.payment_link.short_url}
@@ -307,7 +307,7 @@ export const LiveRecoveryView: React.FC = () => {
                 </a>
               </div>
             ) : (
-              <div className="text-[12px] text-[var(--color-ink-muted)]">Run step 1 first.</div>
+              <div className="text-[13px] text-[var(--color-ink-muted)]">Run step 1 first.</div>
             )}
           />
 
@@ -332,7 +332,7 @@ export const LiveRecoveryView: React.FC = () => {
                 </a>
               </div>
             ) : (
-              <div className="text-[12px] text-[var(--color-ink-muted)]">Run step 2 first.</div>
+              <div className="text-[13px] text-[var(--color-ink-muted)]">Run step 2 first.</div>
             )}
           />
         </div>
@@ -345,7 +345,7 @@ export const LiveRecoveryView: React.FC = () => {
                 Selected journey
               </div>
               {failure && journeyState !== 'RECOVERED' && (
-                <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-coral)] font-medium">
+                <span className="flex items-center gap-1.5 text-[12px] text-[var(--color-coral)] font-medium">
                   <span className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral)] animate-pulse" />
                   {journeyState === 'WAITING_OUTCOME' || journeyState === 'INTERVENING'
                     ? 'Waiting for payment webhook… (auto-refresh)'
@@ -357,12 +357,12 @@ export const LiveRecoveryView: React.FC = () => {
               )}
             </div>
             {failure ? (
-              <div className="space-y-2 text-[12px] font-mono">
-                <div><span className="text-[var(--color-ink-muted)]">journey_id:</span> {failure.journey_id}</div>
-                <div><span className="text-[var(--color-ink-muted)]">subscription_id:</span> {failure.subscription_id}</div>
+              <div className="space-y-2 text-[13px] font-mono">
+                <div><span className="text-[var(--color-ink-muted)]">journey id:</span> {failure.journey_id}</div>
+                <div><span className="text-[var(--color-ink-muted)]">subscription id:</span> {failure.subscription_id}</div>
                 <div><span className="text-[var(--color-ink-muted)]">state:</span> {journeyState}</div>
-                <div className="pt-2 text-[var(--color-ink-muted)] text-[11px]">
-                  The agent reasoning for this journey is in the
+                <div className="pt-2 text-[var(--color-ink-muted)] text-[12px]">
+                  The AI thought process for this journey is in the
                   <a href="#/journeys" className="underline ml-1">Journeys &amp; Audit</a>
                   {' '}tab (click the journey row to open the chat panel).
                 </div>
@@ -383,8 +383,8 @@ export const LiveRecoveryView: React.FC = () => {
               Live evidence
             </div>
             {failure ? (
-              <ul className="space-y-2 text-[12px] font-mono">
-                <li><Copyable value={failure.event_id} label="event id" /></li>
+              <ul className="space-y-2 text-[13px] font-mono">
+                <li><Copyable value={failure.event_id} label="webhook id" /></li>
                 <li><Copyable value={customer?.id ?? ''} label="customer id" /></li>
                 <li><Copyable value={failure.payment_link.id} label="payment link id" /></li>
                 <li><Copyable value={failure.payment_link.short_url} label="short_url" /></li>
@@ -401,19 +401,19 @@ export const LiveRecoveryView: React.FC = () => {
 
               <div className="rounded-md border border-[var(--color-line)] p-3">
                 <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">Email preview</div>
-                <div className="text-[12px]"><span className="text-[var(--color-ink-muted)]">Subject:</span> {nudgeSubject || '(subject appears after the LLM writes)'}</div>
-                <pre className="text-[11px] font-mono mt-1 whitespace-pre-wrap text-[var(--color-ink)] max-h-32 overflow-auto">{nudgeBody || '(Hinglish body appears once the engine writes it; you can also send it to your email above)'}</pre>
+                <div className="text-[13px]"><span className="text-[var(--color-ink-muted)]">Subject:</span> {nudgeSubject || '(subject appears after the LLM writes)'}</div>
+                <pre className="text-[12px] font-mono mt-1 whitespace-pre-wrap text-[var(--color-ink)] max-h-32 overflow-auto">{nudgeBody || '(Hinglish body appears once the engine writes it; you can also send it to your email above)'}</pre>
               </div>
 
               <a href={RAZORPAY_DASHBOARD_LINKS.paymentLinks} target="_blank" rel="noreferrer"
-                 className="flex items-center gap-1.5 text-[12px] text-[var(--color-accent)] underline">
+                 className="flex items-center gap-1.5 text-[13px] text-[var(--color-accent)] underline">
                 <ExternalLink size={11} /> Open this link in Razorpay Dashboard
               </a>
               <a href={failure?.payment_link.short_url ?? '#'} target="_blank" rel="noreferrer"
-                 className="flex items-center gap-1.5 text-[12px] text-[var(--color-ink)] underline">
+                 className="flex items-center gap-1.5 text-[13px] text-[var(--color-ink)] underline">
                 <ExternalLink size={11} /> Open the payment page in a new tab
               </a>
-              <a href="#/journeys" className="flex items-center gap-1.5 text-[12px] text-[var(--color-accent)] underline">
+              <a href="#/journeys" className="flex items-center gap-1.5 text-[13px] text-[var(--color-accent)] underline">
                 <FileText size={11} /> View audit trail
               </a>
             </div>
@@ -427,9 +427,9 @@ export const LiveRecoveryView: React.FC = () => {
           <div className="flex-1 space-y-3">
             <div>
               <div className="text-sm font-medium text-[var(--color-ink)]">
-                Send the Hinglish nudge to your email (proof for the judge)
+                Send the Hinglish nudge to your inbox (proof for the judge)
               </div>
-              <div className="text-[12px] text-[var(--color-ink-muted)] mt-0.5">
+              <div className="text-[13px] text-[var(--color-ink-muted)] mt-0.5">
                 Type your email below. After step 2 the engine writes a real Hinglish body — press the
                 button and the SPA POSTs it to the Resend live-send endpoint so the message lands in
                 your inbox within a few seconds.
@@ -445,7 +445,7 @@ export const LiveRecoveryView: React.FC = () => {
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
                   placeholder="you@yourcompany.com"
-                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
               <div>
@@ -457,7 +457,7 @@ export const LiveRecoveryView: React.FC = () => {
                   value={recipientPhone}
                   onChange={(e) => setRecipientPhone(e.target.value)}
                   placeholder="+91 99999 00000"
-                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
             </div>
@@ -469,16 +469,16 @@ export const LiveRecoveryView: React.FC = () => {
                 size="sm"
               >
                 <MessageCircle size={13} className="inline-block mr-1" />
-                {sendStatus.kind === 'sending' ? 'Sending…' : 'Send Hinglish nudge to my email'}
+                {sendStatus.kind === 'sending' ? 'Sending…' : 'Send Hinglish nudge to your inbox'}
               </Button>
               {sendStatus.kind === 'sent' && (
                 <Badge tone="approved">{sendStatus.msg ?? 'Sent'}</Badge>
               )}
               {sendStatus.kind === 'error' && (
-                <span className="text-[12px] text-[var(--color-rejected)]">{sendStatus.msg}</span>
+                <span className="text-[13px] text-[var(--color-rejected)]">{sendStatus.msg}</span>
               )}
               {!failure && sendStatus.kind === 'idle' && (
-                <span className="text-[11px] text-[var(--color-ink-subtle)]">
+                <span className="text-[12px] text-[var(--color-ink-subtle)]">
                   Run steps 1 and 2 first to unlock the send button.
                 </span>
               )}
@@ -511,7 +511,7 @@ const AudioCard: React.FC<{ nudgeBody: string; nudgeSubject: string }> = ({ nudg
 
   if (!nudgeBody) {
     return (
-      <div className="rounded-md border border-[var(--color-line)] p-3 text-[11px] text-[var(--color-ink-muted)]">
+      <div className="rounded-md border border-[var(--color-line)] p-3 text-[13px] text-[var(--color-ink-muted)]">
         Audio (Hinglish) — appears once the engine writes the body
       </div>
     );
@@ -544,7 +544,7 @@ const StepCard: React.FC<{
       </div>
       <div className="text-sm font-medium text-[var(--color-ink)]">{title}</div>
       {active && (
-        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-[var(--color-coral)] font-medium">
+        <span className="ml-auto flex items-center gap-1.5 text-[12px] text-[var(--color-coral)] font-medium">
           <span className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral)] animate-pulse" />
           live
         </span>
