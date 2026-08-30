@@ -74,8 +74,12 @@ def main() -> int:
 
     # 1. Razorpay
     print("\n[1] Razorpay (payment_link create + payment.failed webhook shape)")
-    rzp_id = os.environ.get("RZP_KEY_ID", "rzp_test_placeholder")
-    rzp_secret = os.environ.get("RZP_KEY_SECRET", "6JC51w3IOKbjxVrLqTiap09h")
+    rzp_id = os.environ.get("RZP_KEY_ID")
+    rzp_secret = os.environ.get("RZP_KEY_SECRET")
+    if not rzp_id or not rzp_secret:
+        print("  SKIP: RZP_KEY_ID / RZP_KEY_SECRET not set in env. "
+              "Copy Cadence/.env into your shell and re-run.")
+        return 0
     auth = base64.b64encode(f"{rzp_id}:{rzp_secret}".encode()).decode()
 
     # 1a. list payments
@@ -96,7 +100,7 @@ def main() -> int:
         "description": "Cadence LIVE smoke test",
         "customer": {
             "name": "Cadence Demo Customer",
-            "email": "joelinternshipaitd@gmail.com",
+            "email": os.environ.get("BUILDATHON_TEST_EMAIL", "demo@cadence.local"),
             "contact": "+919876543210",  # the docs' canonical example
         },
         "notify": {"sms": False, "email": False},
@@ -143,7 +147,7 @@ def main() -> int:
                     "bank": None,
                     "wallet": None,
                     "vpa": "cadence@upi",
-                    "email": "joelinternshipaitd@gmail.com",
+                    "email": os.environ.get("BUILDATHON_TEST_EMAIL", "demo@cadence.local"),
                     "contact": "+919876543210",
                     "customer_id": "cust_TVEAT6U0W8Pgas",
                     "fee": None,
@@ -176,7 +180,10 @@ def main() -> int:
 
     # 2. Groq
     print("\n[2] Groq (chat completions with User-Agent)")
-    groq_key = os.environ.get("GROQ_API_KEY", "gsk_placeholder_secret")
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if not groq_key:
+        print("  SKIP: GROQ_API_KEY not set in env.")
+        return 0
     model = os.environ.get("LLM_MODEL_GROQ", "openai/gpt-oss-120b")
     status, body = _request(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -191,7 +198,10 @@ def main() -> int:
 
     # 3. Resend
     print("\n[3] Resend (send email with User-Agent + onboarding sender)")
-    resend_key = os.environ.get("RESEND_API_KEY", "re_placeholder_secret")
+    resend_key = os.environ.get("RESEND_API_KEY")
+    if not resend_key:
+        print("  SKIP: RESEND_API_KEY not set in env.")
+        return 0
     status, body = _request(
         "https://api.resend.com/emails",
         method="POST",

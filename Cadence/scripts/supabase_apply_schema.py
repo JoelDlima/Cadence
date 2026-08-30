@@ -25,10 +25,12 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 
 def main() -> int:
     project_ref = os.environ.get("SUPABASE_PROJECT_REF", "vzrasadomyrycafbzdwg")
-    pat = os.environ.get(
-        "SUPABASE_PAT",
-        "sbp_placeholder_secret",
-    )
+    pat = os.environ.get("SUPABASE_PAT")
+    if not pat:
+        print("[error] SUPABASE_PAT not set. Create a Personal Access Token at"
+              " https://supabase.com/dashboard/account/tokens and put it in"
+              " your shell or Cadence/.env.")
+        return 1
     schema_path = Path(__file__).resolve().parents[1] / "supabase" / "schema.sql"
 
     if not schema_path.is_file():

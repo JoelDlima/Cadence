@@ -15,12 +15,27 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const GROQ_MODEL = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-120b";
+const CADENCE_ENGINE_TOKEN = Deno.env.get("CADENCE_ENGINE_TOKEN") ?? "";
 const JOURNEYS_TABLE = "journeys_mirror";
 const SUMMARY_TABLE = "journey_summaries";
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") {
     return new Response("use POST", { status: 405 });
+  }
+  // S5: require a bearer token. Anyone with the function URL could
+  // otherwise burn the Groq quota and write into journey_summaries.
+  // The local engine sends `Authorization: Bearer <CADENCE_ENGINE_TOKEN>`.
+  if (!CADENCE_ENGINE_TOKEN) {
+    return new Response(JSON.stringify({
+      error: "CADENCE_ENGINE_TOKEN not configured",
+      fix: "supabase secrets set CADENCE_ENGINE_TOKEN=... --project-ref <ref>",
+    }), { status: 501, headers: { "content-type": "application/json" } });
+  }
+  const auth = req.headers.get("Authorization") ?? "";
+  if (auth !== `Bearer ${CADENCE_ENGINE_TOKEN}`) {
+    return new Response(JSON.stringify({ error: "unauthorized" }),
+                        { status: 401, headers: { "content-type": "application/json" } });
   }
   if (!GROQ_API_KEY) {
     return new Response(JSON.stringify({ error: "GROQ_API_KEY not set" }), {

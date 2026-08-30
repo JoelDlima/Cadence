@@ -59,6 +59,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   try {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // S3: derive event_id from the X-Razorpay-Event-Id header (preferred
+    // for idempotency) or from the JSON body's `id` field. schema.sql
+    // declares event_id NOT NULL UNIQUE, so without it every insert
+    // would fail and the webhook would be silently dropped.
+    const headerEventId = req.headers.get("x-razorpay-event-id") ?? "";
+    let eventId = headerEventId;
+    if (!eventId && typeof payload === "object" && payload !== null) {
+      const fromBody = (payload as { id?: unknown }).id;
+      if (typeof fromBody === "string" && fromBody.length > 0) {
+        eventId = fromBody;
+      }
+    }
+    if (!eventId) {
+      // Last-resort fallback: a uuid. The local poller will still pick
+      // it up but duplicates from a retry will be rejected by the
+      // UNIQUE constraint (which is what we want for idempotency).
+      eventId = crypto.randomUUID();
+    }
     const res = await fetch(
       `${Deno.env.get("SUPABASE_URL")}/rest/v1/webhook_inbox`,
       {
@@ -70,6 +88,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           Prefer: "return=minimal",
         },
         body: JSON.stringify({
+          event_id: eventId,
           payload,
           signature: sigHeader,
           processed: false,

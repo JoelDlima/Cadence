@@ -28,12 +28,16 @@ from pathlib import Path
 DEFAULT_PROJECT = "vzrasadomyrycafbzdwg"
 # Edge Functions on the cadence project
 DEFAULT_FUNCTIONS = ["webhook-collector", "cadence-llm-summary"]
-# Map from local env var to Supabase secret name (Supabase secrets use
-# uppercase with underscores; the project ref is the URL host segment).
+# S2: aligned with the names read by src/revive/config.py. The previous
+# list used RAZORPAY_* but Cadence reads RZP_* (and SUPABASE_SERVICE_KEY
+# not SUPABASE_SERVICE_ROLE_KEY), so every Razorpay + Supabase secret
+# was silently skipped on a stock .env.
 KEY_NAMES = [
-    "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET",
+    "RZP_KEY_ID", "RZP_KEY_SECRET", "RZP_WEBHOOK_SECRET",
     "GROQ_API_KEY", "OPENROUTER_API_KEY", "SARVAM_API_KEY",
+    "GEMINI_API_KEY",
     "RESEND_API_KEY", "EMAIL_FROM",
+    "SUPABASE_URL", "SUPABASE_SERVICE_KEY",
     "CADENCE_ENGINE_URL", "CADENCE_ENGINE_TOKEN",
 ]
 

@@ -50,6 +50,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // 1) Pull raw body
   const raw = new Uint8Array(await req.arrayBuffer());
 
+  // S4: fail CLOSED when the webhook secret is unset. The previous
+  // version let the function answer 200 with an empty HMAC, which
+  // meant anyone with the function URL could forge signed webhooks
+  // (or simply send unsigned ones). The function must NOT accept
+  // any traffic until RAZORPAY_WEBHOOK_SECRET is configured in the
+  // Supabase project's Edge Function secrets.
+  if (!RAZORPAY_WEBHOOK_SECRET) {
+    return new Response(
+      JSON.stringify({
+        error: "webhook secret not configured",
+        fix: "supabase secrets set RAZORPAY_WEBHOOK_SECRET=... --project-ref <ref>",
+      }),
+      { status: 501, headers: { "content-type": "application/json" } },
+    );
+  }
+
   // 2) Verify Razorpay signature
   const sig = req.headers.get("x-razorpay-signature") ?? "";
   // Razorpay signs the body with HMAC-SHA256, hex; the secret is shared.
@@ -64,7 +80,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const expected = Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  if (RAZORPAY_WEBHOOK_SECRET && expected !== sig) {
+  if (expected !== sig) {
     return new Response(JSON.stringify({ error: "invalid signature" }), {
       status: 401,
       headers: { "content-type": "application/json" },
