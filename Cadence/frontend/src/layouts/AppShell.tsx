@@ -1,5 +1,5 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
-import { BarChart3, FileClock, ShieldCheck, FlaskConical, CreditCard, Power, Menu, X, ShieldAlert, Server, Activity, Brain, ShoppingCart, Briefcase, GitBranch, GitCompare, Play, Database, ChevronDown } from 'lucide-react';
+import { BarChart3, FileClock, ShieldCheck, FlaskConical, CreditCard, Power, Menu, X, ShieldAlert, Server, Activity, ShoppingCart, Briefcase, GitBranch, Play, Database, ChevronDown } from 'lucide-react';
 import { Badge, Button, cn } from '../components/primitives';
 import { api } from '../services/api';
 import { CloudStatus } from '../types';
@@ -13,19 +13,15 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   // === TOP 4 — primary pitch surfaces ===
-  { id: 'live',         label: 'Live Recovery',       icon: Play,        group: 'primary' },
-  { id: 'agentcompare', label: 'Results',             icon: GitCompare,  group: 'primary' },
-  { id: 'merchant',     label: 'Merchant',            icon: Briefcase,   group: 'primary' },
-  { id: 'overview',     label: 'Overview',            icon: BarChart3,   group: 'primary' },
+  { id: 'live',         label: 'Live Recovery',       icon: Play,         group: 'primary' },
+  { id: 'dashboard',    label: 'Dashboard',           icon: BarChart3,    group: 'primary' },
+  { id: 'testlab',      label: 'Test Lab',            icon: FlaskConical, group: 'primary' },
+  { id: 'journeys',     label: 'Journeys & Audit',    icon: FileClock,    group: 'primary' },
   // === MORE — depth, not breadth ===
-  { id: 'journeys',     label: 'Journeys & Audit',    icon: FileClock,   group: 'more' },
-  { id: 'guardian',     label: 'Policy Guardian',     icon: ShieldCheck, group: 'more' },
-  { id: 'brain',        label: 'Recovery Brain',      icon: Brain,       group: 'more' },
-  { id: 'testbench',    label: 'Simulation & Chaos',  icon: FlaskConical,group: 'more' },
-  { id: 'b2b',          label: 'B2B Receivables',     icon: Briefcase,   group: 'more' },
-  { id: 'mandate',      label: 'Mandate Sequencer',   icon: GitBranch,   group: 'more' },
-  { id: 'checkout',     label: 'Checkout Recovery',   icon: ShoppingCart,group: 'more' },
-  { id: 'pay',          label: 'Payment Portal',      icon: CreditCard,  group: 'more' },
+  { id: 'b2b',          label: 'B2B Receivables',     icon: Briefcase,    group: 'more' },
+  { id: 'mandate',      label: 'Mandate Sequencer',   icon: GitBranch,    group: 'more' },
+  { id: 'checkout',     label: 'Checkout Recovery',   icon: ShoppingCart, group: 'more' },
+  { id: 'pay',          label: 'Payment Portal',      icon: CreditCard,   group: 'more' },
 ];
 
 export function AppShell({

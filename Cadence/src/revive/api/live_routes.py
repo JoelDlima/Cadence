@@ -69,6 +69,7 @@ class LiveSendEmailIn(BaseModel):
     to: str
     subject: str | None = None
     text: str | None = None
+    attach_pdf: bool = False
 
 class LivePaymentPaidIn(BaseModel):
     reference_id: str
@@ -286,13 +287,136 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         RESEND_API_KEY is not configured, the route returns a clear
         501 with a SKIP message; the SPA falls back to a toast that
         says '(demo mode — no Resend key set, would have sent to <to>)'.
+
+        When `attach_pdf=true` the route also looks up the journey,
+        pulls its last 24h of audit events, and renders a one-page
+        PDF summary that is (a) returned in the JSON response as
+        base64 and (b) sent to Resend as an attachment.
         """
         cfg = runtime.config.razorpay if runtime and runtime.config else None
         import os as _os
+        # Optionally build the PDF attachment from the journey's last
+        # 24h of audit events. reportlab is optional: when the user
+        # asked for a PDF but reportlab is missing we fall through
+        # to sending the email without the attachment (and surface
+        # the reason in the response).
+        pdf_b64: str | None = None
+        pdf_filename: str | None = None
+        pdf_size_bytes: int | None = None
+        pdf_skipped_reason: str | None = None
+        if body.attach_pdf:
+            try:
+                from reportlab.lib.pagesizes import LETTER
+                from reportlab.lib import colors
+                from reportlab.lib.styles import getSampleStyleSheet
+                from reportlab.lib.units import inch
+                from reportlab.platypus import (
+                    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+                )
+                from io import BytesIO
+                import base64 as _b64
+                from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+                # Parse reference_id ("journey_id:attempt") and fetch the journey.
+                journey_id = body.reference_id.split(":", 1)[0]
+                jr = runtime.journeys
+                es = runtime.store
+                journey = jr.get(journey_id)
+                if journey is None:
+                    pdf_skipped_reason = f"unknown journey {journey_id}"
+                else:
+                    all_events = es.get_by_aggregate("journey", journey.subscription_id)
+                    cutoff = _dt.now(_tz.utc) - _td(hours=24)
+                    recent: list = []
+                    for ev in all_events:
+                        try:
+                            ts = _dt.fromisoformat(ev.occurred_at.replace("Z", "+00:00"))
+                        except Exception:
+                            continue
+                        if ts >= cutoff:
+                            recent.append(ev)
+
+                    buf = BytesIO()
+                    doc = SimpleDocTemplate(
+                        buf, pagesize=LETTER,
+                        leftMargin=0.6 * inch, rightMargin=0.6 * inch,
+                        topMargin=0.6 * inch, bottomMargin=0.6 * inch,
+                        title=f"Cadence journey {journey.journey_id}",
+                    )
+                    styles = getSampleStyleSheet()
+                    story = []
+                    story.append(Paragraph(
+                        f"Cadence recovery journey {journey.journey_id}",
+                        styles["Title"],
+                    ))
+                    story.append(Paragraph(
+                        f"Last 24 hours — {len(recent)} event(s)",
+                        styles["Normal"],
+                    ))
+                    story.append(Spacer(1, 0.2 * inch))
+
+                    def _trunc(payload: dict, limit: int = 80) -> str:
+                        try:
+                            s = json.dumps(payload, sort_keys=True, default=str)
+                        except Exception:
+                            s = str(payload)
+                        return s if len(s) <= limit else s[: limit - 1] + "\u2026"
+
+                    rows = [["time (UTC)", "type", "summary"]]
+                    for ev in recent:
+                        rows.append([
+                            ev.occurred_at,
+                            ev.type,
+                            _trunc(ev.payload),
+                        ])
+                    if len(rows) == 1:
+                        rows.append(["\u2014", "(no events in last 24h)", "\u2014"])
+                    tbl = Table(
+                        rows,
+                        colWidths=[2.0 * inch, 1.8 * inch, 3.4 * inch],
+                        repeatRows=1,
+                    )
+                    tbl.setStyle(TableStyle([
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 10),
+                        ("FONTSIZE", (0, 1), (-1, -1), 8),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+                        ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+                         [colors.whitesmoke, colors.HexColor("#e2e8f0")]),
+                        ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ]))
+                    story.append(tbl)
+                    story.append(Spacer(1, 0.3 * inch))
+                    story.append(Paragraph(
+                        "Generated by Cadence (Razorpay Buildathon Track 3)",
+                        styles["Italic"],
+                    ))
+                    doc.build(story)
+                    raw_pdf = buf.getvalue()
+                    pdf_bytes = len(raw_pdf)
+                    pdf_b64 = _b64.b64encode(raw_pdf).decode("ascii")
+                    pdf_filename = f"cadence-journey-{journey.journey_id}.pdf"
+                    pdf_size_bytes = pdf_bytes
+            except ImportError as exc:
+                pdf_skipped_reason = f"reportlab not installed: {exc!r}"
+            except Exception as exc:  # noqa: BLE001
+                pdf_skipped_reason = f"pdf generation failed: {exc!r}"
+                log.warning("live send-email pdf generation failed: %r", exc)
+
         if not (_os.environ.get("RESEND_API_KEY") or (cfg and getattr(cfg, "resend_api_key", None))):
-            return {"status": "skipped", "http": 200,
+            resp = {"status": "skipped", "http": 200,
                     "detail": "RESEND_API_KEY not set; bubble shown in SPA but no real send",
                     "to": body.to}
+            if pdf_b64:
+                resp["pdf_filename"] = pdf_filename
+                resp["pdf_size_bytes"] = pdf_size_bytes
+                resp["pdf_base64"] = pdf_b64
+            elif pdf_skipped_reason:
+                resp["pdf_skipped_reason"] = pdf_skipped_reason
+            return resp
         # Build subject + body
         from revive.agents.message_writer import _NUDGE_SYSTEM
         text = body.text or (
@@ -304,6 +428,16 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         # POST to Resend
         import httpx as _httpx
         rzp = _os.environ.get("RESEND_API_KEY")
+        payload: dict = {
+            "from": "Cadence <onboarding@resend.dev>",
+            "to": [body.to],
+            "subject": subject,
+            "text": text,
+        }
+        if pdf_b64 and pdf_filename:
+            payload["attachments"] = [
+                {"filename": pdf_filename, "content": pdf_b64},
+            ]
         try:
             r = _httpx.post(
                 "https://api.resend.com/emails",
@@ -311,20 +445,22 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                     "Authorization": f"Bearer {rzp}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "from": "Cadence <onboarding@resend.dev>",
-                    "to": [body.to],
-                    "subject": subject,
-                    "text": text,
-                },
+                json=payload,
                 timeout=10.0,
             )
-            return {"status": "sent" if r.status_code in (200, 201) else "error",
+            resp = {"status": "sent" if r.status_code in (200, 201) else "error",
                     "http": r.status_code,
                     "to": body.to,
                     "subject": subject,
                     "body_chars": len(text),
                     "detail": r.text[:200] if r.status_code not in (200, 201) else "ok"}
+            if pdf_b64:
+                resp["pdf_filename"] = pdf_filename
+                resp["pdf_size_bytes"] = pdf_size_bytes
+                resp["pdf_base64"] = pdf_b64
+            elif pdf_skipped_reason:
+                resp["pdf_skipped_reason"] = pdf_skipped_reason
+            return resp
         except Exception as e:  # noqa: BLE001
             return {"status": "error", "http": 0, "detail": f"{e!r}", "to": body.to}
 

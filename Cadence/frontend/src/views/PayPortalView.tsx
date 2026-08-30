@@ -10,7 +10,6 @@ import {
 import { Card, Badge, Button, PageHeader } from '../components/primitives';
 import { api, formatINR } from '../services/api';
 import { Journey } from '../types';
-import { NudgePreview } from './NudgePreview';
 
 export const PayPortalView: React.FC = () => {
   const [journey, setJourney] = useState<Journey | null>(null);
@@ -259,8 +258,6 @@ export const PayPortalView: React.FC = () => {
           </Card>
         </div>
       </div>
-
-      <NudgePreview />
     </div>
   );
 };

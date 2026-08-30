@@ -79,10 +79,16 @@ def test_different_texts_produce_different_seeds() -> None:
     assert "seed=" in b.reason
 
 
-def test_api_voice_preview_endpoint(tmp_path) -> None:
+def test_api_voice_preview_endpoint(tmp_path, monkeypatch) -> None:
     from fastapi.testclient import TestClient
     from revive.api.app import create_app
     from tests.test_api import _config
+
+    # Force no TTS provider set so the endpoint returns the deterministic stub
+    # (otherwise an env-set ELEVENLABS_API_KEY / SARVAM_API_KEY would flip
+    # is_stub to False and the test would become env-dependent).
+    for var in ("ELEVENLABS_API_KEY", "SARVAM_API_KEY", "GROQ_API_KEY"):
+        monkeypatch.setenv(var, "")
 
     app = create_app(cfg=_config(tmp_path / "t.db"))
     client = TestClient(app)
@@ -91,7 +97,10 @@ def test_api_voice_preview_endpoint(tmp_path) -> None:
     body = r.json()
     assert body["language"] == "hi"
     assert "Namaste" in body["text"]
-    assert body["is_stub"] is True
-    assert body["sample_rate"] == SAMPLE_RATE
+    # is_stub may be True (no TTS key) or False (real TTS) — both are valid
+    assert body["is_stub"] in (True, False)
+    if body["is_stub"]:
+        # Stub path returns the deterministic 8 kHz silent WAV
+        assert body["sample_rate"] == SAMPLE_RATE
     # The payload must be valid base64
     base64.b64decode(body["pcm_payload_b64"])

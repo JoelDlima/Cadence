@@ -9,7 +9,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, PageHeader, Badge, EmptyState } from '../components/primitives';
 import { api, inrFormatter } from '../services/api';
-import type { MerchantSummary } from '../types';
+import type { MerchantSummary, Metrics, Journey } from '../types';
 
 const STATE_LABEL: Record<string, string> = {
   OPENED: 'Opened',
@@ -58,11 +58,22 @@ export const MerchantDashboard: React.FC = () => {
   const [summary, setSummary] = useState<MerchantSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [killSwitch, setKillSwitch] = useState<boolean | null>(null);
+  const [recentJourneys, setRecentJourneys] = useState<Journey[]>([]);
 
   const fetch = useCallback(async () => {
     try {
-      const data = await api.getMerchantSummary();
+      const [data, m, ks, js] = await Promise.all([
+        api.getMerchantSummary(),
+        api.getMetrics().catch(() => null),
+        api.getKillSwitch().catch(() => null),
+        api.getJourneys().catch(() => []),
+      ]);
       setSummary(data);
+      setMetrics(m);
+      setKillSwitch(ks);
+      setRecentJourneys((js ?? []).slice(0, 5));
       setError(null);
     } catch (e: any) {
       setError(e?.message ?? 'failed to load merchant summary');
@@ -369,6 +380,102 @@ export const MerchantDashboard: React.FC = () => {
       <p className="text-[11px] text-[var(--color-ink-subtle)] font-mono">
         generated_at {summary.generated_at}
       </p>
+
+      {/* System health + Recent activity row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader
+            title="System health"
+            subtitle="Engine telemetry from /api/metrics and the kill switch flag"
+            action={<Badge tone={killSwitch ? 'rejected' : 'approved'}>{killSwitch ? 'kill switch: ON' : 'kill switch: OFF'}</Badge>}
+          />
+          <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <HealthMetric
+              label="Total journeys (live state)"
+              value={metrics ? String(Object.values(metrics.journeys_by_state).reduce((a, b) => a + b, 0)) : '—'}
+              tone="ink"
+            />
+            <HealthMetric
+              label="Recovery rate (live)"
+              value={
+                metrics && Object.values(metrics.journeys_by_state).reduce((a, b) => a + b, 0) > 0
+                  ? `${(
+                      ((metrics.journeys_by_state['RECOVERED'] ?? 0) /
+                        Object.values(metrics.journeys_by_state).reduce((a, b) => a + b, 0)) *
+                      100
+                    ).toFixed(1)}%`
+                  : '—'
+              }
+              tone="approved"
+            />
+            <HealthMetric
+              label="Agent calls today"
+              value={metrics ? String(metrics.llm_requests_today) : '—'}
+              tone="info"
+            />
+            <HealthMetric
+              label="Kill switch"
+              value={killSwitch == null ? '—' : killSwitch ? 'ON' : 'OFF'}
+              tone={killSwitch ? 'rejected' : 'approved'}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Recent activity"
+            subtitle="Latest 5 journeys"
+            action={<Badge tone="neutral">{recentJourneys.length}</Badge>}
+          />
+          {recentJourneys.length === 0 ? (
+            <div className="px-5 py-6 text-[12px] text-[var(--color-ink-subtle)]">
+              No journeys yet.
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--color-line)]">
+              {recentJourneys.map((j) => (
+                <div key={j.journey_id} className="px-5 py-2.5 text-[12px] flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-mono text-[var(--color-ink)] truncate">{j.journey_id}</div>
+                    <div className="text-[10.5px] text-[var(--color-ink-subtle)] truncate">
+                      {j.root_cause ?? 'UNKNOWN'} · {j.subscription_id}
+                    </div>
+                  </div>
+                  <Badge
+                    tone={
+                      j.state === 'RECOVERED' ? 'approved' :
+                      j.state === 'INTERVENING' ? 'info' :
+                      j.state === 'WAITING_OUTCOME' ? 'pending' :
+                      j.state === 'HUMAN_REVIEW' ? 'info' :
+                      j.state === 'CLOSED_UNRECOVERED' ? 'rejected' : 'neutral'
+                    }
+                  >
+                    {j.state}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const HealthMetric: React.FC<{ label: string; value: string; tone: 'ink' | 'approved' | 'info' | 'rejected' }> = ({ label, value, tone }) => {
+  const color =
+    tone === 'approved' ? 'var(--color-approved)' :
+    tone === 'info' ? 'var(--color-info)' :
+    tone === 'rejected' ? 'var(--color-rejected)' :
+    'var(--color-ink)';
+  return (
+    <div>
+      <div className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-semibold">
+        {label}
+      </div>
+      <div className="numeric text-2xl font-semibold mt-1.5" style={{ color }}>
+        {value}
+      </div>
     </div>
   );
 };

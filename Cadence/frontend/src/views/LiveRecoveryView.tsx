@@ -234,45 +234,7 @@ export const LiveRecoveryView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Live Recovery"
-        description="A guided 3-step demo. Real Razorpay test-mode customer + payment link + HMAC-signed webhook. Falls back to a deterministic simulator when keys are absent so the demo never hangs."
-        action={
-          <div className="flex gap-2">
-            <Button onClick={reset} variant="secondary" size="sm">
-              <RotateCcw size={14} className="inline-block mr-1" />
-              Reset
-            </Button>
-          </div>
-        }
-      />
-
-      {/* Recipient contact — your own email so the demo can prove the message was sent */}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="text-[11px] text-[var(--color-ink-muted)] flex-1 min-w-[200px]">
-            <div>Send a real Hinglish nudge to your email (proof for the pitch)</div>
-            <input
-              type="email"
-              placeholder="you@yourcompany.com"
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-              className="mt-1 w-full px-2 py-1.5 border border-[var(--color-line)] rounded text-[12px] font-mono"
-            />
-          </label>
-          <Button onClick={sendToMyEmail} disabled={sendStatus.kind === 'sending' || !recipientEmail} size="sm">
-            {sendStatus.kind === 'sending' ? 'Sending...' : sendStatus.kind === 'sent' ? 'Sent' : 'Send to my email'}
-          </Button>
-          {sendStatus.kind === 'sent' && (
-            <Badge tone="approved">Sent to {recipientEmail}</Badge>
-          )}
-          {sendStatus.kind === 'error' && (
-            <span className="text-[11px] text-[var(--color-coral)]">{sendStatus.msg}</span>
-          )}
-        </div>
-      </Card>
-
-      <PageHeader
-        title="Live Recovery"
-        description="A guided 3-step demo. Real Razorpay test-mode customer + payment link + HMAC-signed webhook. Falls back to a deterministic simulator when keys are absent so the demo never hangs."
+        description="Run the full recovery flow end-to-end. Real Razorpay test-mode customer and payment link, real HMAC-signed webhook."
         action={
           <div className="flex gap-2">
             <Button onClick={reset} variant="secondary" size="sm">
@@ -458,6 +420,72 @@ export const LiveRecoveryView: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      <Card className="p-5">
+        <div className="flex items-start gap-3">
+          <MessageCircle className="h-5 w-5 text-[var(--color-accent)] mt-0.5" />
+          <div className="flex-1 space-y-3">
+            <div>
+              <div className="text-sm font-medium text-[var(--color-ink)]">
+                Send the Hinglish nudge to your email (proof for the judge)
+              </div>
+              <div className="text-[12px] text-[var(--color-ink-muted)] mt-0.5">
+                Type your email below. After step 2 the engine writes a real Hinglish body — press the
+                button and the SPA POSTs it to the Resend live-send endpoint so the message lands in
+                your inbox within a few seconds.
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
+                  Your email
+                </label>
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="you@yourcompany.com"
+                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
+                  Your phone (optional, for SMS)
+                </label>
+                <input
+                  type="tel"
+                  value={recipientPhone}
+                  onChange={(e) => setRecipientPhone(e.target.value)}
+                  placeholder="+91 99999 00000"
+                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                onClick={sendToMyEmail}
+                disabled={sendStatus.kind === 'sending' || !failure}
+                variant="primary"
+                size="sm"
+              >
+                <MessageCircle size={13} className="inline-block mr-1" />
+                {sendStatus.kind === 'sending' ? 'Sending…' : 'Send Hinglish nudge to my email'}
+              </Button>
+              {sendStatus.kind === 'sent' && (
+                <Badge tone="approved">{sendStatus.msg ?? 'Sent'}</Badge>
+              )}
+              {sendStatus.kind === 'error' && (
+                <span className="text-[12px] text-[var(--color-rejected)]">{sendStatus.msg}</span>
+              )}
+              {!failure && sendStatus.kind === 'idle' && (
+                <span className="text-[11px] text-[var(--color-ink-subtle)]">
+                  Run steps 1 and 2 first to unlock the send button.
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };

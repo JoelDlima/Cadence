@@ -7,10 +7,11 @@ import {
   ShieldCheck,
   FileClock,
   ChevronRight,
-  Download
+  Download,
+  Brain
 } from 'lucide-react';
 import { Card, CardHeader, Badge, Button, Input, Select, PageHeader, EmptyState } from '../components/primitives';
-import { Journey, TimelineEvent, AuditVerify, AgentReasoning } from '../types';
+import { Journey, TimelineEvent, AuditVerify, AgentReasoning, BanditRanking } from '../types';
 import { api, formatINR } from '../services/api';
 
 interface JourneysViewProps {
@@ -33,6 +34,9 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
   const [shownSteps, setShownSteps] = useState(0);
   const [audit, setAudit] = useState<AuditVerify | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [why, setWhy] = useState<BanditRanking | null>(null);
+  const [whyLoading, setWhyLoading] = useState(false);
+  const [whyError, setWhyError] = useState<string | null>(null);
 
   // Periodically re-verify the audit chain while a journey is open so the
   // operator sees live "verified" / "tampered" state.
@@ -70,9 +74,28 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
     setSelectedJourney(journey);
     setLoadingTimeline(true);
     setTimelineError(null);
+    setWhy(null);
+    setWhyError(null);
+    setWhyLoading(true);
     try {
       const events = await api.getTimeline(journey.journey_id);
       setTimeline(events);
+      try {
+        const bandit = await api.getBanditRanked(50);
+        const jOpened = new Date(journey.opened_at).getTime();
+        const match = (bandit.rankings ?? []).find(
+          (r) =>
+            (journey.root_cause ? r.cause === journey.root_cause : false) &&
+            new Date(r.occurred_at).getTime() <= jOpened,
+        ) ?? (bandit.rankings ?? []).find(
+          (r) => new Date(r.occurred_at).getTime() <= jOpened,
+        ) ?? (bandit.rankings?.[0] ?? null);
+        setWhy(match);
+      } catch (e: any) {
+        setWhyError(e?.message ?? 'bandit rankings unavailable');
+      } finally {
+        setWhyLoading(false);
+      }
       if (journey.state === 'WAITING_OUTCOME' || journey.state === 'INTERVENING') {
         const started = journey.state;
         const pollId = window.setInterval(async () => {
@@ -386,6 +409,123 @@ export const JourneysView: React.FC<JourneysViewProps> = ({ journeys }) => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Why this choice: bandit ranking + feature importances */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Brain size={13} className="text-[var(--color-ink-subtle)]" />
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
+                    Why this choice
+                  </h4>
+                  {why && (
+                    <Badge tone="info">{why.cause}</Badge>
+                  )}
+                </div>
+
+                {whyLoading && (
+                  <div className="space-y-2">
+                    {[0, 1].map((i) => (
+                      <div key={i} className="h-12 rounded bg-[var(--color-line)] animate-pulse" />
+                    ))}
+                  </div>
+                )}
+
+                {!whyLoading && whyError && (
+                  <div className="p-3 rounded border border-dashed border-[var(--color-line)] text-[12px] text-[var(--color-ink-subtle)]">
+                    Bandit feed unavailable: {whyError}
+                  </div>
+                )}
+
+                {!whyLoading && !why && !whyError && (
+                  <div className="p-3 rounded border border-dashed border-[var(--color-line)] text-[12px] text-[var(--color-ink-subtle)]">
+                    No bandit ranking captured for this journey yet.
+                  </div>
+                )}
+
+                {why && (
+                  <div className="p-3.5 rounded-md bg-[var(--color-surface)] border border-[var(--color-line)] shadow-xs space-y-3">
+                    <div>
+                      <div className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-semibold mb-1.5">
+                        Top 3 ranked interventions
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(why.ranked ?? []).slice(0, 3).map((candidate, j) => {
+                          const score = why.scores?.[candidate] ?? 0;
+                          const tone = j === 0 ? 'approved' : j === 1 ? 'info' : 'neutral';
+                          return (
+                            <Badge key={candidate} tone={tone as any}>
+                              {j + 1}. {candidate} <span className="font-mono ml-1 opacity-75">{score.toFixed(1)}</span>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-semibold mb-1.5">
+                        Feature importances
+                      </div>
+                      <div className="space-y-1.5">
+                        {(() => {
+                          const importances = why.feature_importances ?? {};
+                          const causeKey = why.cause in importances ? why.cause : Object.keys(importances)[0];
+                          const weights = (causeKey ? importances[causeKey] : {}) ?? {};
+                          const entries = Object.entries(weights);
+                          if (entries.length === 0) {
+                            return (
+                              <div className="text-[11.5px] text-[var(--color-ink-subtle)]">
+                                No feature importances published for this cause.
+                              </div>
+                            );
+                          }
+                          const max = entries.reduce((m, [, v]) => Math.max(m, Math.abs(v)), 0) || 1;
+                          return entries
+                            .slice()
+                            .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                            .slice(0, 8)
+                            .map(([feature, weight]) => {
+                              const pct = (Math.abs(weight) / max) * 100;
+                              const positive = weight >= 0;
+                              return (
+                                <div key={feature} className="text-[11.5px]">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <span className="font-mono text-[var(--color-ink)]">{feature}</span>
+                                    <span
+                                      className="font-mono tabular-nums"
+                                      style={{ color: positive ? 'var(--color-approved)' : 'var(--color-rejected)' }}
+                                    >
+                                      {positive ? '+' : ''}{(weight * 100).toFixed(0)}%
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 w-full rounded-full bg-[var(--color-surface-subtle)] overflow-hidden border border-[var(--color-line)]">
+                                    <div
+                                      className="h-full rounded-full"
+                                      style={{
+                                        width: `${Math.max(2, pct)}%`,
+                                        backgroundColor: positive ? 'var(--color-approved)' : 'var(--color-rejected)',
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            });
+                        })()}
+                      </div>
+                    </div>
+
+                    {why.reason && why.reason.length > 0 && (
+                      <div>
+                        <div className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-semibold mb-1.5">
+                          Bandit reason
+                        </div>
+                        <p className="text-[12px] text-[var(--color-ink)] leading-relaxed">
+                          {why.reason.join(' - ')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)] mb-3">

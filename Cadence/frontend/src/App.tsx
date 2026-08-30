@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppShell } from './layouts/AppShell';
-import { OverviewView } from './views/OverviewView';
 import { LiveRecoveryView } from './views/LiveRecoveryView';
 import { JourneysView } from './views/JourneysView';
-import { GuardianView } from './views/GuardianView';
-import { TestbenchView } from './views/TestbenchView';
 import { PayPortalView } from './views/PayPortalView';
-import { RecoveryBrainView } from './views/RecoveryBrainView';
 import { AgentCompareView } from './views/AgentCompareView';
 import { MerchantDashboard } from './views/MerchantDashboard';
 import { CheckoutView } from './views/CheckoutView';
@@ -29,7 +25,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     const readHash = () => {
       const h = window.location.hash.replace('#', '');
-      if (h && ['overview', 'journeys', 'guardian', 'testbench', 'pay', 'brain', 'checkout', 'b2b', 'mandate'].includes(h)) {
+      if (h && ['live', 'dashboard', 'testlab', 'journeys', 'b2b', 'mandate', 'checkout', 'pay',
+                'overview', 'merchant', 'agentcompare', 'testbench', 'guardian', 'brain'].includes(h)) {
         setCurrentTab(h);
       }
     };
@@ -75,16 +72,16 @@ export const App: React.FC = () => {
       mode={status?.mode ?? null}
       cloud={cloud}
     >
-      {currentTab === 'overview' && (
-        <OverviewView
-          metrics={metrics}
-          journeys={journeys}
-          onSelectTab={handleTabChange}
-        />
-      )}
-
       {currentTab === 'live' && (
         <LiveRecoveryView />
+      )}
+
+      {currentTab === 'dashboard' && (
+        <MerchantDashboard />
+      )}
+
+      {currentTab === 'testlab' && (
+        <AgentCompareView />
       )}
 
       {currentTab === 'journeys' && (
@@ -93,20 +90,25 @@ export const App: React.FC = () => {
         />
       )}
 
-      {currentTab === 'guardian' && (
-        <GuardianView />
+      {currentTab === 'b2b' && (
+        <B2BView />
       )}
 
-      {currentTab === 'testbench' && (
-        <TestbenchView />
+      {currentTab === 'mandate' && (
+        <MandateView />
+      )}
+
+      {currentTab === 'checkout' && (
+        <CheckoutView />
       )}
 
       {currentTab === 'pay' && (
         <PayPortalView />
       )}
 
-      {currentTab === 'brain' && (
-        <RecoveryBrainView />
+      {/* === Legacy id fallbacks so old URLs / hashes still resolve === */}
+      {currentTab === 'overview' && (
+        <MerchantDashboard />
       )}
 
       {currentTab === 'merchant' && (
@@ -117,16 +119,16 @@ export const App: React.FC = () => {
         <AgentCompareView />
       )}
 
-      {currentTab === 'checkout' && (
-        <CheckoutView />
+      {currentTab === 'testbench' && (
+        <AgentCompareView />
       )}
 
-      {currentTab === 'b2b' && (
-        <B2BView />
+      {currentTab === 'guardian' && (
+        <JourneysView journeys={journeys} />
       )}
 
-      {currentTab === 'mandate' && (
-        <MandateView />
+      {currentTab === 'brain' && (
+        <JourneysView journeys={journeys} />
       )}
     </AppShell>
   );
