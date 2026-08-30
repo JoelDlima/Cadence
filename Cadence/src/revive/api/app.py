@@ -1432,6 +1432,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         # Step 1: what the agent saw
         saw = {
             "step": 1, "role": "observation", "title": "I saw",
+            "detail": "",  # DAY-1 P0 FIX: default-empty so the if-not check below never KeyErrors
             "event_refs": [], "timestamp": "",
         }
         for ev in events:
@@ -1452,6 +1453,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         # Step 2: what the agent considered
         considered = {
             "step": 2, "role": "decision", "title": "I considered",
+            "detail": "",  # DAY-1 P0 FIX
             "event_refs": [], "timestamp": "",
         }
         for ev in events:
@@ -1486,6 +1488,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         # Step 3: what the agent acted
         acted = {
             "step": 3, "role": "action", "title": "I acted",
+            "detail": "",  # DAY-1 P0 FIX
             "event_refs": [], "timestamp": "",
         }
         for ev in events:
