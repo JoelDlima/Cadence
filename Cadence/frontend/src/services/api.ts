@@ -216,10 +216,10 @@ export const api = {
     return jsonFetch<EvalSummary>('/api/eval-summary');
   },
 
-  async getAgentCompare(n: number = 100, seed: number = 42): Promise<AgentCompare> {
-    return jsonFetch<AgentCompare>(
-      `/api/eval/agent-compare?n=${n}&seed=${seed}`
-    );
+  async getAgentCompare(n: number = 100, seed: number = 42, seeds?: number[]): Promise<AgentCompare> {
+    const params = new URLSearchParams({ n: String(n), seed: String(seed) });
+    if (seeds && seeds.length > 0) params.set('seeds', seeds.join(','));
+    return jsonFetch<AgentCompare>(`/api/eval/agent-compare?${params.toString()}`);
   },
 
   async runChaosDrill(drill: string): Promise<ChaosResult> {

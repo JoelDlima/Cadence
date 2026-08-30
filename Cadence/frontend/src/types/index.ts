@@ -118,9 +118,21 @@ export interface EvalSummary {
   source: 'live' | 'cached' | 'missing';
 }
 
+export interface AgentComparePerSeed {
+  seed: number;
+  n: number;
+  naive_recovery_pct: number;
+  revive_recovery_pct: number;
+  naive_recovered_inr: number;
+  revive_recovered_inr: number;
+  naive_contacts: number;
+  revive_contacts: number;
+}
+
 export interface AgentCompare {
   n: number;
   seed: number;
+  seeds: number[];
   naive_recovered_inr: number;
   naive_recovery_pct: number;
   naive_contacts: number;
@@ -135,6 +147,11 @@ export interface AgentCompare {
   cohort: string;
   runtime_ms: number;
   source: 'live_experiment';
+  mean_naive_recovery_pct: number;
+  mean_revive_recovery_pct: number;
+  mean_uplift_pct: number;
+  mean_recovered_delta_inr: number;
+  per_seed: AgentComparePerSeed[];
 }
 
 export interface ChaosResult {

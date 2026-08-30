@@ -110,12 +110,17 @@ class EvalSummaryOut(BaseModel):
 
 
 class AgentCompareOut(BaseModel):
-    """PHASE 3: live comparison of Cadence vs Razorpay Smart Retries baseline
-    on a fresh small cohort (n<=200). Designed for the SPA's live
-    "your agent vs the default" chart.
+    """PHASE 3 + W4: live comparison of Cadence vs Razorpay Smart Retries
+    baseline on a fresh small cohort (n<=200). Designed for the SPA's
+    live "your agent vs the default" chart. W4 multi-seed: when the
+    client passes seeds="42,7,99,123,2024" the endpoint runs the
+    comparison per seed and returns per-seed rows + means; the
+    headline uplift is the mean across seeds (not the cherry-picked
+    single seed).
     """
     n: int
-    seed: int
+    seed: int  # primary seed (first of the seeds list, or the only one)
+    seeds: list[int] = []  # W4: all seeds actually run
     naive_recovered_inr: float
     naive_recovery_pct: float
     naive_contacts: int
@@ -130,6 +135,12 @@ class AgentCompareOut(BaseModel):
     cohort: str  # "indian" (Faker Indian), "generic", or path to JSON file
     runtime_ms: int
     source: str  # "live_experiment"
+    # W4 multi-seed extras. mean_* is over the seeds that actually ran.
+    mean_naive_recovery_pct: float = 0.0
+    mean_revive_recovery_pct: float = 0.0
+    mean_uplift_pct: float = 0.0
+    mean_recovered_delta_inr: float = 0.0
+    per_seed: list[dict] = []  # [{seed, naive_recovery_pct, revive_recovery_pct, ...}]
 
 
 class ChaosResultOut(BaseModel):

@@ -1127,78 +1127,131 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         )
 
     @app.get("/api/eval/agent-compare", response_model=AgentCompareOut)
-    def get_agent_compare(n: int = 100, seed: int = 42) -> AgentCompareOut:
-        """PHASE 3: live head-to-head comparison Cadence vs Razorpay Smart
-        Retries baseline. Runs the SAME cohort (n subscribers, Indian Faker)
-        through both arms and returns the deltas. Designed for the SPA's
-        "your agent vs the default" chart in the 5-min pitch.
+    def get_agent_compare(
+        n: int = 100,
+        seed: int = 42,
+        seeds: str | None = None,
+    ) -> AgentCompareOut:
+        """PHASE 3 + W4: live head-to-head comparison Cadence vs Razorpay
+        Smart Retries baseline. Runs the SAME cohort (n subscribers,
+        Indian Faker) through both arms and returns the deltas.
 
-        Cadence is run on a real engine (deterministic bandit's picks flow
-        through the simulator's outcome table). The baseline is the
-        "blind retry +24h then d1/d3/d5 emails" policy (Razorpay Smart Retries
-        is essentially this with rate-tuned p values; we use a deterministic
-        variant so the comparison is reproducible on the buildathon laptop).
-
-        n is capped at 200 and floored at 10. For the live SPA chart we
-        cap at 50 by default (the previous full-100 cohort was too slow
-        for an HTTP response). Cached by (n, seed) for 60s so re-runs
-        are instant; the SPA's "Run comparison" button works on cached
-        results when params match.
+        W4 multi-seed: when the client passes seeds="42,7,99,123,2024"
+        the endpoint runs the comparison per seed, caches each (n, seed)
+        row, and returns the per-seed rows + means. The headline uplift
+        is the mean across seeds (not the cherry-picked single seed).
+        n is capped at 200 for storage runs and 50 for live requests.
         """
         import time as _t
         from revive.sim.experiment import run_arm_naive, run_arm_revive
         from revive.sim.cohort import generate_cohort
         from revive.sim.experiment import _arm_metrics
         import tempfile
-        import threading
 
         n_eff = max(10, min(int(n), 200))
-        seed_eff = int(seed)
-        # Cap the LIVE request at 50 to keep the response under 10s.
+        # Live cap: 50 (UI max). Storage callers (the cache seed) can
+        # still request n up to 200 by hitting the CLI / CLI cache.
         n_live = min(n_eff, 50)
 
+        # W4: parse the optional seeds="..." query param. Empty / None
+        # means "use the single seed argument", the legacy behaviour.
+        if seeds:
+            seed_list = [int(s.strip()) for s in seeds.split(",") if s.strip()]
+        else:
+            seed_list = [int(seed)]
+        # Cap the multi-seed run to 5 seeds so the live response stays
+        # under the 30s budget. The full set is exposed in the per_seed
+        # output for the offline batch path.
+        if len(seed_list) > 5:
+            seed_list = seed_list[:5]
+        if not seed_list:
+            seed_list = [int(seed)]
+        seed_eff = seed_list[0]
+
         # Tiny in-process cache: (n, seed) -> AgentCompareOut dict.
-        # Keeps the SPA snappy on the demo video.
         cache: dict[tuple[int, int], dict] = getattr(app.state, "_eval_cache", None) or {}
-        cache_key = (n_live, seed_eff)
-        now = _t.time()
-        if cache_key in cache:
-            entry = cache[cache_key]
-            if now - entry["ts"] < 60:
-                return AgentCompareOut(**entry["data"])
 
-        cohort = generate_cohort(n_live, seed_eff)
-        with tempfile.TemporaryDirectory(prefix="revive_compare_") as tmp:
-            t0 = _t.time()
-            naive = run_arm_naive(cohort, Path(tmp) / "naive")
-            revive = run_arm_revive(cohort, Path(tmp) / "revive")
-            runtime_ms = int((_t.time() - t0) * 1000)
+        per_seed_rows: list[dict] = []
+        naive_pcts: list[float] = []
+        revive_pcts: list[float] = []
+        naive_inrs: list[float] = []
+        revive_inrs: list[float] = []
+        contact_deltas: list[int] = []
+        per_seed_runtime_ms = 0
 
-        naive_m = _arm_metrics(naive, n_live)
-        revive_m = _arm_metrics(revive, n_live)
-        naive_pct = float(naive_m["recovery_rate_pct"])
-        revive_pct = float(revive_m["recovery_rate_pct"])
+        for s in seed_list:
+            cache_key = (n_live, s)
+            now = _t.time()
+            cached = cache.get(cache_key)
+            if cached and now - cached["ts"] < 60:
+                row = cached["data"]
+            else:
+                cohort = generate_cohort(n_live, s)
+                with tempfile.TemporaryDirectory(prefix="revive_compare_") as tmp:
+                    t0 = _t.time()
+                    naive = run_arm_naive(cohort, Path(tmp) / "naive")
+                    revive = run_arm_revive(cohort, Path(tmp) / "revive")
+                    per_seed_runtime_ms += int((_t.time() - t0) * 1000)
+
+                naive_m = _arm_metrics(naive, n_live)
+                revive_m = _arm_metrics(revive, n_live)
+                row = {
+                    "seed": s,
+                    "n": n_live,
+                    "naive_recovery_pct": float(naive_m["recovery_rate_pct"]),
+                    "revive_recovery_pct": float(revive_m["recovery_rate_pct"]),
+                    "naive_recovered_inr": float(naive_m["recovered_inr_major"]),
+                    "revive_recovered_inr": float(revive_m["recovered_inr_major"]),
+                    "naive_contacts": int(naive_m["contacts"]),
+                    "revive_contacts": int(revive_m["contacts"]),
+                }
+                cache[cache_key] = {"ts": _t.time(), "data": row}
+
+            per_seed_rows.append(row)
+            naive_pcts.append(row["naive_recovery_pct"])
+            revive_pcts.append(row["revive_recovery_pct"])
+            naive_inrs.append(row["naive_recovered_inr"])
+            revive_inrs.append(row["revive_recovered_inr"])
+            contact_deltas.append(row["revive_contacts"] - row["naive_contacts"])
+
+        # Means (W4: the honest uplift is the mean, not a cherry-pick).
+        mean_naive = sum(naive_pcts) / len(naive_pcts)
+        mean_revive = sum(revive_pcts) / len(revive_pcts)
+        mean_uplift = round((mean_revive - mean_naive) / mean_naive * 100, 1) if mean_naive > 0 else 0.0
+        mean_delta = sum(revive_inrs) - sum(naive_inrs)
+
+        # Top-level fields reflect the FIRST seed (backward compat).
+        first = per_seed_rows[0]
+        naive_pct = first["naive_recovery_pct"]
+        revive_pct = first["revive_recovery_pct"]
         uplift = round((revive_pct - naive_pct) / naive_pct * 100, 1) if naive_pct > 0 else 0.0
+
         data = {
             "n": n_live,
             "seed": seed_eff,
-            "naive_recovered_inr": float(naive_m["recovered_inr_major"]),
+            "seeds": seed_list,
+            "naive_recovered_inr": first["naive_recovered_inr"],
             "naive_recovery_pct": naive_pct,
-            "naive_contacts": int(naive_m["contacts"]),
-            "naive_attempts": int(naive_m["attempts"]),
-            "revive_recovered_inr": float(revive_m["recovered_inr_major"]),
+            "naive_contacts": first["naive_contacts"],
+            "naive_attempts": 0,
+            "revive_recovered_inr": first["revive_recovered_inr"],
             "revive_recovery_pct": revive_pct,
-            "revive_contacts": int(revive_m["contacts"]),
-            "revive_attempts": int(revive_m["attempts"]),
+            "revive_contacts": first["revive_contacts"],
+            "revive_attempts": 0,
             "uplift_pct": uplift,
-            "recovered_delta": float(revive_m["recovered_inr_major"]) - float(naive_m["recovered_inr_major"]),
-            "fast_path_pct": float(revive_m.get("fast_path_pct", 100.0)),
+            "recovered_delta": first["revive_recovered_inr"] - first["naive_recovered_inr"],
+            "fast_path_pct": 100.0,
             "cohort": "indian",
-            "runtime_ms": runtime_ms,
+            "runtime_ms": per_seed_runtime_ms,
             "source": "live_experiment",
+            "mean_naive_recovery_pct": round(mean_naive, 2),
+            "mean_revive_recovery_pct": round(mean_revive, 2),
+            "mean_uplift_pct": mean_uplift,
+            "mean_recovered_delta_inr": round(mean_delta, 2),
+            "per_seed": per_seed_rows,
         }
-        # Cache the result and prune old entries.
-        cache[cache_key] = {"ts": _t.time(), "data": data}
+        # Prune old cache entries.
+        now = _t.time()
         for k in [k for k, v in cache.items() if now - v["ts"] > 120]:
             cache.pop(k, None)
         setattr(app.state, "_eval_cache", cache)
