@@ -86,7 +86,7 @@ export const TestbenchView: React.FC = () => {
       <PageHeader
         title="Simulation & Chaos Drills"
         description="Verify recovery resilience live. Inject payment failure webhooks or run reproducible chaos drills against the real engine."
-        action={<Badge tone="approved">Server-side</Badge>}
+        action={<Badge tone="approved">Live</Badge>}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -98,7 +98,7 @@ export const TestbenchView: React.FC = () => {
           <form onSubmit={handleInjectWebhook} className="space-y-4 pt-4">
             <div>
               <label className="block text-[12.5px] font-medium text-[var(--color-ink)] mb-1">
-                Subscription ID
+                Subscription
               </label>
               <Input
                 value={subId}
@@ -111,7 +111,7 @@ export const TestbenchView: React.FC = () => {
 
             <div>
               <label className="block text-[12.5px] font-medium text-[var(--color-ink)] mb-1">
-                Customer Entity ID
+                Customer
               </label>
               <Input
                 value={custId}
@@ -124,7 +124,7 @@ export const TestbenchView: React.FC = () => {
 
             <div>
               <label className="block text-[12.5px] font-medium text-[var(--color-ink)] mb-1">
-                NPCI / Razorpay Decline Error Code
+                Why it failed
               </label>
               <Select
                 value={declineCode}
@@ -144,7 +144,7 @@ export const TestbenchView: React.FC = () => {
 
             <div>
               <div className="flex items-center justify-between text-[12.5px] font-medium text-[var(--color-ink)] mb-1">
-                <span>Debit Amount:</span>
+                <span>Amount (INR):</span>
                 <span className="numeric font-semibold text-[var(--color-ink)]">{formatINR(amount * 100)}</span>
               </div>
               <input
@@ -166,7 +166,7 @@ export const TestbenchView: React.FC = () => {
               className="w-full mt-2"
             >
               <Play size={14} />
-              <span>Inject Payment Failure Webhook</span>
+              <span>Simulate a real payment failure</span>
             </Button>
           </form>
 
@@ -222,7 +222,7 @@ export const TestbenchView: React.FC = () => {
                       loading={activeDrill === id}
                       onClick={() => runChaosDrill(id)}
                     >
-                      Run Drill
+                      Run
                     </Button>
                   </div>
                   {drillState && drillState.status !== 'idle' && (

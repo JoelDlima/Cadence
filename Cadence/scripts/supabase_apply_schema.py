@@ -79,10 +79,7 @@ def main() -> int:
     print()
     print("[3] Verify the 3 mirror tables exist...")
     sb_url = f"https://{project_ref}.supabase.co"
-    sr_key = os.environ.get(
-        "SUPABASE_SERVICE_KEY",
-        "placeholder_supabase_service_key",
-    )
+    sr_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
     req = urllib.request.Request(
         f"{sb_url}/rest/v1/?select=*",
         headers={"apikey": sr_key, "Authorization": f"Bearer {sr_key}", "User-Agent": UA},

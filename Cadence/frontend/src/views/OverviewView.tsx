@@ -202,12 +202,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         action={
           <div className="flex items-center gap-2.5">
             <Button variant="secondary" size="sm" onClick={() => onSelectTab('journeys')}>
-              <span>View Case Ledger</span>
+              <span>Open case ledger</span>
               <ArrowRight size={14} />
             </Button>
             <Button variant="primary" size="sm" onClick={() => onSelectTab('testbench')}>
               <Play size={13} />
-              <span>Simulate Webhook</span>
+              <span>Simulate a payment failure</span>
             </Button>
           </div>
         }
@@ -259,7 +259,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <Card className="p-4.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-                AI Token Spend
+                AI cost today
               </span>
               <Badge tone="info" className="text-[10px]">
                 {llmToday === 0 ? 'Fast-Path 100%' : `${llmToday} today`}
@@ -283,7 +283,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <Card className="p-4.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-                Guardian Vetoes
+                Rule vetoes (rules that stopped a send)
               </span>
               <Badge tone={violations > 0 ? 'rejected' : 'approved'} className="text-[10px]">
                 {violations} Violations
@@ -301,7 +301,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <StaggerItem>
           <Card className="p-4.5">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-              Mean Contacts / Recovery
+              Avg messages per recovery
             </span>
             <p className="numeric text-2xl font-semibold text-[var(--color-ink)] mt-2">
               {contactsPerRecovery.toFixed(2)}{' '}
@@ -320,7 +320,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <StaggerItem>
           <Card className="p-4.5">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-              Peak-Hour Hold Shield
+              Quiet hours shield (no send at night)
             </span>
             <p className="numeric text-2xl font-semibold text-[var(--color-ink)] mt-2">
               {attention.filter((a) => a.reason === 'bank_outage').length}{' '}

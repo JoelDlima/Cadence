@@ -124,6 +124,15 @@ export const api = {
     return postJson('/api/live/failure', body);
   },
 
+  async sendLiveEmail(body: { reference_id: string; to: string; subject?: string; text?: string }): Promise<{ status: string; http: number; detail?: string }> {
+    return postJson('/api/live/send-email', body);
+  },
+
+  async playLiveVoice(text: string, language: string = 'hinglish'): Promise<{ reason: string; is_stub: boolean; audio_data_url: string }> {
+    const params = new URLSearchParams({ text, language });
+    return jsonFetch<{ reason: string; is_stub: boolean; audio_data_url: string }>(`/api/voice/preview?${params.toString()}`);
+  },
+
   async simulateLivePaymentLinkPaid(body: { reference_id: string; payment_id?: string }): Promise<{
     status: string; http: number; event_id: string; journey_id: string; subscription_id: string;
   }> {

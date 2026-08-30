@@ -1,23 +1,5 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
-import {
-  BarChart3,
-  FileClock,
-  ShieldCheck,
-  FlaskConical,
-  CreditCard,
-  Power,
-  Menu,
-  X,
-  ShieldAlert,
-  Server,
-  Activity,
-  Brain,
-  ShoppingCart,
-  Briefcase,
-  GitBranch,
-  GitCompare,
-  Play,
-} from 'lucide-react';
+import { BarChart3, FileClock, ShieldCheck, FlaskConical, CreditCard, Power, Menu, X, ShieldAlert, Server, Activity, Brain, ShoppingCart, Briefcase, GitBranch, GitCompare, Play, Database, ChevronDown } from 'lucide-react';
 import { Badge, Button, cn } from '../components/primitives';
 import { api } from '../services/api';
 import { CloudStatus } from '../types';
@@ -26,21 +8,24 @@ interface NavItem {
   id: string;
   label: string;
   icon: typeof BarChart3;
+  group?: 'primary' | 'more';
 }
 
 const navItems: NavItem[] = [
-  { id: 'live', label: 'Live Recovery', icon: Play },
-  { id: 'overview', label: 'Overview', icon: BarChart3 },
-  { id: 'merchant', label: 'Merchant', icon: Briefcase },
-  { id: 'journeys', label: 'Journeys & Audit', icon: FileClock },
-  { id: 'guardian', label: 'Policy Guardian', icon: ShieldCheck },
-  { id: 'brain', label: 'Recovery Brain', icon: Brain },
-  { id: 'agentcompare', label: 'Agent vs Naive', icon: GitCompare },
-  { id: 'testbench', label: 'Simulation & Chaos', icon: FlaskConical },
-  { id: 'pay', label: 'Payment Portal', icon: CreditCard },
-  { id: 'checkout', label: 'Checkout Recovery', icon: ShoppingCart },
-  { id: 'b2b', label: 'B2B Receivables', icon: Briefcase },
-  { id: 'mandate', label: 'Mandate Sequencer', icon: GitBranch },
+  // === TOP 4 — primary pitch surfaces ===
+  { id: 'live',         label: 'Live Recovery',       icon: Play,        group: 'primary' },
+  { id: 'agentcompare', label: 'Results',             icon: GitCompare,  group: 'primary' },
+  { id: 'merchant',     label: 'Merchant',            icon: Briefcase,   group: 'primary' },
+  { id: 'overview',     label: 'Overview',            icon: BarChart3,   group: 'primary' },
+  // === MORE — depth, not breadth ===
+  { id: 'journeys',     label: 'Journeys & Audit',    icon: FileClock,   group: 'more' },
+  { id: 'guardian',     label: 'Policy Guardian',     icon: ShieldCheck, group: 'more' },
+  { id: 'brain',        label: 'Recovery Brain',      icon: Brain,       group: 'more' },
+  { id: 'testbench',    label: 'Simulation & Chaos',  icon: FlaskConical,group: 'more' },
+  { id: 'b2b',          label: 'B2B Receivables',     icon: Briefcase,   group: 'more' },
+  { id: 'mandate',      label: 'Mandate Sequencer',   icon: GitBranch,   group: 'more' },
+  { id: 'checkout',     label: 'Checkout Recovery',   icon: ShoppingCart,group: 'more' },
+  { id: 'pay',          label: 'Payment Portal',      icon: CreditCard,  group: 'more' },
 ];
 
 export function AppShell({
@@ -63,6 +48,7 @@ export function AppShell({
   const [killArmed, setKillArmed] = useState(false);
   const [showKillModal, setShowKillModal] = useState(false);
   const [killLoading, setKillLoading] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Live IST Clock
   useEffect(() => {
@@ -158,24 +144,49 @@ export function AppShell({
               </div>
 
               <div className="mt-4 space-y-1">
-                {navItems.map((item) => {
+                {navItems.filter((i) => (i.group ?? 'primary') === 'primary').map((item) => {
                   const Icon = item.icon;
                   const active = currentTab === item.id;
                   return (
                     <button
                       key={item.id}
-                      onClick={() => {
-                        onTabChange(item.id);
-                        setMobileOpen(false);
-                      }}
+                      onClick={() => { onTabChange(item.id); setMobileOpen(false); }}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] font-medium transition-colors",
-                        active 
-                          ? "bg-[var(--color-surface-subtle)] text-[var(--color-ink)] font-semibold border border-[var(--color-line)]" 
+                        active
+                          ? "bg-[var(--color-surface-subtle)] text-[var(--color-ink)] font-semibold border border-[var(--color-line)]"
                           : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
                       )}
                     >
                       <Icon size={16} className={active ? "text-[var(--color-ink)]" : "text-[var(--color-ink-subtle)]"} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setMoreOpen((o) => !o)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] uppercase tracking-wider text-[var(--color-ink-subtle)] hover:bg-[var(--color-surface-subtle)] mt-2"
+                  type="button"
+                >
+                  <ChevronDown size={12} className={cn("transition-transform", moreOpen ? "rotate-0" : "-rotate-90")} />
+                  More
+                </button>
+                {moreOpen && navItems.filter((i) => i.group === 'more').map((item) => {
+                  const Icon = item.icon;
+                  const active = currentTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { onTabChange(item.id); setMobileOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors",
+                        active
+                          ? "bg-[var(--color-surface-subtle)] text-[var(--color-ink)] font-semibold border border-[var(--color-line)]"
+                          : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
+                      )}
+                    >
+                      <Icon size={14} className={active ? "text-[var(--color-ink)]" : "text-[var(--color-ink-subtle)]"} />
                       {item.label}
                     </button>
                   );
@@ -244,21 +255,31 @@ export function AppShell({
           </div>
 
           {cloud && (
-            <div className="flex items-center justify-between text-[11px] text-[var(--color-ink-muted)] bg-[var(--color-surface-subtle)] px-2.5 py-1.5 rounded border border-[var(--color-line)]">
-              <span className="flex items-center gap-1.5">
-                <span className={cn(
-                  "h-2 w-2 rounded-full",
-                  cloud.sync_state === 'online' ? "bg-[var(--color-approved)]" :
-                  cloud.sync_state === 'error' ? "bg-[var(--color-rejected)]" :
-                  "bg-[var(--color-ink-subtle)]"
-                )} />
-                <span>Cloud Mirror</span>
-              </span>
-              <span className="text-[10px] font-mono font-medium uppercase">
-                {cloud.sync_state === 'offline' && 'OFFLINE (keyless)'}
-                {cloud.sync_state === 'online' && 'ONLINE'}
-                {cloud.sync_state === 'error' && 'ERROR'}
-              </span>
+            <div>
+              <div className="flex items-center justify-between text-[11px] text-[var(--color-ink-muted)] bg-[var(--color-surface-subtle)] px-2.5 py-1.5 rounded border border-[var(--color-line)]">
+                <span className="flex items-center gap-1.5">
+                  <span className={cn(
+                    "h-2 w-2 rounded-full",
+                    cloud.sync_state === 'online' ? "bg-[var(--color-approved)]" :
+                    cloud.sync_state === 'error' ? "bg-[var(--color-rejected)]" :
+                    "bg-[var(--color-ink-subtle)]"
+                  )} />
+                  <span>Cloud Mirror</span>
+                </span>
+                <span className="text-[10px] font-mono font-medium uppercase">
+                  {cloud.sync_state === 'offline' && 'OFFLINE (keyless)'}
+                  {cloud.sync_state === 'online' && 'ONLINE'}
+                  {cloud.sync_state === 'error' && 'ERROR'}
+                </span>
+              </div>
+              <a
+                href="https://vzrasadomyrycafbzdwg.supabase.co/project/default/editor"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 flex items-center gap-1.5 text-[11px] text-[var(--color-accent)] underline hover:no-underline"
+              >
+                <Database size={11} /> Open in Supabase
+              </a>
             </div>
           )}
 

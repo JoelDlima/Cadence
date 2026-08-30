@@ -80,7 +80,7 @@ export const PayPortalView: React.FC = () => {
           description="Self-service recovery experience shown to subscribers (`/pay/{journey_id}`). Converts involuntary churn into instant resolution."
         />
         <div className="flex justify-center py-12 text-[13px] text-[var(--color-ink-subtle)]">
-          Loading journey…
+          Loading…
         </div>
       </div>
     );
@@ -91,7 +91,7 @@ export const PayPortalView: React.FC = () => {
       <div className="space-y-6">
         <PageHeader
           title="Customer Payment Resolution"
-          description="Open this view with `?journey=<id>` or after firing a webhook from the Testbench."
+          description="Open with `?journey=<id>` or after firing a webhook from the Testbench."
         />
         <div className="max-w-md mx-auto">
           <Card className="p-6 glass-modal border border-[var(--color-line-strong)] text-center space-y-2">
@@ -119,7 +119,7 @@ export const PayPortalView: React.FC = () => {
           <Card className="p-6 glass-modal border border-[var(--color-line-strong)] text-center space-y-2">
             <h3 className="text-base font-semibold text-[var(--color-ink)]">Pick a journey</h3>
             <p className="text-[12.5px] text-[var(--color-ink-muted)]">
-              Open this view with <code className="font-mono">?journey=&lt;id&gt;</code> in the URL, or pick one from the Case Ledger.
+              Open with <code className="font-mono">?journey=&lt;id&gt;</code> in the URL, or pick one from the Case Ledger.
             </p>
           </Card>
         </div>
@@ -159,7 +159,7 @@ export const PayPortalView: React.FC = () => {
 
               <div className="text-right">
                 <span className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)] font-medium">
-                  Amount Due
+                  Amount due
                 </span>
                 <p className="numeric text-2xl font-bold text-[var(--color-ink)]">
                   {formatINR(journey.amount_minor)}
@@ -172,7 +172,7 @@ export const PayPortalView: React.FC = () => {
                 <div className="h-12 w-12 rounded-full bg-[var(--color-approved-wash)] text-[var(--color-approved)] flex items-center justify-center mx-auto border border-[var(--color-approved)]/30">
                   <CheckCircle2 size={24} />
                 </div>
-                <h3 className="text-lg font-semibold text-[var(--color-ink)]">Payment Successful</h3>
+                <h3 className="text-lg font-semibold text-[var(--color-ink)]">Payment successful</h3>
                 <p className="text-xs text-[var(--color-ink-muted)] max-w-xs mx-auto leading-relaxed">
                   Your payment of {formatINR(journey.amount_minor)} has been cleared via Razorpay. Your UPI AutoPay mandate remains active and your subscription services are uninterrupted.
                 </p>
@@ -194,7 +194,7 @@ export const PayPortalView: React.FC = () => {
 
                 <div className="space-y-2.5">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
-                    Instant Recovery Options
+                    Other ways to pay
                   </span>
 
                   <div
@@ -207,7 +207,7 @@ export const PayPortalView: React.FC = () => {
                   >
                     <Smartphone size={18} className="text-[var(--color-ink)]" />
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-[var(--color-ink)]">One-Tap UPI App</p>
+                      <p className="text-xs font-semibold text-[var(--color-ink)]">1-tap UPI app</p>
                       <p className="text-[11px] text-[var(--color-ink-subtle)]">Google Pay, PhonePe, Paytm, BHIM</p>
                     </div>
                     {selectedMethod === 'upi' && <CheckCircle2 size={15} className="text-[var(--color-approved)]" />}

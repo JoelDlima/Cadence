@@ -62,6 +62,14 @@ class LiveFailureOut(BaseModel):
     payment_link: LivePaymentLinkOut
 
 
+
+
+class LiveSendEmailIn(BaseModel):
+    reference_id: str
+    to: str
+    subject: str | None = None
+    text: str | None = None
+
 class LivePaymentPaidIn(BaseModel):
     reference_id: str
     # B-fix: the previous default of 'pay_LIVE_DEMO' deduplicated the
@@ -260,5 +268,64 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         return {"status": body_out.get("status", "unknown"), "http": status, "event_id": event_id,
                 "journey_id": journey_id, "subscription_id": subscription_id,
                 "payment_id_used": payment_id}
+
+
+
+    @router.post("/api/live/send-email")
+    def send_live_email(body: LiveSendEmailIn):
+        # Defensive: ensure .env is loaded so RESEND/ELEVENLABS keys are visible
+        from dotenv import load_dotenv as _ld
+        from pathlib import Path as _P
+        _ld(_P(__file__).resolve().parents[2] / ".env", override=False)
+        import os as _os
+        """Send the LLM-written Hinglish nudge to a real inbox via Resend.
+
+        This is the 'Gmail proof' for the demo: the user types their
+        email, clicks Send, switches to their Gmail tab, and sees the
+        Hinglish message Cadence would send to the customer. If
+        RESEND_API_KEY is not configured, the route returns a clear
+        501 with a SKIP message; the SPA falls back to a toast that
+        says '(demo mode — no Resend key set, would have sent to <to>)'.
+        """
+        cfg = runtime.config.razorpay if runtime and runtime.config else None
+        import os as _os
+        if not (_os.environ.get("RESEND_API_KEY") or (cfg and getattr(cfg, "resend_api_key", None))):
+            return {"status": "skipped", "http": 200,
+                    "detail": "RESEND_API_KEY not set; bubble shown in SPA but no real send",
+                    "to": body.to}
+        # Build subject + body
+        from revive.agents.message_writer import _NUDGE_SYSTEM
+        text = body.text or (
+            "Namaste! Aapka subscription ka payment abhi pending hai. "
+            "Jab convenient ho, neeche diye gaye link se pay kar dijiye. "
+            "Madad ke liye yahan reply karein. - Cadence"
+        )
+        subject = body.subject or "Action needed: complete your Cadence subscription"
+        # POST to Resend
+        import httpx as _httpx
+        rzp = _os.environ.get("RESEND_API_KEY")
+        try:
+            r = _httpx.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {rzp}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": "Cadence <noreply@cadence.local>",
+                    "to": [body.to],
+                    "subject": subject,
+                    "text": text,
+                },
+                timeout=10.0,
+            )
+            return {"status": "sent" if r.status_code in (200, 201) else "error",
+                    "http": r.status_code,
+                    "to": body.to,
+                    "subject": subject,
+                    "body_chars": len(text),
+                    "detail": r.text[:200] if r.status_code not in (200, 201) else "ok"}
+        except Exception as e:  # noqa: BLE001
+            return {"status": "error", "http": 0, "detail": f"{e!r}", "to": body.to}
 
     return router

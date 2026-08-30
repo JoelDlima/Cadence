@@ -1,6 +1,6 @@
-// Adaptive Recovery Brain view (SPA).
+// Adaptive How the agent decides view (SPA).
 //
-// Renders the most recent Adaptive Recovery Brain ranking events.
+// Renders the most recent Adaptive How the agent decides ranking events.
 // Each event shows cause, ranked interventions with scores, top choice
 // with a human-readable reason, and the feature importances dict.
 
@@ -53,7 +53,7 @@ export const RecoveryBrainView: React.FC = () => {
   if (loading && rankings.length === 0) {
     return (
       <EmptyState
-        title="Waiting for the Recovery Brain to fire..."
+        title="Waiting for the How the agent decides to fire..."
         description="Inject a webhook from the Testbench tab to see the engine pick its first action and emit its first bandit.ranked event."
       />
     );
@@ -77,7 +77,7 @@ export const RecoveryBrainView: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Recovery Brain"
+        title="How the agent decides"
         description="Deterministic, auditable bandit that picks the next action for every (cause, context) tuple. Trained weights on amount tier, touch fatigue, attempts, cause prior, outage flag, peak-hold flag. The Guardian gates; the Phantom-Failure Guard still floors the schedule."
         action={
           <Badge tone={rankings.length > 0 ? 'info' : 'neutral'}>
@@ -97,7 +97,7 @@ export const RecoveryBrainView: React.FC = () => {
             </div>
             <div>
               <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
-                Top choice
+                Agent's top pick
               </div>
               <div className="text-base font-semibold text-[var(--color-ink)] font-mono">
                 {r.top}
@@ -110,7 +110,7 @@ export const RecoveryBrainView: React.FC = () => {
             </div>
             <div>
               <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
-                Ranked candidates (score)
+                Other options the agent considered
               </div>
               <ol className="space-y-0.5 text-[12px] font-mono">
                 {r.ranked.map((candidate, j) => {
@@ -141,14 +141,14 @@ export const RecoveryBrainView: React.FC = () => {
 
       <Card className="p-5">
         <CardHeader
-          title="Feature importances (latest ranked decision)"
+          title="Reason importances (latest ranked decision)"
           subtitle="Why the brain picked what it picked. Tuned on the engine audit chain."
         />
         <div className="overflow-x-auto">
           <table className="w-full text-[12px]">
             <thead>
               <tr className="text-left text-[var(--color-ink-muted)]">
-                <th className="font-semibold py-1 pr-3">Feature</th>
+                <th className="font-semibold py-1 pr-3">Reason</th>
                 {Object.keys(mostRecentImportances).map((cause) => (
                   <th key={cause} className="font-mono font-semibold py-1 px-2 text-center">
                     {cause}

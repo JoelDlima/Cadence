@@ -139,10 +139,7 @@ ALTER TABLE public.metrics_daily     ENABLE ROW LEVEL SECURITY;
 
     # verify
     sb_url = f"https://{project_ref}.supabase.co"
-    sr_key = os.environ.get(
-        "SUPABASE_SERVICE_KEY",
-        "placeholder_supabase_service_key",
-    )
+    sr_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
     pub_key = os.environ.get(
         "SUPABASE_PUBLISHABLE_KEY",
         "sb_publishable_-M9Rf7TGC7N-IOiQIpoO2w_Qj7R-QRe",

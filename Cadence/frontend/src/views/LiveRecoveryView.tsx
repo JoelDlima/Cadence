@@ -25,6 +25,41 @@ import {
   CheckCircle2, ChevronRight, RotateCcw, AlertTriangle,
 } from 'lucide-react';
 
+const Copyable: React.FC<{ value: string; label?: string }> = ({ value, label }) => {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label && <span className="text-[var(--color-ink-muted)]">{label}:</span>}
+      <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded">{value}</code>
+      <button
+        type="button"
+        onClick={() => { copyToClipboard(value); setCopied(true); setTimeout(() => setCopied(false), 1200); }}
+        title={`Copy ${value}`}
+        className="text-[10px] text-[var(--color-accent)] hover:underline"
+      >
+        {copied ? 'copied' : 'copy'}
+      </button>
+    </span>
+  );
+};
+
+
+const copyToClipboard = (text: string) => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch {}
+};
+
 interface LiveCustomer {
   id: string;
   email: string;
@@ -64,6 +99,59 @@ export const LiveRecoveryView: React.FC = () => {
   const [journeyState, setJourneyState] = useState<string>('OPENED');
   const [pollHandle, setPollHandle] = useState<number | null>(null);
   const [recoverDisabled, setRecoverDisabled] = useState(false);
+
+  // Recipient contact (persisted to localStorage so the demo
+  // never re-asks). Judge can type their own email to prove the
+  // Resend live send, OR leave blank for the bubble-only demo.
+  const [recipientEmail, setRecipientEmail] = useState<string>(
+    () => localStorage.getItem('cadence.recipient.email') ?? '',
+  );
+  const [recipientPhone, setRecipientPhone] = useState<string>(
+    () => localStorage.getItem('cadence.recipient.phone') ?? '',
+  );
+  const [sendStatus, setSendStatus] = useState<{ kind: 'idle' | 'sending' | 'sent' | 'error'; msg?: string }>({ kind: 'idle' });
+
+  useEffect(() => {
+    localStorage.setItem('cadence.recipient.email', recipientEmail);
+  }, [recipientEmail]);
+  useEffect(() => {
+    localStorage.setItem('cadence.recipient.phone', recipientPhone);
+  }, [recipientPhone]);
+
+  const sendToMyEmail = useCallback(async () => {
+    if (!recipientEmail) {
+      setSendStatus({ kind: 'error', msg: 'Type your email above first.' });
+      return;
+    }
+    setSendStatus({ kind: 'sending' });
+    try {
+      const r = await api.sendLiveEmail({
+        reference_id: failure?.payment_link.reference_id ?? '',
+        to: recipientEmail,
+      });
+      if (r.status === 'sent' || r.http === 200) {
+        setSendStatus({ kind: 'sent', msg: `Sent to ${recipientEmail}` });
+      } else {
+        setSendStatus({ kind: 'error', msg: r.detail ?? r.status ?? 'send failed' });
+      }
+    } catch (e: any) {
+      setSendStatus({ kind: 'error', msg: e?.message ?? 'send failed' });
+    }
+  }, [recipientEmail, failure]);
+
+  // The body of the LLM-written nudge for the current journey. Comes
+  // from the agent.thinking event in the audit chain.
+  const [nudgeBody, setNudgeBody] = useState<string>('');
+  const [nudgeSubject, setNudgeSubject] = useState<string>('');
+  useEffect(() => {
+    if (!failure) { setNudgeBody(''); setNudgeSubject(''); return; }
+    api.getJourneyReasoning(failure.journey_id).then((r) => {
+      const llmStep = (r.steps ?? []).find((s: any) => s.role === 'agent_thinking');
+      const body = llmStep?.detail ?? '';
+      setNudgeBody(body);
+      setNudgeSubject(llmStep?.channel ? `Your ${llmStep.channel} update` : 'Action needed on your Cadence subscription');
+    }).catch(() => {});
+  }, [failure?.journey_id]);
 
   // Stop polling on unmount.
   useEffect(() => () => {
@@ -157,6 +245,44 @@ export const LiveRecoveryView: React.FC = () => {
         }
       />
 
+      {/* Recipient contact — your own email so the demo can prove the message was sent */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-[11px] text-[var(--color-ink-muted)] flex-1 min-w-[200px]">
+            <div>Send a real Hinglish nudge to your email (proof for the pitch)</div>
+            <input
+              type="email"
+              placeholder="you@yourcompany.com"
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+              className="mt-1 w-full px-2 py-1.5 border border-[var(--color-line)] rounded text-[12px] font-mono"
+            />
+          </label>
+          <Button onClick={sendToMyEmail} disabled={sendStatus.kind === 'sending' || !recipientEmail} size="sm">
+            {sendStatus.kind === 'sending' ? 'Sending...' : sendStatus.kind === 'sent' ? 'Sent' : 'Send to my email'}
+          </Button>
+          {sendStatus.kind === 'sent' && (
+            <Badge tone="approved">Sent to {recipientEmail}</Badge>
+          )}
+          {sendStatus.kind === 'error' && (
+            <span className="text-[11px] text-[var(--color-coral)]">{sendStatus.msg}</span>
+          )}
+        </div>
+      </Card>
+
+      <PageHeader
+        title="Live Recovery"
+        description="A guided 3-step demo. Real Razorpay test-mode customer + payment link + HMAC-signed webhook. Falls back to a deterministic simulator when keys are absent so the demo never hangs."
+        action={
+          <div className="flex gap-2">
+            <Button onClick={reset} variant="secondary" size="sm">
+              <RotateCcw size={14} className="inline-block mr-1" />
+              Reset
+            </Button>
+          </div>
+        }
+      />
+
       {error && (
         <Card className="p-4 border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5">
           <div className="flex items-start gap-3">
@@ -186,9 +312,7 @@ export const LiveRecoveryView: React.FC = () => {
             ) : (
               <div className="space-y-1">
                 <div className="text-[12px] text-[var(--color-ink-muted)]">id</div>
-                <code className="block text-[12px] font-mono bg-[var(--color-paper)] px-2 py-1 rounded">
-                  {customer.id}
-                </code>
+                <Copyable value={customer.id} />
                 {customer.simulated && (
                   <Badge tone="info">simulated (no Razorpay keys)</Badge>
                 )}
@@ -208,9 +332,9 @@ export const LiveRecoveryView: React.FC = () => {
               </Button>
             ) : failure ? (
               <div className="space-y-1 text-[12px] font-mono">
-                <div>journey <b>{failure.journey_id}</b></div>
-                <div>link <b>{failure.payment_link.id}</b></div>
-                <div>ref <b>{failure.payment_link.reference_id}</b></div>
+                <div>journey <Copyable value={failure.journey_id} /></div>
+                <div>link <Copyable value={failure.payment_link.id} /></div>
+                <div>ref <Copyable value={failure.payment_link.reference_id} /></div>
                 <a
                   href={failure.payment_link.short_url}
                   target="_blank"
@@ -298,25 +422,10 @@ export const LiveRecoveryView: React.FC = () => {
             </div>
             {failure ? (
               <ul className="space-y-2 text-[12px] font-mono">
-                <li>
-                  <span className="text-[var(--color-ink-muted)]">event id:</span>{' '}
-                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded">{failure.event_id}</code>
-                </li>
-                <li>
-                  <span className="text-[var(--color-ink-muted)]">customer id:</span>{' '}
-                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded">{customer?.id}</code>
-                </li>
-                <li>
-                  <span className="text-[var(--color-ink-muted)]">payment link id:</span>{' '}
-                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded">{failure.payment_link.id}</code>
-                </li>
-                <li>
-                  <span className="text-[var(--color-ink-muted)]">short_url:</span>{' '}
-                  <a href={failure.payment_link.short_url} target="_blank" rel="noreferrer"
-                     className="text-[var(--color-accent)] underline">
-                    {failure.payment_link.short_url}
-                  </a>
-                </li>
+                <li><Copyable value={failure.event_id} label="event id" /></li>
+                <li><Copyable value={customer?.id ?? ''} label="customer id" /></li>
+                <li><Copyable value={failure.payment_link.id} label="payment link id" /></li>
+                <li><Copyable value={failure.payment_link.short_url} label="short_url" /></li>
               </ul>
             ) : (
               <EmptyState
@@ -324,22 +433,74 @@ export const LiveRecoveryView: React.FC = () => {
                 description="Webhook event id, customer id, payment link id and the LLM-written nudge will appear here as the demo progresses."
               />
             )}
-            <div className="mt-4 pt-4 border-t border-[var(--color-line)] space-y-2">
+            {/* NEW: Email preview + send + Audio player */}
+            <div className="mt-4 pt-4 border-t border-[var(--color-line)] space-y-3">
+              <AudioCard nudgeBody={nudgeBody} nudgeSubject={nudgeSubject} />
+
+              <div className="rounded-md border border-[var(--color-line)] p-3">
+                <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">Email preview</div>
+                <div className="text-[12px]"><span className="text-[var(--color-ink-muted)]">Subject:</span> {nudgeSubject || '(subject appears after the LLM writes)'}</div>
+                <pre className="text-[11px] font-mono mt-1 whitespace-pre-wrap text-[var(--color-ink)] max-h-32 overflow-auto">{nudgeBody || '(Hinglish body appears once the engine writes it; you can also send it to your email above)'}</pre>
+              </div>
+
               <a href={RAZORPAY_DASHBOARD_LINKS.paymentLinks} target="_blank" rel="noreferrer"
                  className="flex items-center gap-1.5 text-[12px] text-[var(--color-accent)] underline">
-                <ExternalLink size={11} /> Open in Razorpay Dashboard (Payment Links)
+                <ExternalLink size={11} /> Open this link in Razorpay Dashboard
               </a>
-              <a href={RAZORPAY_DASHBOARD_LINKS.payments} target="_blank" rel="noreferrer"
-                 className="flex items-center gap-1.5 text-[12px] text-[var(--color-accent)] underline">
-                <ExternalLink size={11} /> Open in Razorpay Dashboard (Payments)
+              <a href={failure?.payment_link.short_url ?? '#'} target="_blank" rel="noreferrer"
+                 className="flex items-center gap-1.5 text-[12px] text-[var(--color-ink)] underline">
+                <ExternalLink size={11} /> Open the payment page in a new tab
               </a>
               <a href="#/journeys" className="flex items-center gap-1.5 text-[12px] text-[var(--color-accent)] underline">
-                <FileText size={11} /> View audit trail (Compliance &amp; Audit)
+                <FileText size={11} /> View audit trail
               </a>
             </div>
           </Card>
         </div>
       </div>
+    </div>
+  );
+};
+
+
+const AudioCard: React.FC<{ nudgeBody: string; nudgeSubject: string }> = ({ nudgeBody, nudgeSubject }) => {
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [reason, setReason] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const play = useCallback(async () => {
+    if (!nudgeBody) return;
+    setLoading(true);
+    try {
+      const r = await api.playLiveVoice(nudgeBody);
+      setAudioUrl(r.audio_data_url);
+      setReason(r.reason);
+    } catch (e: any) {
+      setReason(`error: ${e?.message ?? 'unknown'}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [nudgeBody]);
+
+  if (!nudgeBody) {
+    return (
+      <div className="rounded-md border border-[var(--color-line)] p-3 text-[11px] text-[var(--color-ink-muted)]">
+        Audio (Hinglish) — appears once the engine writes the body
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-md border border-[var(--color-line)] p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">Hinglish audio</div>
+        {reason && <Badge tone={reason.includes('elevenlabs') ? 'approved' : reason.includes('sarvam') ? 'info' : 'pending'}>{reason}</Badge>}
+      </div>
+      {audioUrl ? (
+        <audio controls src={audioUrl} className="w-full" />
+      ) : (
+        <Button onClick={play} disabled={loading} size="sm">
+          {loading ? 'Loading...' : 'Play Hinglish'}
+        </Button>
+      )}
     </div>
   );
 };

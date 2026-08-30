@@ -1,4 +1,4 @@
-// Mandate retry sequencer view (SPA).
+// Mandate ID retry sequencer view (SPA).
 //
 // Shows recent sequencer decisions: each row is one failed mandate
 // + the action the sequencer chose (RETRY_NOW, RETRY_24H,
@@ -79,23 +79,23 @@ export const MandateView: React.FC = () => {
     return (
       <EmptyState
         title="Waiting for the mandate sequencer to fire..."
-        description="Click 'Simulate BANK_DOWN failure' to record a failure and watch the sequencer pick the next action."
+        description="Click 'Simulate a UPI mandate failure' to record a failure and watch the sequencer pick the next action."
       />
     );
   }
   if (error) {
-    return <EmptyState title="Mandate sequencer unavailable" description={error} />;
+    return <EmptyState title="Mandate ID sequencer unavailable" description={error} />;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Mandate Retry Sequencer"
+        title="Mandate ID Retry Sequencer"
         description="A failed UPI AutoPay or card e-mandate needs cross-channel cadence. The sequencer ladder: RETRY_NOW (cause != BANK_DOWN) -> RETRY_24H (BANK_DOWN) -> REMITTER_OUTREACH (3+ BANK_DOWN in 7d) -> SWITCH_METHOD (mandate paused > 14d) -> STOP_AND_HUMAN_REVIEW (3+ distinct causes). Every decision is replayable from the hash-chained audit log."
         action={
           <Button onClick={simulateBankDown} disabled={busy} variant="secondary">
             <Play size={14} className="inline-block mr-1" />
-            Simulate BANK_DOWN failure
+            Simulate a UPI mandate failure
           </Button>
         }
       />
@@ -125,11 +125,11 @@ export const MandateView: React.FC = () => {
           <table className="w-full text-[12px]">
             <thead>
               <tr className="text-left text-[var(--color-ink-muted)]">
-                <th className="font-semibold py-2 px-3">Mandate</th>
-                <th className="font-semibold py-2 px-3">Action</th>
-                <th className="font-semibold py-2 px-3 text-right">Schedule (s)</th>
-                <th className="font-semibold py-2 px-3">Reason</th>
-                <th className="font-semibold py-2 px-3">Ran at</th>
+                <th className="font-semibold py-2 px-3">Mandate ID</th>
+                <th className="font-semibold py-2 px-3">What we'll do next</th>
+                <th className="font-semibold py-2 px-3 text-right">When (seconds)</th>
+                <th className="font-semibold py-2 px-3">Why</th>
+                <th className="font-semibold py-2 px-3">Fired at</th>
               </tr>
             </thead>
             <tbody>

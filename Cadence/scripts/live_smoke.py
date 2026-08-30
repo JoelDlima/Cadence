@@ -224,10 +224,7 @@ def main() -> int:
     # 4. Supabase
     print("\n[4] Supabase (service_role JWT, table listing only)")
     sb_url = os.environ.get("SUPABASE_URL", "https://vzrasadomyrycafbzdwg.supabase.co")
-    sr = os.environ.get(
-        "SUPABASE_SERVICE_KEY",
-        "placeholder_supabase_service_key",
-    )
+    sr = os.environ.get("SUPABASE_SERVICE_KEY", "")
     status, body = _request(f"{sb_url}/rest/v1/?select=*", headers={"apikey": sr, "Authorization": f"Bearer {sr}"})
     overall &= _check("service_role JWT", status == 200, f"status={status}")
     if status == 200:

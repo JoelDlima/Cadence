@@ -76,6 +76,8 @@ def synthesize(
     language: str,
     text: str,
     sarvam_api_key: str | None = None,
+    elevenlabs_api_key: str | None = None,
+    elevenlabs_voice_id: str = "pNInz6obpgDQGcFmaJgB",
 ) -> TTSResult:
     """Synthesize text -> WAV payload, base64-encoded.
 
@@ -85,6 +87,25 @@ def synthesize(
     reproducible.
     """
     seed = _seed_from_text(text, language)
+
+    # ElevenLabs: real audio for English + multilingual (Hinglish)
+    if elevenlabs_api_key:
+        try:
+            payload = _synthesize_via_elevenlabs(
+                text=text, voice_id=elevenlabs_voice_id, api_key=elevenlabs_api_key,
+            )
+            return TTSResult(
+                language=language, text=text,
+                sample_rate=22050,  # ElevenLabs default mp3->wav wrapper
+                duration_seconds=max(1, len(text) // 20),  # rough estimate
+                pcm_payload_b64=base64.b64encode(payload).decode("ascii"),
+                is_stub=False,
+                reason=f"elevenlabs TTS (voice={elevenlabs_voice_id}, seed={seed})",
+            )
+        except Exception as e:
+            # Fall through to sarvam or stub
+            pass
+
     if sarvam_api_key:
         # Real path lives behind a one-line swap; we keep the
         # stub as the deterministic demo default.
@@ -154,6 +175,39 @@ def _synthesize_via_sarvam(*, text: str, language: str, api_key: str) -> bytes:
     if not audios:
         raise RuntimeError("sarvam returned no audios")
     return base64.b64decode(audios[0])
+
+
+def _synthesize_via_elevenlabs(*, text: str, voice_id: str, api_key: str) -> bytes:
+    """Live ElevenLabs TTS path. Raises on any error; caller falls through.
+
+    Uses the multilingual v2 model (best Hinglish quality). The
+    endpoint returns raw audio bytes; we ask for 'audio/mpeg' (mp3)
+    which is what free-tier ElevenLabs delivers and is supported
+    by every modern <audio> tag.
+    """
+    import httpx  # local import so the stub path has no httpx dep
+
+    response = httpx.post(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+        headers={
+            "xi-api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg",
+        },
+        json={
+            "text": text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.75,
+                "style": 0.0,
+                "use_speaker_boost": True,
+            },
+        },
+        timeout=15.0,
+    )
+    response.raise_for_status()
+    return response.content
 
 
 def stub_is_deterministic(text: str, language: str) -> bool:

@@ -40,8 +40,8 @@ const RuleCard: React.FC<RuleCardProps> = ({
       </div>
 
       <div className="pt-3 border-t border-[var(--color-line)] flex items-center justify-between text-[11px]">
-        <span className="text-[var(--color-ink-subtle)]">Engine: <strong className="text-[var(--color-ink-muted)]">{enforcement}</strong></span>
-        <span className="text-[var(--color-approved)] font-mono font-medium">Zero Drift</span>
+        <span className="text-[var(--color-ink-subtle)]">Source: <strong className="text-[var(--color-ink-muted)]">{enforcement}</strong></span>
+        <span className="text-[var(--color-approved)] font-mono font-medium">Stable</span>
       </div>
     </Card>
   );
@@ -134,7 +134,7 @@ export const GuardianView: React.FC = () => {
 
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)] mb-3">
-          Statutory Compliance Ledger
+          Rules that stop Cadence from doing something
         </h3>
         <Stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {STATIC_RULES.map((r) => (
@@ -210,11 +210,11 @@ export const GuardianView: React.FC = () => {
 
             <div className="space-y-2 text-[12px]">
               <div className="flex items-center justify-between p-2.5 rounded bg-[var(--color-surface-subtle)] border border-[var(--color-line)]">
-                <span className="font-medium text-[var(--color-ink)]">Tier 1: Gemini 2.0 Flash</span>
+                <span className="font-medium text-[var(--color-ink)]">1) Gemini</span>
                 <span className="text-[11px] text-[var(--color-approved)] font-mono font-medium">Primary · $0.10/M</span>
               </div>
               <div className="flex items-center justify-between p-2.5 rounded bg-[var(--color-surface-subtle)] border border-[var(--color-line)]">
-                <span className="font-medium text-[var(--color-ink)]">Tier 2: Groq Llama 3.3 70B</span>
+                <span className="font-medium text-[var(--color-ink)]">2) Groq</span>
                 <span className="text-[11px] text-[var(--color-info)] font-mono font-medium">Fallback A · Ultra-low latency</span>
               </div>
               <div className="flex items-center justify-between p-2.5 rounded bg-[var(--color-surface-subtle)] border border-[var(--color-line)]">
