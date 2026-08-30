@@ -14,7 +14,7 @@ import { api } from './services/api';
 const POLL_MS = 2500;
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState('overview');
+  const [currentTab, setCurrentTab] = useState('live');
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [status, setStatus] = useState<Status | null>(null);
