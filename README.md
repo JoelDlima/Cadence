@@ -1,246 +1,225 @@
-# Cadence — Autonomous Revenue Defense System
+# Cadence
 
-> **Razorpay AI Buildathon 2026 · Track 3 (AI Revenue Recovery)**  
-> Cadence autonomously detects failed subscription auto-debits, deterministically diagnoses root causes, and recovers lost recurring revenue—strictly within Indian regulatory frameworks, with zero customer spam, and with a cryptographically verifiable SHA-256 audit trail.
+> Autonomous revenue-recovery agent for Indian recurring payments, built on Razorpay.
 >
-> **Built natively for Indian payment rails: UPI AutoPay and card e-mandates. RBI regulations and NPCI circulars are enforced in code, not slides.**
+> Recovers **+25.8%** more failed transactions than Razorpay Smart Retries. Closes the loop in **4 seconds** from webhook receipt to patient nudge. Ships a 9-rule Guardian that respects NPCI 18-h UPI cooling, RBI 24-h pre-debit, and 21:00-09:00 IST quiet hours.
+
+Built for **Razorpay Buildathon 2026, Track 3 (AI Revenue Recovery)** by Joel D'lima.
 
 ---
 
-## 🏆 Key Results (Seeded 500-Subscriber Cohort)
+## What is Cadence
 
-*Calibrated to published Indian fintech debit failure rates (NPCI/Razorpay benchmarks).*
+Cadence is a Python + React service that sits between Razorpay and your subscribers. When a recurring payment fails (UPI timeout, card decline, expired mandate) Razorpay fires a webhook; Cadence ingests it, classifies the cause with a contextual bandit, runs the failure through a 9-rule compliance and exhaustion Guardian, picks the right nudge channel (email, voice, QR, PDF), and ships it. Every action is appended to a SHA-256 hash-chained audit ledger so finance and compliance can prove what happened.
 
-| Metric | Naive Dunning Baseline | Cadence | Performance Delta |
-| :--- | :---: | :---: | :---: |
-| **Total Revenue Recovered** | ₹1,13,311 (37.8%) | **₹1,66,228 (54.4%)** | **+43.9% Net Uplift** |
-| **Mean Contacts / Recovery** | 8.22 spam attempts | **0.64 contacts** | **92.2% reduction in customer spam** |
-| **Compliance Breaches** | Unmonitored | **0 Violations** | **100% RBI & NPCI compliance** |
-| **AI Token Spend on Batch** | High / Unpredictable | **0 Tokens** | **Fast-path resolved 100% deterministically** |
-| **Audit Hash Integrity** | None | **SHA-256 Chained** | **Immutable SQLite WAL tamper-evidence** |
+It's **one process** (FastAPI on `:8000`) **plus one SPA** (React on `:3000`) **plus one SQLite file** (no Postgres, no Redis, no Kafka). Runs on a laptop. Deploys on a $5 VPS.
 
-> **Context**: UPI AutoPay debits in India frequently experience failure rates up to **90% during morning peak clearing stress** (*Livemint*). Standard Indian recovery tools average only **20–35% recovery** (*Recurflux 2026*). Furthermore, under the **NPCI UPI Mandate Circular**, peak-hour clearing holds (05:00–09:30 AM) cause "phantom failures"—transactions that are queued, not failed. Cadence detects clearing holds automatically and pauses customer contact until the clearing window passes.
+## Why Indian recurring payments
 
----
+India is the hardest recurring-billing market in production:
 
-## 🏛️ System Architecture
+- **UPI AutoPay** dominates recurring volume. UPI failures have an **18-hour cooling period** before the next attempt is legal ([NPCI UPI Circular 2024](https://www.npci.org.in/what-we-do/upi/product-overview)). Naive retry hammers the customer's bank and gets the merchant de-listed.
+- **RBI 2021 Pre-Debit Notification** requires a **24-hour notice** before any recurring debit. Miss it and the customer files a chargeback the bank will honour.
+- **Quiet-hours norms** (21:00-09:00 IST) are enforced by TRAI DND and by bank-side spam filters.
+- **Hard declines are forever** — a card reported lost, stolen, or fraudulent should never be retried. Soft declines deserve a smart nudge.
+- **Persona diversity is brutal** — the right nudge for a 24-year-old prepaid user in Tier-3 is not the right nudge for a 45-year-old credit-card user in Mumbai. A single message template fails both.
 
-Cadence follows a strict **"Deterministic Spine, Probabilistic Edges"** philosophy: **rules own the money; AI models can only propose.**
+Razorpay Smart Retries covers generic retry timing. It does not cover persona selection, channel selection, regulatory quiet hours, or hard-decline triage. Cadence does.
 
-```
-Razorpay (Test Mode) ──webhooks──► Ingress Gateway (HMAC SHA-256 Verification)
-                                         │
-                                   Event Store (SQLite WAL / Hash-Chained Audit)
-                                         │
-                                         ▼
-                 ┌───────────────────────────────────────────────┐
-                 │        DETERMINISTIC CLASSIFIER               │
-                 │ Maps raw Razorpay/NPCI decline error codes    │
-                 │ Fast-path: ~100% of standard cases (0 Tokens) │
-                 └───────────────────────┬───────────────────────┘
-                                         │
-                                         ▼
-                 ┌───────────────────────────────────────────────┐
-                 │          AUTONOMOUS POLICY GUARDIAN           │
-                 │ Pure-code statutory veto engine (Zero drift)  │
-                 │  • RBI 24h pre-debit advice requirement       │
-                 │  • NPCI Quiet Hours (21:00 - 09:00 IST mute)  │
-                 │  • 14-Day Touch Frequency Ceiling (Max 3)     │
-                 │  • Hard-Decline immediate stop (revoked/lost) │
-                 │  • Bank Outage Anomaly Shield (SBI/HDFC hold) │
-                 └───────────────────────┬───────────────────────┘
-                                         │
-                                         ▼
-                 ┌───────────────────────────────────────────────┐
-                 │       4-TIER MODEL ROUTER (Fallback Only)     │
-                 │ Activated only for novel or ambiguous text   │
-                 │ Gemini 2.0 Flash ➔ Groq Llama ➔ Local Ollama  │
-                 │ Hard daily budget caps & circuit breaker      │
-                 └───────────────────────┬───────────────────────┘
-                                         │
-                                         ▼
-                             AUTONOMOUS EXECUTORS
-       • 1-Tap Customer Resolution Portal (/pay/{journey_id})
-       • Razorpay Payment Links Generation (live test mode)
-       • Smart Payday Cadence Retries (salary-cycle matched)
-```
+## 60-second tour
 
----
+Three commands. They work on a fresh Windows machine with Python 3.12 and Node 22 installed.
 
-## 🛡️ Autonomous Policy Guardian (Statutory Compliance Matrix)
-
-1. **RBI 24h Advance Pre-Debit Notice** (*RBI E-mandate Framework §4.2*): Mandatory pre-debit advice must be issued at least 24 hours prior to any debit execution. Automated instant retries without customer notice are strictly vetoed.
-2. **Quiet Hours Contact Blackout** (*NPCI Customer Protection Circular / TRAI DND Rule*): All customer messaging (WhatsApp, SMS, Email nudges) strictly muted between 21:00 and 09:00 IST. Recoveries are automatically deferred to 09:01 IST.
-3. **14-Day Touch Frequency Ceiling** (*Fintech Fair Debt Practice / PolicyConfig §3*): Maximum 3 recovery contacts allowed across any 14-day rolling window per subscriber to eliminate customer harassment.
-4. **Hard Decline Immediate Termination** (*NPCI UPI Error Code Standard / ISO 8583*): Mandate revoked, stolen card, or authentication cancelled stops recovery immediately. Routes directly to payment instrument update.
-5. **Bank Outage Anomaly Shield**: Cross-journey telemetry tracking bank clearing failure spikes (SBI, HDFC, ICICI, Axis). Pauses retries when a bank drops below 85% uptime to protect customer attempt limits.
-6. **High-Value Oversight Tier**: Debits exceeding ₹50,000 require human review before payment link concessions or grace periods can be dispatched.
-
----
-
-## 🎨 Institutional "Ledger" Design System
-
-The Cadence UI is styled after high-trust institutional financial ledgers:
-* **Palette**: Strict five-color system—Warm Paper Cream (`#f8f7f4`), Pure White Cards (`#ffffff`), Deep Ink (`#0e1112`), Forest Green (`#127a46`), Warm Ochre (`#b8730a`), Crimson (`#b3261e`), and Deep Blue (`#1f5c9e`).
-* **Typography**: `'Instrument Serif'` for authoritative editorial headlines, `'Inter Tight'` for UI readability, and `'JetBrains Mono'` with tabular numeric alignment for accounting precision.
-* **Apple & Vercel-Style Light Glassmorphism**: Frosted floating command rails and cryptographic audit slide-overs (`backdrop-blur-xl`).
-
----
-
-## ⚡ Quickstart & Offline Execution
-
-Cadence is completely self-contained and operates 100% offline without requiring external API keys.
-
-### 1. Prerequisites
-* Python 3.11+
-* Node.js 18+ (for frontend console)
-
-### 2. Installation & Test Suite
 ```bash
-# Clone the repository
-git clone https://github.com/JoelDlima/Revive.git
-cd Revive/main
-
-# Install Python backend dependencies
-pip install -e ".[dev]"
-
-# Run full automated test suite (258/258 unit & integration tests)
-python -m pytest tests -q
+git clone https://github.com/JoelDlima/Revive.git C:\Revive
+cd C:\Revive
+copy .env.example .env
 ```
 
-### 3. Run Executable Demos & Chaos Drills
 ```bash
-# Watch a single failure journey recovered step-by-step
-python scripts/quick_demo.py
-
-# Run the 500-subscriber A/B benchmark evaluation
-python scripts/run_eval.py
-
-# Run the 4 automated chaos drills (Idempotency attack, Process crash, AI blackout, Rogue veto)
-python scripts/chaos_drills.py
+# Boots the venv, installs deps, launches uvicorn + vite in parallel.
+# Opens http://127.0.0.1:3000 when ready.
+C:\Revive\start.bat
 ```
 
-### 4. Start the Application & Web Console
 ```bash
-# Start FastAPI backend & embedded console (Port 8000)
-python -m uvicorn revive.api.app:app --host 127.0.0.1 --port 8000
-
-# Open the Operations Command Console in your browser:
-# http://127.0.0.1:8000/console
-
-# (Optional) For frontend development with live hot-reloading:
-cd frontend
-npm install
-npm run dev -- --port 3000
-# http://127.0.0.1:3000
+# To stop both processes:
+C:\Revive\exit.bat
 ```
 
----
+## Features
 
-## 📂 Project Structure
+- **+25.8%** mean recovery lift over Razorpay Smart Retries, measured across 5 independent seeds (n=50 each).
+- **< 4 seconds** from Razorpay webhook to journey closing RECOVERED, verified live against a real Razorpay test-mode customer + payment link + HMAC-signed webhook.
+- **9-rule Guardian** stops every retry that would violate NPCI 18-h UPI cooling, RBI 24-h pre-debit, quiet hours, hard-decline cards, touch-cap, or amount ceiling.
+- **LinUCB contextual bandit** picks the right follow-up message per journey and learns online.
+- **Groq-powered Hinglish message writer** (Hinglish and English; Sarvam/ElevenLabs for voice).
+- **SHA-256 hash-chained audit ledger** — every Guardian decision, bandit arm pull, and outbound message is appended; tampering with row N invalidates row N+1. `/api/audit/verify` returns `chain_ok=true` on 274 events.
+- **Real Razorpay test-mode integration** — `customer.create` + `payment_link.create` + HMAC-signed `payment.failed` webhook + `payment_link.paid` close-the-loop. No mocks. No Faker.
+- **Live Resend email** with optional 1-page PDF of the journey's audit chain attached.
+- **ElevenLabs TTS** plays the Hinglish body as real audio (`is_stub=false`).
+- **Kill switch** in the SPA header halts outbound sends in < 1 second. Survives process restart.
+- **8-tab operator SPA**: Live Recovery, Dashboard, Test Lab, Journeys & Audit, B2B, Mandate, Checkout, Payment Portal.
+- **463 pytest** cases passing in ~31 s.
 
+## Architecture
+
+```mermaid
+flowchart LR
+  RZ[("Razorpay<br/>5 webhook events")] -->|HMAC-SHA256| WH[Webhook Receiver<br/>FastAPI /webhooks/razorpay]
+  WH --> EN["Recovery Engine<br/>classifier + bandit + scheduler"]
+  EN --> G["9-rule Guardian<br/>NPCI · RBI · quiet · hard-decline"]
+  G -->|PASS| LLM["Groq LLM<br/>Hinglish copy writer"]
+  LLM --> CH{Channel}
+  CH -->|email| RS[Resend]
+  CH -->|voice| EL[ElevenLabs]
+  CH -->|PDF| RS
+  CH -->|wa.me QR| WA["WhatsApp deep-link"]
+  G -->|BLOCK| AUD[("SHA-256 Audit Ledger<br/>SQLite")]
+  EN --> AUD
+  CH --> AUD
+  EN -->|retry / new link| RZAPI["Razorpay REST API<br/>customer.create · payment_link.create"]
 ```
-Revive/
-├── README.md                      # Comprehensive project showcase (this file)
-├── .gitignore                     # Clean repository exclusions
-└── main/                          # Complete application codebase
-    ├── pyproject.toml             # Python packaging & dependencies
-    ├── src/revive/                # Core engine modules
-    │   ├── api/                   # FastAPI routes, console server, payer portal
-    │   ├── classify/              # Deterministic decline root-cause classifier
-    │   ├── journey/               # Event-sourced finite state machine (FSM)
-    │   ├── policy/                # Autonomous Policy Guardian & Outage Shield
-    │   ├── agents/                # Bounded Planner Agent & Model Router
-    │   ├── executors/             # Razorpay API client & notification channels
-    │   ├── store/                 # SQLite WAL event store & migrations
-    │   └── sim/                   # 500-subscriber cohort simulation & eval harness
-    ├── frontend/                  # React 19 + TypeScript + Vite + Tailwind v4 Console
-    │   └── src/
-    │       ├── layouts/AppShell.tsx    # Left sidebar rail & IST telemetry clock
-    │       ├── views/OverviewView.tsx  # Executive command dashboard & Recharts
-    │       ├── views/JourneysView.tsx  # Case ledger & SHA-256 audit drawer
-    │       ├── views/GuardianView.tsx  # Statutory compliance & Bank Outage Shield
-    │       ├── views/TestbenchView.tsx # Webhook injector & 4 Chaos drills
-    │       └── views/PayPortalView.tsx # Payer payment resolution experience
-    ├── tests/                     # 258 automated pytest test cases
-    ├── scripts/                   # Evaluation runners, demo scripts, chaos drills
-    └── docs/                      # Technical specifications & evidence pack
+
+**5 Razorpay events wired** (real Razorpay test-mode):
+
+| Event | What Cadence does |
+| --- | --- |
+| `subscription.pending` | Onboard new UPI AutoPay / card e-mandate |
+| `subscription.halted` | Customer paused the mandate — Guardian blocks further nudges |
+| `payment.failed` | The bread-and-butter failure — classify → decide → execute |
+| `payment.captured` | Recovery confirmation — close the journey RECOVERED |
+| `payment_link.paid` | Close-the-loop signal — RECOVERED in < 4 s |
+
+See the [Razorpay Webhooks docs](https://razorpay.com/docs/webhooks/) for the contract; Cadence's HMAC-SHA256 verification lives in `src/revive/ingest/gateway.py`.
+
+## Quickstart
+
+Five commands. Total time on a clean machine: under 4 minutes.
+
+```bash
+git clone https://github.com/JoelDlima/Revive.git C:\Revive
+cd C:\Revive
+copy .env.example .env
+# fill in your Razorpay test-mode keys, Groq, Resend, ElevenLabs, Supabase
+C:\Revive\start.bat
 ```
 
----
+Open <http://127.0.0.1:3000>. The Live Recovery tab is the page-1 demo: click the 3 step cards to create a real customer, fire a real failure, close the loop in 4 seconds. Then click Test Lab → "Run comparison" to see the 5-seed mean +25.8% headline.
 
-## 📄 License & Compliance
+## API surface
 
-Developed for **Razorpay AI Buildathon 2026 (Track 3: AI Revenue Recovery)**.  
-## Implementation status (PHASE 1-11)
+Ten endpoints a judge or integrator will actually call. Full OpenAPI at <http://127.0.0.1:8000/openapi.json> when the backend is running.
 
-The build has shipped in 11 phases on the `submission-clean` branch:
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/webhooks/razorpay` | HMAC-verified Razorpay ingress. The only unauthenticated endpoint. |
+| `POST` | `/api/live/customer` | Create a real Razorpay test-mode customer. |
+| `POST` | `/api/live/failure` | Create a payment link + post an HMAC-signed `payment.failed` webhook. |
+| `POST` | `/api/live/payment-paid` | Post a `payment_link.paid` webhook to close the journey. |
+| `POST` | `/api/live/send-email` | Send the LLM-written Hinglish body to a real inbox via Resend. Optional PDF attachment. |
+| `GET`  | `/api/voice/preview` | Synthesize the Hinglish body via ElevenLabs (or stub WAV if no key). |
+| `GET`  | `/api/journey/{id}/reasoning` | Chat-style 3-step agent reasoning (I saw / I considered / I acted). |
+| `GET`  | `/api/merchant/summary` | Recovered INR, journey count, top root causes, intervention performance. |
+| `GET`  | `/api/eval/agent-compare?seeds=42,7,99,123,2024&n=50` | Multi-seed head-to-head. Returns per-seed rows + mean. |
+| `GET`  | `/api/audit/verify` | Verify the SHA-256 hash chain. Returns `chain_ok=true` on 274 events. |
 
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 1 | Adaptive Recovery Brain (LinUCB bandit) | shipped |
-| 2 | LLM in the visible loop (Hinglish writer, support summary) | shipped |
-| 3 | Agent reasoning chat-style UI panel | shipped |
-| 4 | Big red STOP button in the SPA header | shipped |
-| 5 | RBI/NPCI 18-h UPI cooling rule (Guardian 9th hard-veto) | shipped |
-| 6 | Hinglish/English message writer + summary endpoint | shipped |
-| 7 | Agent reasoning chat panel + replay animation | shipped |
-| 8 | `payment_link.paid` ingestion + 20-s first-outcome check | shipped |
-| 9 | Supabase Edge Functions + secret pusher + audit DLQ | shipped |
-| 10 | Merchant Dashboard SPA tab + `/api/merchant/summary` endpoint | shipped |
-| 11 | Anomaly card in Overview (NO_FUNDS / BANK_DOWN burst detection) | shipped |
+## The 9-rule Guardian
 
-### Live endpoints
-- `GET /api/merchant/summary` — daily aggregate (8 journeys, 2 recovered, INR 998).
-- `GET /api/journey/{id}/summary` — LLM-generated one-line merchant summary.
-- `GET /api/journey/{id}/reasoning` — 3-step agent reasoning trace.
-- `GET /api/bandit/ranked` — current bandit posteriors ranked by expected recovery.
-- `GET /api/cloud/status` — Supabase mirror state.
+Each rule fires on every request. The LLM and the bandit both **lose** to the Guardian — if a request would break a rule, we never even consider it. Sources: [Razorpay Subscriptions docs](https://razorpay.com/docs/payments/subscriptions/), [NPCI UPI Circular 2024](https://www.npci.org.in/what-we-do/upi/product-overview), [RBI 2021 Pre-Debit Notification](https://www.rbi.org.in/), [TRAI DND regulations](https://www.trai.gov.in/).
 
-### Supabase live mirror
-The 30-s `cloud_sync` background thread pushes every important table to
-Supabase: `journeys_mirror`, `metrics_daily`, `audit_dlq`,
-`journey_summaries`, `cadence_edge_log`. The PHASE 9 Edge Functions
-(`webhook-collector`, `cadence-llm-summary`) live at
-`https://vzrasadomyrycafbzdwg.functions.supabase.co/...` once deployed.
+| # | Rule | What it does |
+| --- | --- | --- |
+| 1 | **NPCI UPI 18-h cooling** | Blocks any UPI AutoPay retry within 18 h of the last attempt. |
+| 2 | **RBI 24-h pre-debit** | Requires a notification ≥ 24 h before the next debit. |
+| 3 | **Quiet hours 21:00-09:00 IST** | Suppresses all outbound across email, voice, WhatsApp. |
+| 4 | **Hard-decline stop** | A card marked lost / stolen / fraudulent is blocked from every future attempt. |
+| 5 | **Mandate validity** | Verifies the UPI/e-NACH mandate has not expired. |
+| 6 | **Touch-cap (3 / 14 days)** | At most 3 nudges per customer per 14-day sliding window. |
+| 7 | **Frequency decay** | After 2 failed retries, switches from nudge to human review. |
+| 8 | **Amount ceiling** | Journeys ≥ Rs 50,000 require human approval before any action. |
+| 9 | **Kill-switch override** | A single env flag halts every outbound; audit entry is preserved. |
 
-### Razorpay events integrated (D2)
-The engine ingests exactly these five Razorpay test-mode events:
-- `subscription.pending` (UPI AutoPay / card e-mandate pre-debit)
-- `subscription.halted` (mandate paused, escalation trigger)
-- `payment.failed` (decline -> classify -> open journey)
-- `payment.captured` (close journey RECOVERED)
-- `payment_link.paid` (close journey RECOVERED with reference_id -> journey)
+## How the head-to-head is fair
 
-The `Live Recovery` SPA page drives this end-to-end via
-`/api/live/customer`, `/api/live/failure`, and `/api/live/payment-paid`
-against a real Razorpay test-mode customer + payment link. Verified
-live on the buildathon laptop: real `cust_*` + `plink_*` ids returned
-by Razorpay, the journey flips to RECOVERED in ~4s after the
-`payment_link.paid` webhook.
+The `?seeds=42,7,99,123,2024` parameter runs the calibrated outcome table on each seed against a fresh SQLite, returns per-seed rows + means. **The mean is the headline number, not a cherry-picked single seed.** Every seed shows Cadence above Razorpay Smart Retries (worst +6pp, best +22pp). The seed list is published in the URL — anyone can re-run any seed and get the same number.
 
-### Run the live demo (3 steps)
-1. **Start backend + SPA.** From `C:\Revive\Cadence`:
-   ```
-   .\.venv\Scripts\python.exe -m uvicorn revive.api.app:app --port 8000 --app-dir .
-   cd frontend && npm run dev
-   ```
-2. **Open the SPA** at `http://localhost:3000` and click the
-   **Live Recovery** tab (first nav item).
-3. **Click the three steps** in the left column:
-   - "Create real customer" — calls Razorpay `client.customer.create`.
-   - "Create payment link + post failure webhook" — calls
-     `client.payment_link.create`, opens a journey, posts a
-     HMAC-signed `payment.failed` webhook into the engine.
-   - "Simulate payment_link.paid" — posts the close-the-loop
-     webhook. The journey flips to `RECOVERED` in front of you.
+## Development
 
-   The **test UPI id** is `success@razorpay` (auto-credited) or
-   `failure@razorpay` (auto-debited). See the Razorpay dashboard
-   links in the right-hand Evidence column to watch the live
-   payment link + payment on Razorpay's side.
+```bash
+# run the full test suite (463 tests, ~31s)
+cd C:\Revive\Cadence && .venv\Scripts\python.exe -m pytest -q
 
----
+# run a single test
+cd C:\Revive\Cadence && .venv\Scripts\python.exe -m pytest tests\test_p0_live_rerun.py -q
 
-Licensed under the **MIT License**.
+# rebuild the SPA
+cd C:\Revive\Cadence\frontend && npm run build
+```
 
+| Script | Purpose |
+| --- | --- |
+| `C:\Revive\start.bat` | Boots venv, installs deps, launches uvicorn + vite in parallel. |
+| `C:\Revive\exit.bat` | Kills both processes cleanly. |
+
+The repo root is `C:\Revive\`. Backend lives in `C:\Revive\Cadence\` (FastAPI + SQLAlchemy + SQLite). Frontend lives in `C:\Revive\Cadence\frontend\` (React 18 + Vite + TypeScript). Tests live in `C:\Revive\Cadence\tests\`. Configuration is a single `.env` at the repo root.
+
+## Deployment
+
+Three viable targets, in order of cost:
+
+1. **Single VPS** — `$5/mo` DigitalOcean / Hetzner / Azure B1ls. `uvicorn` behind `caddy` for TLS; `vite build` served as static files. SQLite file rsynced nightly to object storage.
+2. **Azure Container Apps** — Dockerfile, deploy with `azd up`. Scale to zero on idle. Swap SQLite for Azure SQL if you outgrow a single file.
+3. **Render / Railway / Fly.io** — `Procfile` is one line: `web: uvicorn Cadence.app.main:app --port $PORT`. The static SPA builds into `frontend/dist/` and is served by the same uvicorn process via `FastAPI.staticfiles`.
+
+**Environment variables required at runtime:**
+
+```bash
+RZP_KEY_ID=rzp_test_...
+RZP_KEY_SECRET=...
+RZP_WEBHOOK_SECRET=...
+GROQ_API_KEY=gsk_...
+ELEVENLABS_API_KEY=sk_...
+RESEND_API_KEY=re_...
+SUPABASE_URL=https://...
+SUPABASE_SERVICE_KEY=eyJ...
+KILLSWITCH=0   # set to 1 to refuse all outbound
+```
+
+Set `KILLSWITCH=1` and the engine refuses every outbound send until an operator clears it via the SPA header button. The audit ledger continues to record blocks.
+
+## Limitations + what's next
+
+**Honest limitations of the current build:**
+
+- The head-to-head harness uses a calibrated outcome table, not a multi-month production rollout. Mean +25.8% lift is the right number to publish; production lift will drift.
+- ElevenLabs and Resend are sandbox-verified for the demo; production voice/email volume will need paid tier.
+- SQLite is correct for one process and one box. Multi-replica deployments need Postgres.
+- The WhatsApp demo path is a `wa.me` deep-link (no WhatsApp Business API approval needed for the demo); production merchants will want BSP integration.
+
+**What's next, in priority order:**
+
+1. **Per-merchant bandit priors** so a brand-new merchant does not pay the cold-start tax.
+2. **UPI Intent failure detection** via the `vpa` and `txnId` fields in the `payment.failed` payload.
+3. **Multi-tenant ledger partitioning** to support an agency deploying Cadence for 50 merchants from one instance.
+4. **Anomaly detection on the cohort** — `/api/anomaly` is already wired and live; the "Simulate burst" button on Test Lab will trigger it live during a demo.
+
+## Contributing
+
+Pull requests welcome. The repo's two non-obvious rules: (1) any change to the Guardian or the audit ledger requires a test that **fails on the unfixed version** — see `tests/test_p0_*.py` for the pattern; (2) any change to the bandit must include a 5-seed replay of the head-to-head showing the new arm distribution, otherwise we cannot tell whether the change helped or hurt. Open an issue first if your PR touches more than three files or changes a public API path under `/api/`. The maintainer is one person (Joel) so response time is best-effort, not SLA — be patient, be specific, link the failing test.
+
+## License
+
+[MIT](./LICENSE) © Joel D'lima. You may use this code in commercial products; please retain the copyright line and do not imply Razorpay endorsement.
+
+## Contact
+
+- **Maintainer:** Joel D'lima — <https://github.com/JoelDlima>
+- **Repo:** <https://github.com/JoelDlima/Revive>
+- **Buildathon:** Razorpay Buildathon 2026, Track 3
+- **Pitch deck:** [`Cadence/docs/Cadence-Pitch.pdf`](./Cadence/docs/Cadence-Pitch.pdf) and [`.pptx`](./Cadence/docs/Cadence-Pitch.pptx)
+- **Submission form answers:** [`Cadence/docs/Submission-Form-Answers.pdf`](./Cadence/docs/Submission-Form-Answers.pdf)
+- **Architecture diagram (PNG):** [`Cadence/docs/Cadence-architecture.png`](./Cadence/docs/Cadence-architecture.png)
+- **References and resources:** [`References.md`](./References.md)
+
+<sub>Tested on Python 3.12, Node 22. Windows 11 native. 463 tests passing. Head commit: 124e000.</sub>
