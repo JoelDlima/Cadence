@@ -23,7 +23,11 @@ Razorpay Smart Retries covers the generic retry-timing half. It does not cover p
 
 ## What Cadence does
 
-**Cadence** is an autonomous recovery agent built on Razorpay that closes this loop in under a second. It watches for failures, decides the right retry moment and channel, and writes the Hinglish nudge — before the mandate dies.
+**Cadence** is an autonomous AI agent built on Razorpay that closes this loop in under a second.
+
+> **Headline number: +25.8% mean recovery lift over Razorpay Smart Retries, measured across 5 independent seeds (n=50 each). Total recovered: Rs. 40,469 in one run. See [How the head-to-head is fair](#how-the-head-to-head-is-fair) below for the per-seed table and the methodology.** It watches for failures, decides the right retry moment and channel, and writes the Hinglish nudge — before the mandate dies.
+
+The channel picker is a **contextual bandit (LinUCB over 5 channels)** that learns online, so no pre-trained model is needed. Every decision lands in a SHA-256 hash-chained audit ledger.
 
 One sentence, one loop: *observe → decide → act → prove*.
 
@@ -50,6 +54,16 @@ Five Razorpay events subscribed (real test-mode integration, not Faker):
 | `payment_link.paid` | Close-the-loop signal — RECOVERED in < 4 s |
 
 A screenshot of the architecture diagram is at [`Cadence/docs/Cadence-architecture.png`](./Cadence/docs/Cadence-architecture.png).
+
+**The 5 Razorpay events** Cadence subscribes to (real test-mode integration, not a Faker simulator):
+
+| Event | What Cadence does |
+| --- | --- |
+| `subscription.pending` | Onboards a new UPI AutoPay / card e-mandate |
+| `subscription.halted` | Customer paused the mandate — Guardian blocks further nudges |
+| `payment.failed` | The bread-and-butter path: classify → decide → execute |
+| `payment.captured` | Recovery confirmed — close the journey |
+| `payment_link.paid` | Close-the-loop signal — RECOVERED in < 4 s |
 
 ## Quickstart
 
