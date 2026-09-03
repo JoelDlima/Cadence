@@ -54,48 +54,48 @@ interface DrillMeta {
 
 const DRILL_META: Record<DrillId, DrillMeta> = {
   duplicate_webhook: {
-    title: 'Duplicate webhook',
-    subtitle: 'Posts the same event twice; engine must dedupe.',
+    title: 'Send the same webhook twice',
+    subtitle: 'Razorpay retries webhooks. The engine must count the payment once, not twice.',
     icon: Copy,
   },
   inject_no_funds: {
-    title: 'Inject 3 NO_FUNDS',
-    subtitle: 'Triggers the anomaly card on the Overview tab.',
+    title: 'Three failures at once',
+    subtitle: 'Fires 3 NO_FUNDS failures in a row. This is what a bank outage looks like, and it should trip the anomaly alert.',
     icon: ZapOff,
   },
   reorder: {
-    title: 'Reorder',
-    subtitle: 'Sends events out of order; engine must reconcile.',
+    title: 'Send webhooks out of order',
+    subtitle: 'The internet does not deliver in order. A late event must not overwrite a newer one.',
     icon: Shuffle,
   },
   kill_switch: {
-    title: 'Kill switch test',
-    subtitle: 'Toggles the kill switch; outbound sends must halt.',
+    title: 'Pull the kill switch',
+    subtitle: 'Flips the stop flag on and off. While it is on, no message and no retry may leave the building.',
     icon: AlertOctagon,
   },
   force_paid: {
-    title: 'Force plink paid',
-    subtitle: 'Razorpay plink: created -> paid. Closes the journey RECOVERED.',
+    title: 'The customer pays',
+    subtitle: 'Marks the link paid and closes the journey as RECOVERED. Razorpay has no API to mark a link paid, so this side is ours.',
     icon: CheckCircle2,
   },
   force_failed: {
-    title: 'Force plink failed',
-    subtitle: 'Posts payment.failed. Cadence marks INTERVENING + queues recovery.',
+    title: 'The payment fails again',
+    subtitle: 'Sends another payment.failed. Cadence reopens recovery (INTERVENING) and the link stays payable, exactly as Razorpay leaves it.',
     icon: XCircle,
   },
   force_expired: {
-    title: 'Force plink expired',
-    subtitle: 'Razorpay plink: created -> cancelled/expired. Closes 24-h window.',
+    title: 'The 24-hour window closes',
+    subtitle: 'Really calls Razorpay to cancel the link, then closes the journey unrecovered. This one changes the real Razorpay status.',
     icon: Clock4,
   },
   complete_journey: {
-    title: 'Complete journey (1-click)',
-    subtitle: 'Equivalent to fire-paid. Paid + audit + Razorpay status updated.',
+    title: 'Close the loop in one click',
+    subtitle: 'Same as "The customer pays", bundled as a single button for a demo.',
     icon: CheckCheck,
   },
   smart: {
-    title: 'Smart (autonomous)',
-    subtitle: 'LLM picks the right outcome (paid / failed / expired) and dispatches it. Uses customer hint if provided.',
+    title: 'Let the agent decide',
+    subtitle: 'The LLM reads the link, the audit trail and your hint, picks paid / failed / expired, and explains why. No key? It falls back to a fixed choice.',
     icon: Sparkles,
   },
 };
@@ -280,75 +280,15 @@ const TestLabView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Test Lab"
-        description="Agent comparison and chaos drills in one place. Run the head-to-head against the naive baseline, then poke the engine with adversarial inputs."
+        description="Break the engine on purpose. Fire a real failure, then drive the payment link wherever you want it to go."
         action={<Badge tone="approved">Live</Badge>}
       />
-
-      {/* --- Comparison section --- */}
-      <Card>
-        <CardHeader
-          title="Agent vs Razorpay default"
-          subtitle="Same Indian cohort through both arms. Naive arm is Razorpay's default retry policy. Cadence runs the AI agent, the rule engine, and the LLM writer."
-          action={
-            <div className="flex gap-2 items-end">
-              <label className="text-[12px] text-[var(--color-ink-muted)]">
-                <div>n</div>
-                <input
-                  type="number"
-                  min={10}
-                  max={50}
-                  value={n}
-                  onChange={(e) => setN(parseInt(e.target.value || '50', 10))}
-                  className="w-20 px-2 py-1 border border-[var(--color-line)] rounded text-[13px] font-mono"
-                />
-              </label>
-              <label className="text-[12px] text-[var(--color-ink-muted)] flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={useMultiSeed}
-                  onChange={(e) => setUseMultiSeed(e.target.checked)}
-                  className="accent-[var(--color-accent)]"
-                />
-                <span>5 seeds (mean)</span>
-              </label>
-              {!useMultiSeed && (
-                <label className="text-[12px] text-[var(--color-ink-muted)]">
-                  <div>seed</div>
-                  <input
-                    type="number"
-                    value={seed}
-                    onChange={(e) => setSeed(parseInt(e.target.value || '42', 10))}
-                    className="w-20 px-2 py-1 border border-[var(--color-line)] rounded text-[13px] font-mono"
-                  />
-                </label>
-              )}
-              <Button onClick={run} disabled={loading} variant="primary">
-                <RefreshCw size={14} className={`inline-block mr-1 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Running…' : 'Run comparison'}
-              </Button>
-            </div>
-          }
-        />
-
-        <div className="p-5">
-          {error && <EmptyState title="Comparison failed" description={error} />}
-
-          {!error && !result && !loading && (
-            <EmptyState
-              title="Click Run comparison to start"
-              description="Same cohort, both arms. Each arm runs on a fresh DB with the same outcome table."
-            />
-          )}
-
-          {result && <CompareResultView result={result} />}
-        </div>
-      </Card>
 
       {/* --- Live failure: real Razorpay object on click --- */}
       <Card>
         <CardHeader
           title="Fire a live test failure"
-          subtitle="Creates a real Razorpay test-mode customer + payment link + HMAC-signed payment.failed webhook. The plink_* id will appear in the Razorpay dashboard in ~1s."
+          subtitle="Creates a real Razorpay test-mode customer, a real payment link, and a signed payment.failed webhook. The plink_ id shows up in your Razorpay dashboard in about a second."
           action={<Badge tone="info">Real Razorpay</Badge>}
         />
         <div className="p-5 space-y-3">
@@ -405,14 +345,14 @@ const TestLabView: React.FC = () => {
       {/* --- Chaos drills section --- */}
       <Card>
         <CardHeader
-          title="Chaos drills"
-          subtitle="Adversarial inputs against the live engine. Honest failures are surfaced below — check the result box for status."
+          title="Drills"
+          subtitle="Each button does something real to the live engine. If a drill fails, it says so here — nothing is hidden."
           action={<Badge tone="neutral">9 drills</Badge>}
         />
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Subscription ID (webhook drills)</div>
+              <div className="mb-1">Subscription ID — for the first four drills</div>
               <Input
                 value={subId}
                 onChange={(e) => setSubId(e.target.value)}
@@ -421,20 +361,20 @@ const TestLabView: React.FC = () => {
               />
             </label>
             <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Reference ID (lifecycle drills)</div>
+              <div className="mb-1">Reference ID — which payment link to act on</div>
               <Input
                 value={refId}
                 onChange={(e) => setRefId(e.target.value)}
-                placeholder={refAuto ?? 'auto: newest payment link'}
+                placeholder={refAuto ?? 'filled in automatically'}
                 className="numeric text-[14px]"
               />
             </label>
             <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Customer hint (Smart only)</div>
+              <div className="mb-1">Customer hint — only the agent reads this</div>
               <Input
                 value={custHint}
                 onChange={(e) => setCustHint(e.target.value)}
-                placeholder="e.g. always pays on time"
+                placeholder="e.g. always pays after a reminder"
                 className="text-[14px]"
               />
             </label>
@@ -442,17 +382,15 @@ const TestLabView: React.FC = () => {
           <div className="text-[11px] text-[var(--color-ink-muted)] mb-3">
             {refAuto ? (
               <>
-                Lifecycle drills target{' '}
+                Acting on{' '}
                 <span className="font-mono">{refId.trim() || refAuto}</span>
-                {!refId.trim() && ' — the most recently updated payment link, '
-                  + 'resolved automatically. Paste a Reference ID from the '
-                  + 'Dashboard to pin a different one.'}
+                {!refId.trim() && ' — your newest payment link, picked automatically. '
+                  + 'To use a different one, copy its Reference ID from the Dashboard.'}
               </>
             ) : (
               <>
-                No payment link yet — click <span className="font-medium">Fire live failure</span>{' '}
-                above (or run Live Recovery steps 1-2) and the lifecycle drills will target it
-                automatically.
+                No payment link yet. Click <span className="font-medium">Fire live failure</span>{' '}
+                above and these drills will point at it.
               </>
             )}
           </div>

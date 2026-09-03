@@ -254,8 +254,8 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
           {/* Agent reasoning — the panel that used to live on the Journeys tab */}
           <Card>
             <CardHeader
-              title="Agent reasoning"
-              subtitle="Reconstructed from the hash chain: what it saw, weighed, and did."
+              title="What the agent did"
+              subtitle="Rebuilt from the audit log: what it saw, what it weighed, what it did."
             />
             <div className="space-y-3 px-5 py-4">
               {loading && <><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /></>}
@@ -282,11 +282,11 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
 
           {/* Lifecycle trail */}
           <Card>
-            <CardHeader title="Link lifecycle" subtitle="Every status change, in order." />
+            <CardHeader title="Link history" subtitle="Every status change, oldest first." />
             <div className="px-5 py-4">
               {row.lifecycle.length === 0 ? (
                 <p className="text-[12.5px] text-[var(--color-ink-muted)]">
-                  Created, no status change yet.
+                  Created. Nothing has changed yet.
                 </p>
               ) : (
                 <ol className="space-y-2.5">
@@ -311,7 +311,7 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
 
           {/* Raw chain */}
           <Card>
-            <CardHeader title="Audit chain" subtitle={`${events.length} hash-chained events`} />
+            <CardHeader title="Audit trail" subtitle={`${events.length} tamper-evident records`} />
             <div className="max-h-64 overflow-y-auto px-5 py-3">
               <table className="w-full text-left text-[11.5px]">
                 <tbody>
@@ -403,7 +403,7 @@ export const DashboardView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description="Every payment link the agent created, in Razorpay's own row shape — rebuilt from the hash-chained event log, so the table can never disagree with the audit trail."
+        description="Every payment link the agent created, laid out the way Razorpay lays them out. The rows are rebuilt from the audit log, so the table and the audit trail can never disagree."
         action={
           <div className="flex items-center gap-3">
             <span className="text-[11px] text-[var(--color-ink-subtle)]">
@@ -457,7 +457,7 @@ export const DashboardView: React.FC = () => {
       <Card>
         <CardHeader
           title="Payment links"
-          subtitle="Polls every 5s — a link created on Live Recovery appears here within seconds."
+          subtitle="Refreshes every 5 seconds, so a link you create on Live Recovery lands here within seconds."
           action={
             <div className="flex items-center gap-3">
               {cloud?.enabled && (
@@ -516,7 +516,7 @@ export const DashboardView: React.FC = () => {
             title={rows.length === 0 ? 'No payment links yet' : `No ${tab.replace('_', ' ')} links`}
             description={
               rows.length === 0
-                ? 'Open Live Recovery and run steps 1 and 2 — the link the agent creates lands here within seconds.'
+                ? 'Open Live Recovery and run steps 1 and 2. The link the agent creates shows up here within seconds.'
                 : 'Switch to All to see every link the agent created.'
             }
           />
@@ -609,11 +609,11 @@ export const DashboardView: React.FC = () => {
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-line)] px-5 py-2.5 text-[11px] text-[var(--color-ink-subtle)]">
           <span className="inline-flex items-center gap-1">
-            <IndianRupee size={11} /> amounts in INR, from the local event log
+            <IndianRupee size={11} /> amounts in rupees, read from the local audit log
           </span>
           <span>
-            Razorpay has no per-link deep link, so &ldquo;Open Razorpay&rdquo; lands on the
-            full Payment Links list — search the plink id there.
+            Razorpay has no link for a single payment link, so &ldquo;Open Razorpay&rdquo; opens the
+            full list — search the plink id there.
           </span>
         </div>
       </Card>

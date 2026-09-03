@@ -12,19 +12,22 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  // === TOP 3 — primary pitch surfaces ===
-  // Journeys & Audit and Recovery Brain used to live here. Both were folded
-  // into the Dashboard's row drawer (reasoning panel + audit chain), which is
-  // one click from the payment link that caused them instead of a separate tab.
+  // Three surfaces, one job each: run the recovery, read the results, break it
+  // on purpose. Journeys & Audit and Recovery Brain folded into the Dashboard
+  // row drawer (reasoning panel + audit chain), which sits one click from the
+  // payment link that caused them.
   { id: 'live',         label: 'Live Recovery',       icon: Play,         group: 'primary' },
   { id: 'dashboard',    label: 'Dashboard',           icon: BarChart3,    group: 'primary' },
   { id: 'testlab',      label: 'Test Lab',            icon: FlaskConical, group: 'primary' },
-  // === MORE — depth, not breadth ===
-  { id: 'b2b',          label: 'B2B Receivables',     icon: Briefcase,    group: 'more' },
-  { id: 'mandate',      label: 'Mandate Sequencer',   icon: GitBranch,    group: 'more' },
-  { id: 'checkout',     label: 'Checkout Recovery',   icon: ShoppingCart, group: 'more' },
-  { id: 'pay',          label: 'Payment Portal',      icon: CreditCard,   group: 'more' },
 ];
+
+// Hidden from the nav, still routable by hash so nothing is lost:
+//   #b2b       B2B Receivables      #mandate   Mandate Sequencer
+//   #checkout  Checkout Recovery    #pay       Payment Portal
+// They are adjacent revenue-recovery surfaces, not the Track 3 story, and four
+// extra tabs cost a judge more attention than they earn. Move an entry back
+// into navItems above with group: 'more' to restore it.
+const HIDDEN_TABS = ['b2b', 'mandate', 'checkout', 'pay'] as const;
 
 export function AppShell({
   currentTab,
@@ -162,14 +165,16 @@ export function AppShell({
                   );
                 })}
 
-                <button
-                  onClick={() => setMoreOpen((o) => !o)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] uppercase tracking-wider text-[var(--color-ink-subtle)] hover:bg-[var(--color-surface-subtle)] mt-2"
-                  type="button"
-                >
-                  <ChevronDown size={12} className={cn("transition-transform", moreOpen ? "rotate-0" : "-rotate-90")} />
-                  More
-                </button>
+                {navItems.some((i) => i.group === 'more') && (
+                  <button
+                    onClick={() => setMoreOpen((o) => !o)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] uppercase tracking-wider text-[var(--color-ink-subtle)] hover:bg-[var(--color-surface-subtle)] mt-2"
+                    type="button"
+                  >
+                    <ChevronDown size={12} className={cn("transition-transform", moreOpen ? "rotate-0" : "-rotate-90")} />
+                    More
+                  </button>
+                )}
                 {moreOpen && navItems.filter((i) => i.group === 'more').map((item) => {
                   const Icon = item.icon;
                   const active = currentTab === item.id;

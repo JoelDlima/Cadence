@@ -234,7 +234,7 @@ export const LiveRecoveryView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Live Recovery"
-        description="Run the full recovery flow end-to-end. Real Razorpay test-mode customer and payment link, real HMAC-signed webhook."
+        description="Watch one failed payment get recovered, start to finish. A real Razorpay test-mode customer, a real payment link, a real signed webhook. Nothing here is faked."
         action={
           <div className="flex gap-2">
             <Button onClick={reset} variant="secondary" size="sm">
@@ -369,8 +369,8 @@ export const LiveRecoveryView: React.FC = () => {
               </div>
             ) : (
               <EmptyState
-                title="No live journey yet"
-                description="Run step 1 and step 2 to create a customer + payment link. The journey will appear here and the SPA will poll for the outcome."
+                title="No journey yet"
+                description="Run step 1, then step 2. The journey shows up here and this page keeps checking for the outcome."
               />
             )}
           </Card>
@@ -391,8 +391,8 @@ export const LiveRecoveryView: React.FC = () => {
               </ul>
             ) : (
               <EmptyState
-                title="No live data yet"
-                description="Webhook event id, customer id, payment link id and the LLM-written nudge will appear here as the demo progresses."
+                title="No evidence yet"
+                description="The webhook id, customer id, payment link id and the message the AI writes will all appear here as you go."
               />
             )}
             {/* NEW: Email preview + send + Audio player */}
@@ -401,8 +401,8 @@ export const LiveRecoveryView: React.FC = () => {
 
               <div className="rounded-md border border-[var(--color-line)] p-3">
                 <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">Email preview</div>
-                <div className="text-[13px]"><span className="text-[var(--color-ink-muted)]">Subject:</span> {nudgeSubject || '(subject appears after the LLM writes)'}</div>
-                <pre className="text-[12px] font-mono mt-1 whitespace-pre-wrap text-[var(--color-ink)] max-h-32 overflow-auto">{nudgeBody || '(Hinglish body appears once the engine writes it; you can also send it to your email above)'}</pre>
+                <div className="text-[13px]"><span className="text-[var(--color-ink-muted)]">Subject:</span> {nudgeSubject || '(the AI writes the subject in step 2)'}</div>
+                <pre className="text-[12px] font-mono mt-1 whitespace-pre-wrap text-[var(--color-ink)] max-h-32 overflow-auto">{nudgeBody || '(the Hinglish message appears here once the agent writes it. You can send it to your own inbox using the field above.)'}</pre>
               </div>
 
               <a href={RAZORPAY_DASHBOARD_LINKS.paymentLinks} target="_blank" rel="noreferrer"
@@ -512,7 +512,7 @@ const AudioCard: React.FC<{ nudgeBody: string; nudgeSubject: string }> = ({ nudg
   if (!nudgeBody) {
     return (
       <div className="rounded-md border border-[var(--color-line)] p-3 text-[13px] text-[var(--color-ink-muted)]">
-        Audio (Hinglish) — appears once the engine writes the body
+        Voice message (Hinglish) — appears once the agent writes the text
       </div>
     );
   }
