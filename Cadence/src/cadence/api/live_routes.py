@@ -15,10 +15,8 @@ simulated=True so the SPA can show that to the operator.
 import hashlib
 import hmac
 import json
-import time
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from pydantic import BaseModel
@@ -81,6 +79,22 @@ class LivePaymentPaidIn(BaseModel):
     payment_id: str | None = None
 
 
+class LiveLifecycleForceIn(BaseModel):
+    """A lifecycle drill targets one journey attempt: '<journey_id>:<attempt_no>'."""
+
+    reference_id: str
+
+
+class LiveLifecycleSmartIn(BaseModel):
+    """Smart orchestrator input. `customer_hint` is free text the operator
+    types (e.g. "this customer always pays after a nudge"); the LLM weighs
+    it against the audit chain before choosing an outcome."""
+
+    reference_id: str
+    customer_hint: str | None = None
+    timeout_seconds: int = 30
+
+
 def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
     """Build a /api/live/* router bound to the same dependencies the
     rest of the engine uses. Returns 501 with a clear message when
@@ -121,7 +135,6 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         # 1) Find-or-create a journey to attach the failure to.
         jr = runtime.journeys
         es = runtime.store
-        queue = runtime.queue
         # Open a fresh journey for this demo.
         journey_id = f"j_live_{uuid.uuid4().hex[:10]}"
         subscription_id = f"sub_live_{uuid.uuid4().hex[:8]}"
@@ -199,6 +212,32 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                 occurred_at=now, recorded_at=now,
                 event_id=f"pf_{uuid.uuid4().hex[:10]}",
             )
+            # Phase 1b: record the payment link on the JOURNEY aggregate in
+            # exactly the shape the dispatcher emits. Without this event the
+            # link is invisible to (a) the outcome check's
+            # fetch_payment_link probe, (b) the lifecycle drills, and (c) the
+            # Dashboard's payment-link table -- all three read the chain.
+            es.append(
+                event_type="action.executed", aggregate_type="journey",
+                aggregate_id=journey_id,
+                payload={
+                    "kind": "PAYMENT_LINK",
+                    "status": "EXECUTED",
+                    "ref": plink.id,
+                    "payment_link_id": plink.id,
+                    "plink_id": plink.id,
+                    "short_url": plink.short_url,
+                    "reference_id": reference_id,
+                    "amount_minor": amount_minor,
+                    "currency": "INR",
+                    "customer_id": body.customer_id,
+                    "attempt_no": 1,
+                    "simulated": plink.simulated,
+                    "source": "live.failure",
+                },
+                occurred_at=now, recorded_at=now,
+                event_id=f"act_live_{uuid.uuid4().hex[:12]}",
+            )
             # Open the journey in the engine so the next SPA poll sees
             # state INTERVENING.
             jr.update_fields(journey_id,
@@ -206,6 +245,19 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                               updated_at=now)
         except Exception as exc:  # noqa: BLE001
             log.warning("live failure webhook persist failed: %r", exc)
+        # Mirror the new link to Supabase so the cloud table matches the
+        # local chain from the moment the link exists. Best effort.
+        try:
+            from cadence.cloud.plink_mirror import get_plink_mirror
+            get_plink_mirror(runtime.config).upsert_plink(
+                plink_id=plink.id, journey_id=journey_id,
+                subscription_id=subscription_id, customer_id=body.customer_id,
+                amount_minor=amount_minor, currency="INR",
+                status="created", short_url=plink.short_url,
+                reference_id=reference_id, created_at=now,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.info("plink mirror skipped for %s: %r", plink.id, exc)
         return LiveFailureOut(
             journey_id=journey_id, event_id=event_id,
             subscription_id=subscription_id, payment_link=plink,
@@ -219,7 +271,6 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         a capture task, and (c) on the next worker tick flip the
         journey state to RECOVERED.
         """
-        from cadence.ingest.gateway import process_delivery
         cfg = runtime.config.razorpay if runtime and runtime.config else None
         event_id = f"evt_live_paid_{uuid.uuid4().hex[:10]}"
         # Parse the reference_id into journey_id + attempt.
@@ -463,5 +514,495 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
             return resp
         except Exception as e:  # noqa: BLE001
             return {"status": "error", "http": 0, "detail": f"{e!r}", "to": body.to}
+
+    # -----------------------------------------------------------------
+    # Phase 1: payment-link lifecycle drills + the smart orchestrator.
+    #
+    # Razorpay's sandbox will not move a payment link from `created` to
+    # `paid` without a real customer payment, so a live demo needs a
+    # deterministic way to drive the rest of the lifecycle. These five
+    # routes do it through the SAME ingest path a real webhook takes
+    # (HMAC-signed body -> process_delivery -> queue -> worker), so
+    # neither the audit chain nor the journey FSM is special-cased.
+    #
+    # What is genuinely live vs. locally driven:
+    #   force-paid    -> Cadence closes RECOVERED; the Razorpay link stays
+    #                    `created` (no API exists to mark a link paid). The
+    #                    response carries the real fetched Razorpay status.
+    #   force-failed  -> a real payment.failed shape is ingested; the
+    #                    Razorpay link is untouched (it waits for retry).
+    #   force-expired -> a REAL Razorpay POST /payment_links/{id}/cancel;
+    #                    the link really does flip to `cancelled` upstream.
+    # -----------------------------------------------------------------
+    _LC_FALLBACK_SECRET = "cadence-lifecycle-local"
+
+    def _lc_secret() -> str:
+        cfg = runtime.config.razorpay if runtime and runtime.config else None
+        return (getattr(cfg, "webhook_secret", "") or "") or _LC_FALLBACK_SECRET
+
+    def _lc_ingest(body_dict: dict) -> tuple[int, dict]:
+        """Sign + ingest a webhook body through the real gateway.
+
+        Signed with the configured webhook secret when one exists and with
+        a local fallback otherwise. Because we sign and verify with the
+        same secret, the keyless path still exercises the real HMAC check
+        rather than skipping verification.
+        """
+        from cadence.ingest.gateway import process_delivery
+        secret = _lc_secret()
+        raw = json.dumps(body_dict).encode("utf-8")
+        signature = hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
+        return process_delivery(
+            db=db, webhook_secret=secret, clock=runtime.clock,
+            raw=raw, signature=signature, event_id=body_dict["id"],
+        )
+
+    def _lc_tick(max_tasks: int = 12) -> None:
+        """Drain the queue once so the SPA sees the new state on its next
+        poll instead of waiting up to 2s for the background worker."""
+        worker = getattr(runtime, "worker", None)
+        handlers = getattr(runtime, "handlers", None)
+        if worker is None or handlers is None:
+            return
+        try:
+            worker.run_once(handlers, max_tasks=max_tasks)
+        except Exception:  # noqa: BLE001
+            log.exception("lifecycle: post-ingest worker tick failed")
+
+    def _lc_plink_for(journey) -> dict | None:
+        """The most recent Razorpay payment link recorded for a journey.
+
+        Reads the hash chain rather than a side table: the dispatcher and
+        /api/live/failure both emit action.executed{kind=PAYMENT_LINK}
+        carrying payment_link_id + short_url.
+        """
+        es = runtime.store
+        for aggregate_id in (journey.journey_id, journey.subscription_id):
+            events = sorted(es.get_by_aggregate("journey", aggregate_id), key=lambda e: e.seq)
+            for ev in reversed(events):
+                payload = ev.payload or {}
+                if ev.type != "action.executed" or payload.get("kind") != "PAYMENT_LINK":
+                    continue
+                plink_id = (
+                    payload.get("payment_link_id")
+                    or payload.get("plink_id")
+                    or payload.get("ref")
+                )
+                if not plink_id:
+                    continue
+                return {
+                    "id": str(plink_id),
+                    "short_url": str(payload.get("short_url") or ""),
+                    "reference_id": str(
+                        payload.get("reference_id") or f"{journey.journey_id}:1"
+                    ),
+                    "amount_minor": int(
+                        payload.get("amount_minor") or journey.amount_minor or 49900
+                    ),
+                }
+        return None
+
+    def _lc_resolve(reference_id: str):
+        """'j_xxx:1' -> (journey, plink|None, error_detail|None)."""
+        if ":" not in reference_id:
+            return None, None, "reference_id must be '{journey_id}:{attempt_no}'"
+        journey_id, _, _ = reference_id.rpartition(":")
+        journey = runtime.journeys.get(journey_id)
+        if journey is None:
+            return None, None, f"unknown journey {journey_id}"
+        return journey, _lc_plink_for(journey), None
+
+    def _lc_require(reference_id: str):
+        """_lc_resolve, but raises the HTTP errors the SPA expects."""
+        journey, plink, err = _lc_resolve(reference_id)
+        if err:
+            raise HTTPException(status_code=404, detail=err)
+        if plink is None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"no payment link recorded on journey {journey.journey_id}; "
+                       "run /api/live/failure first",
+            )
+        return journey, plink
+
+    def _lc_state(journey_id: str) -> str:
+        j = runtime.journeys.get(journey_id)
+        return j.state if j is not None else "unknown"
+
+    def _lc_razorpay_status(plink_id: str) -> str:
+        """Razorpay's own view of the link. Never raises: a transport
+        error must not fail the drill, it just means 'unknown'."""
+        cli = getattr(runtime, "client", None)
+        if cli is None or not hasattr(cli, "fetch_payment_link"):
+            return "unknown"
+        try:
+            return str(cli.fetch_payment_link(payment_link_id=plink_id).get("status") or "unknown")
+        except Exception as exc:  # noqa: BLE001
+            log.info("lifecycle: fetch_payment_link(%s) failed: %r", plink_id, exc)
+            return "unknown"
+
+    def _lc_record(
+        *, journey, plink: dict, to_status: str, source: str,
+        detail: dict | None = None,
+    ) -> None:
+        """Append the lifecycle transition to the hash chain, then mirror it
+        to Supabase. The mirror is best-effort: a cloud outage must never
+        fail a drill or break the audit chain."""
+        now = utc_iso(datetime.now(timezone.utc))
+        payload = {
+            "plink_id": plink["id"],
+            "payment_link_id": plink["id"],
+            "journey_id": journey.journey_id,
+            "subscription_id": journey.subscription_id,
+            "customer_id": journey.customer_id,
+            "amount_minor": plink.get("amount_minor") or journey.amount_minor or 0,
+            "currency": journey.currency or "INR",
+            "short_url": plink.get("short_url") or "",
+            "reference_id": plink.get("reference_id") or "",
+            "to_status": to_status,
+            "source": source,
+        }
+        if detail:
+            payload["detail"] = detail
+        runtime.store.append(
+            event_type="plink.lifecycle", aggregate_type="journey",
+            aggregate_id=journey.journey_id, payload=payload,
+            occurred_at=now, recorded_at=now,
+            event_id=f"lc_{uuid.uuid4().hex[:12]}",
+        )
+        try:
+            from cadence.cloud.plink_mirror import get_plink_mirror
+            get_plink_mirror(runtime.config).record_lifecycle_event(
+                plink_id=plink["id"], event_type=source,
+                status=to_status, payload=payload,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.info("plink mirror skipped (%s -> %s): %r", plink["id"], to_status, exc)
+
+    @router.post("/api/live/lifecycle/force-paid")
+    def lifecycle_force_paid(body: LiveLifecycleForceIn) -> dict:
+        """Drill: the customer pays the link.
+
+        Ingests a real-shaped `payment_link.paid` webhook for the journey's
+        actual plink id, drains the queue once, and reports both Cadence's
+        state and Razorpay's own (unchanged) link status.
+        """
+        journey, plink = _lc_require(body.reference_id)
+        # Idempotent: a second click on an already-recovered journey must not
+        # append another 'paid' transition (it would clutter the Dashboard's
+        # lifecycle trail and re-run the capture path for nothing).
+        if journey.state == "RECOVERED":
+            return {
+                "status": "ok",
+                "http": 200,
+                "ingest": "already_recovered",
+                "already": True,
+                "journey_id": journey.journey_id,
+                "plink_id": plink["id"],
+                "short_url": plink["short_url"],
+                "plink_state": "paid",
+                "cadence_state": journey.state,
+                "razorpay_state": _lc_razorpay_status(plink["id"]),
+                "razorpay_note": "journey was already closed RECOVERED; nothing to do.",
+            }
+        amount_minor = plink["amount_minor"]
+        payment_id = f"pay_lc_{uuid.uuid4().hex[:12]}"
+        event_id = f"evt_lc_paid_{uuid.uuid4().hex[:10]}"
+        status, body_out = _lc_ingest({
+            "id": event_id,
+            "event": "payment_link.paid",
+            "payload": {
+                "payment_link": {"entity": {
+                    "id": plink["id"],
+                    "reference_id": body.reference_id,
+                    "status": "paid",
+                    "amount": amount_minor,
+                    "amount_paid": amount_minor,
+                }},
+                "payment": {"entity": {
+                    "id": payment_id,
+                    "amount": amount_minor,
+                    "currency": journey.currency or "INR",
+                    "status": "captured",
+                }},
+            },
+        })
+        _lc_tick()
+        _lc_record(
+            journey=journey, plink=plink, to_status="paid",
+            source="lifecycle.force_paid",
+            detail={"payment_id": payment_id, "ingest_http": status},
+        )
+        return {
+            "status": "ok",
+            "http": status,
+            "ingest": body_out.get("status", "unknown"),
+            "journey_id": journey.journey_id,
+            "plink_id": plink["id"],
+            "short_url": plink["short_url"],
+            "payment_id_used": payment_id,
+            "plink_state": "paid",
+            "cadence_state": _lc_state(journey.journey_id),
+            "razorpay_state": _lc_razorpay_status(plink["id"]),
+            "razorpay_note": (
+                "Razorpay exposes no API to mark a link paid; upstream status "
+                "only flips when a customer actually pays the short_url."
+            ),
+        }
+
+    @router.post("/api/live/lifecycle/force-failed")
+    def lifecycle_force_failed(body: LiveLifecycleForceIn) -> dict:
+        """Drill: another debit attempt fails on the same journey.
+
+        Razorpay leaves the link `created` (it waits for a retry); Cadence
+        re-enters the recovery loop, and the 9-rule Guardian still applies.
+        """
+        journey, plink = _lc_require(body.reference_id)
+        amount_minor = plink["amount_minor"]
+        event_id = f"evt_lc_failed_{uuid.uuid4().hex[:10]}"
+        status, body_out = _lc_ingest({
+            "id": event_id,
+            "event": "payment.failed",
+            "payload": {
+                "subscription": {"entity": {
+                    "id": journey.subscription_id,
+                    "customer_id": journey.customer_id,
+                }},
+                "payment": {"entity": {
+                    "id": f"pay_lc_fail_{uuid.uuid4().hex[:10]}",
+                    "amount": amount_minor,
+                    "currency": journey.currency or "INR",
+                    "error_code": "insufficient_funds",
+                    "error_description": "Lifecycle drill: forced failure",
+                }},
+            },
+        })
+        _lc_tick()
+        _lc_record(
+            journey=journey, plink=plink, to_status="failed_attempt",
+            source="lifecycle.force_failed",
+            detail={"error_code": "insufficient_funds", "ingest_http": status},
+        )
+        return {
+            "status": "ok",
+            "http": status,
+            "ingest": body_out.get("status", "unknown"),
+            "journey_id": journey.journey_id,
+            "plink_id": plink["id"],
+            "short_url": plink["short_url"],
+            "plink_state": "created",
+            "cadence_state": _lc_state(journey.journey_id),
+            "razorpay_state": _lc_razorpay_status(plink["id"]),
+            "razorpay_note": "a failed debit does not change the link; it stays payable.",
+        }
+
+    @router.post("/api/live/lifecycle/force-expired")
+    def lifecycle_force_expired(body: LiveLifecycleForceIn) -> dict:
+        """Drill: the 24-hour mandate window closes unrecovered.
+
+        This one is fully live: POST /v1/payment_links/{id}/cancel really
+        does move the link to `cancelled` on Razorpay (the sandbox has no
+        explicit 'expire' endpoint). Cadence closes the journey
+        CLOSED_UNRECOVERED.
+        """
+        journey, plink = _lc_require(body.reference_id)
+        cancelled = False
+        cancel_detail = "razorpay client unavailable (simulated path)"
+        cli = getattr(runtime, "client", None)
+        if cli is not None and hasattr(cli, "cancel_payment_link"):
+            try:
+                cli.cancel_payment_link(payment_link_id=plink["id"])
+                cancelled = True
+                cancel_detail = "razorpay cancel accepted"
+            except Exception as exc:  # noqa: BLE001
+                cancel_detail = f"razorpay cancel failed: {exc!r}"
+                log.info("lifecycle force_expired cancel failed: %r", exc)
+        now = utc_iso(datetime.now(timezone.utc))
+        previous_state = journey.state
+        if previous_state != "CLOSED_UNRECOVERED":
+            runtime.journeys.update_fields(
+                journey.journey_id,
+                {"state": "CLOSED_UNRECOVERED", "closed_at": now},
+                updated_at=now,
+            )
+            runtime.store.append(
+                event_type="journey.closed", aggregate_type="journey",
+                aggregate_id=journey.journey_id,
+                payload={
+                    "from": previous_state, "to": "CLOSED_UNRECOVERED",
+                    "reason": "lifecycle drill: mandate window closed unrecovered",
+                    "plink_id": plink["id"],
+                },
+                occurred_at=now, recorded_at=now,
+                event_id=f"evt_lc_exp_{uuid.uuid4().hex[:10]}",
+            )
+        _lc_record(
+            journey=journey, plink=plink, to_status="expired",
+            source="lifecycle.force_expired",
+            detail={"razorpay_cancelled": cancelled, "cancel_detail": cancel_detail},
+        )
+        return {
+            "status": "ok",
+            "journey_id": journey.journey_id,
+            "plink_id": plink["id"],
+            "short_url": plink["short_url"],
+            "plink_state": "expired",
+            "cadence_state": _lc_state(journey.journey_id),
+            "razorpay_state": _lc_razorpay_status(plink["id"]),
+            "razorpay_cancelled": cancelled,
+            "razorpay_note": cancel_detail,
+        }
+
+    @router.post("/api/live/lifecycle/complete-journey")
+    def lifecycle_complete_journey(body: LiveLifecycleForceIn) -> dict:
+        """One-click close-the-loop: paid + audit + state, in one call."""
+        out = lifecycle_force_paid(body)
+        out["label"] = "journey completed (link paid, journey closed RECOVERED)"
+        return out
+
+    @router.post("/api/live/lifecycle/smart")
+    def lifecycle_smart(body: LiveLifecycleSmartIn) -> dict:
+        """Autonomous orchestrator: hand it a link, it decides the outcome.
+
+        The LLM reasons over (1) the operator's customer hint, (2) Razorpay's
+        live link status, (3) the journey's own audit chain, and (4) the
+        Guardian's hard constraints, then dispatches the matching drill. The
+        reasoning lands in the hash chain as an agent.thinking event, so the
+        decision is auditable even when the LLM is unavailable.
+        """
+        import os as _os
+        journey, plink = _lc_require(body.reference_id)
+        es = runtime.store
+        chain: list[dict] = []
+        keep = ("kind", "status", "to_status", "error_code", "amount_minor",
+                "arm_chosen", "guard_decision", "intervention", "source")
+        for aggregate_id in (journey.journey_id, journey.subscription_id):
+            for ev in sorted(es.get_by_aggregate("journey", aggregate_id), key=lambda e: e.seq):
+                chain.append({
+                    "type": ev.type,
+                    "ts": ev.occurred_at,
+                    "summary": {k: v for k, v in (ev.payload or {}).items() if k in keep},
+                })
+        chain = chain[-15:]
+        razorpay_status = _lc_razorpay_status(plink["id"])
+        journey_view = {
+            "journey_id": journey.journey_id,
+            "state": journey.state,
+            "failure_code": journey.failure_code,
+            "root_cause": journey.root_cause,
+            "amount_minor": journey.amount_minor,
+            "attempts_used": journey.attempts_used,
+            "touches_used": journey.touches_used,
+        }
+
+        chosen = {
+            "outcome": "paid",
+            "confidence": 0.5,
+            "reason": "no LLM configured; defaulting to the most common outcome (paid)",
+        }
+        llm_thought = (
+            "GROQ_API_KEY is not set, so the orchestrator fell back to its "
+            "default arm (paid). Set GROQ_API_KEY in .env to enable reasoning."
+        )
+        # Read the key off the injected config (env only as a last resort), so
+        # a test or a keyless run that blanks the LLM config really does take
+        # the deterministic default arm.
+        llm_cfg = getattr(runtime.config, "llm", None) if runtime.config else None
+        if llm_cfg is not None:
+            groq_key = getattr(llm_cfg, "groq_api_key", "") or ""
+            groq_model = getattr(llm_cfg, "model_groq", "") or "llama-3.3-70b-versatile"
+        else:
+            groq_key = _os.environ.get("GROQ_API_KEY", "")
+            groq_model = _os.environ.get("LLM_MODEL_GROQ", "llama-3.3-70b-versatile")
+        if groq_key:
+            import httpx as _httpx
+            prompt = (
+                "You are Cadence, an autonomous Indian payment-recovery agent. "
+                "Given a Razorpay payment link, its journey's audit events, and an "
+                "operator hint, decide the most likely next outcome (paid / failed / "
+                "expired) and explain it in 2-3 sentences. Respect the Guardian: "
+                "NPCI 18-h UPI cooling, RBI 24-h pre-debit notice, 21:00-09:00 IST "
+                "quiet hours, hard-decline stop, touch-cap 3 per 14 days.\n\n"
+                f"Journey: {json.dumps(journey_view, default=str)}\n\n"
+                f"Payment link: {json.dumps({**plink, 'razorpay_status': razorpay_status}, default=str)}\n\n"
+                f"Operator hint: {body.customer_hint or '(none)'}\n\n"
+                f"Audit chain (last 15 events): {json.dumps(chain, default=str)}\n\n"
+                'Return JSON: {"outcome": "paid|failed|expired", '
+                '"confidence": 0.0-1.0, "reason": "..."}'
+            )
+            try:
+                r = _httpx.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {groq_key}",
+                             "Content-Type": "application/json"},
+                    json={
+                        "model": groq_model,
+                        "messages": [
+                            {"role": "system", "content":
+                             "You are a payment-recovery agent. Always return valid JSON."},
+                            {"role": "user", "content": prompt},
+                        ],
+                        "temperature": 0.2,
+                        "max_tokens": 260,
+                        "response_format": {"type": "json_object"},
+                    },
+                    timeout=float(max(body.timeout_seconds, 5)),
+                )
+                if r.status_code == 200:
+                    text = r.json()["choices"][0]["message"]["content"]
+                    llm_thought = text[:600]
+                    parsed = json.loads(text)
+                    outcome = str(parsed.get("outcome", "paid")).strip().lower()
+                    if outcome not in ("paid", "failed", "expired"):
+                        outcome = "paid"
+                    chosen = {
+                        "outcome": outcome,
+                        "confidence": float(parsed.get("confidence", 0.5)),
+                        "reason": str(parsed.get("reason") or "(no reason given)"),
+                    }
+                else:
+                    llm_thought = f"LLM call failed: HTTP {r.status_code} {r.text[:200]}"
+            except Exception as exc:  # noqa: BLE001
+                llm_thought = f"LLM call error: {exc!r}"
+
+        now = utc_iso(datetime.now(timezone.utc))
+        es.append(
+            event_type="agent.thinking", aggregate_type="journey",
+            aggregate_id=journey.journey_id,
+            payload={
+                "agent": "lifecycle_smart",
+                "chosen_outcome": chosen["outcome"],
+                "confidence": chosen["confidence"],
+                "reason": chosen["reason"],
+                "customer_hint": body.customer_hint,
+                "razorpay_status": razorpay_status,
+                "llm_thought": llm_thought,
+                "llm_used": bool(groq_key),
+            },
+            occurred_at=now, recorded_at=now,
+            event_id=f"evt_lc_smart_{uuid.uuid4().hex[:10]}",
+        )
+
+        forced = LiveLifecycleForceIn(reference_id=body.reference_id)
+        if chosen["outcome"] == "paid":
+            dispatched = lifecycle_force_paid(forced)
+            label = "smart: closed the loop (link paid)"
+        elif chosen["outcome"] == "failed":
+            dispatched = lifecycle_force_failed(forced)
+            label = "smart: re-entered recovery (debit failed again)"
+        else:
+            dispatched = lifecycle_force_expired(forced)
+            label = "smart: closed unrecovered (24-h window expired)"
+        return {
+            "status": "ok",
+            "label": label,
+            "chosen": chosen,
+            "llm_used": bool(groq_key),
+            "llm_thought": llm_thought,
+            "journey_id": journey.journey_id,
+            "plink_id": plink["id"],
+            "cadence_state": _lc_state(journey.journey_id),
+            "dispatched": dispatched,
+        }
 
     return router

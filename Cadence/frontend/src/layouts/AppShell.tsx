@@ -1,5 +1,5 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
-import { BarChart3, FileClock, ShieldCheck, FlaskConical, CreditCard, Power, Menu, X, ShieldAlert, Server, Activity, ShoppingCart, Briefcase, GitBranch, Play, Database, ChevronDown } from 'lucide-react';
+import { BarChart3, ShieldCheck, FlaskConical, CreditCard, Power, Menu, X, ShieldAlert, Server, ShoppingCart, Briefcase, GitBranch, Play, Database, ChevronDown } from 'lucide-react';
 import { Badge, Button, cn } from '../components/primitives';
 import { api } from '../services/api';
 import { CloudStatus } from '../types';
@@ -12,11 +12,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  // === TOP 4 — primary pitch surfaces ===
+  // === TOP 3 — primary pitch surfaces ===
+  // Journeys & Audit and Recovery Brain used to live here. Both were folded
+  // into the Dashboard's row drawer (reasoning panel + audit chain), which is
+  // one click from the payment link that caused them instead of a separate tab.
   { id: 'live',         label: 'Live Recovery',       icon: Play,         group: 'primary' },
   { id: 'dashboard',    label: 'Dashboard',           icon: BarChart3,    group: 'primary' },
   { id: 'testlab',      label: 'Test Lab',            icon: FlaskConical, group: 'primary' },
-  { id: 'journeys',     label: 'Journeys & Audit',    icon: FileClock,    group: 'primary' },
   // === MORE — depth, not breadth ===
   { id: 'b2b',          label: 'B2B Receivables',     icon: Briefcase,    group: 'more' },
   { id: 'mandate',      label: 'Mandate Sequencer',   icon: GitBranch,    group: 'more' },
@@ -268,8 +270,11 @@ export function AppShell({
                   {cloud.sync_state === 'error' && 'ERROR'}
                 </span>
               </div>
+              {/* Supabase Studio table editor. The project ref is public (it is
+                  in the SUPABASE_URL host); the service_role key never leaves
+                  the server. cadence_payment_links is the plink mirror. */}
               <a
-                href="https://vzrasadomyrycafbzdwg.supabase.co/project/default/editor"
+                href="https://supabase.com/dashboard/project/vzrasadomyrycafbzdwg/editor"
                 target="_blank"
                 rel="noreferrer"
                 className="mt-2 flex items-center gap-1.5 text-[11px] text-[var(--color-accent)] underline hover:no-underline"
@@ -336,11 +341,6 @@ export function AppShell({
             <span className="flex items-center gap-1 text-[var(--color-approved)]">
               <ShieldCheck size={14} />
               <span>Deterministic Spine</span>
-            </span>
-            <span className="text-[var(--color-line-strong)]">|</span>
-            <span className="flex items-center gap-1 text-[var(--color-info)]">
-              <Activity size={14} />
-              <span>SHA-256 Audit Trail</span>
             </span>
           </div>
         </header>

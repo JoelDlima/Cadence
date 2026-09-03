@@ -196,14 +196,24 @@ def _extract_text_from_pdf(path: Path) -> str:
 
 
 def extract_circular(path: Path) -> Circular | None:
-    """Build a :class:`Circular` from a PDF file. Returns None on import error
-    so the admin ingest endpoint can skip the file with a logged warning."""
+    """Build a :class:`Circular` from a PDF file. Returns None when the file
+    cannot be read, so the admin ingest endpoint skips it with a logged
+    warning instead of failing the whole directory scan.
+
+    A truncated or non-PDF file raises out of ``PdfReader(...)`` itself (pypdf
+    raises ``PdfStreamError``/``PdfReadError``, not ImportError), so the guard
+    has to be broad: one corrupt download in ``data/circulars/`` must not take
+    the ingest endpoint down.
+    """
     if not path.is_file():
         return None
     try:
         text = _extract_text_from_pdf(path)
     except ImportError:
         _log.warning("circulars: pypdf not installed; skipping %s", path)
+        return None
+    except Exception as exc:  # noqa: BLE001 - malformed / truncated / encrypted PDF
+        _log.warning("circulars: cannot parse %s (%r); skipping", path, exc)
         return None
     if not text:
         return None

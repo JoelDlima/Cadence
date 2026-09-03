@@ -35,6 +35,11 @@ E_KILL_SWITCH_CHANGED = "killswitch.changed"
 E_PAYMENT_LINK_PAID = "payment_link.paid"  # PHASE 8: Razorpay fires this when a customer pays a Payment Link.
 E_PAYMENT_CAPTURED = "payment.captured"  # explicit alias for PHASE 2 outcome check (so listeners can subscribe to either event).
 E_LLM_THINKING = "agent.thinking"  # PHASE 6: LLM-in-loop traces
+# Payment-link lifecycle transition (created -> paid / cancelled / expired).
+# Emitted by the /api/live/lifecycle/* drills and read by the Dashboard's
+# payment-link table, which needs the link's own status independently of the
+# journey FSM state.
+E_PLINK_LIFECYCLE = "plink.lifecycle"
 
 EVENT_TYPES: frozenset[str] = frozenset(
     {
@@ -55,6 +60,7 @@ EVENT_TYPES: frozenset[str] = frozenset(
         E_BANDIT_RANKED,
         E_KILL_SWITCH_CHANGED,
         E_LLM_THINKING,
+        E_PLINK_LIFECYCLE,
     }
 )
 

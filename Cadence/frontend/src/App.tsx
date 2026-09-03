@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { AppShell } from './layouts/AppShell';
 import { LiveRecoveryView } from './views/LiveRecoveryView';
-import { JourneysView } from './views/JourneysView';
 import { PayPortalView } from './views/PayPortalView';
 import { AgentCompareView } from './views/AgentCompareView';
-import { MerchantDashboard } from './views/MerchantDashboard';
+import { DashboardView } from './views/DashboardView';
 import { CheckoutView } from './views/CheckoutView';
 import { B2BView } from './views/B2BView';
 import { MandateView } from './views/MandateView';
-import { Journey, Metrics, Status, CloudStatus } from './types';
+import { Metrics, Status, CloudStatus } from './types';
 import { api } from './services/api';
 
 const POLL_MS = 2500;
 
+// Every hash the SPA answers to. `journeys`, `guardian`, `brain`, `overview`
+// and `merchant` are retired tabs kept here only so old links resolve; they
+// all land on the Dashboard, which absorbed their content (the journey drawer
+// carries the reasoning panel and the audit chain).
+const TAB_IDS = [
+  'live', 'dashboard', 'testlab', 'b2b', 'mandate', 'checkout', 'pay',
+  'overview', 'merchant', 'agentcompare', 'testbench', 'journeys',
+  'guardian', 'brain',
+];
+
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('live');
   const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [journeys, setJourneys] = useState<Journey[]>([]);
   const [status, setStatus] = useState<Status | null>(null);
   const [cloud, setCloud] = useState<CloudStatus | null>(null);
   const [online, setOnline] = useState(true);
@@ -25,8 +33,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const readHash = () => {
       const h = window.location.hash.replace('#', '');
-      if (h && ['live', 'dashboard', 'testlab', 'journeys', 'b2b', 'mandate', 'checkout', 'pay',
-                'overview', 'merchant', 'agentcompare', 'testbench', 'guardian', 'brain'].includes(h)) {
+      if (h && TAB_IDS.includes(h)) {
         setCurrentTab(h);
       }
     };
@@ -40,19 +47,18 @@ export const App: React.FC = () => {
     window.location.hash = tab;
   };
 
-  // Background poller: status + metrics + journeys + cloud mirror
+  // Background poller: status + metrics + cloud mirror. Journey rows are no
+  // longer fetched here — the Dashboard owns its own polling now.
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [s, m, j, c] = await Promise.all([
+        const [s, m, c] = await Promise.all([
           api.getStatus().catch(() => null),
           api.getMetrics(),
-          api.getJourneys(),
           api.getCloudStatus().catch(() => null),
         ]);
         setStatus(s);
         setMetrics(m);
-        setJourneys(j);
         setCloud(c);
         setOnline(true);
       } catch {
@@ -64,6 +70,11 @@ export const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Retired tab ids all resolve to the Dashboard.
+  const isDashboard = ['dashboard', 'overview', 'merchant', 'journeys', 'guardian', 'brain']
+    .includes(currentTab);
+  const isTestLab = ['testlab', 'agentcompare', 'testbench'].includes(currentTab);
+
   return (
     <AppShell
       currentTab={currentTab}
@@ -72,64 +83,19 @@ export const App: React.FC = () => {
       mode={status?.mode ?? null}
       cloud={cloud}
     >
-      {currentTab === 'live' && (
-        <LiveRecoveryView />
-      )}
+      {currentTab === 'live' && <LiveRecoveryView />}
 
-      {currentTab === 'dashboard' && (
-        <MerchantDashboard />
-      )}
+      {isDashboard && <DashboardView />}
 
-      {currentTab === 'testlab' && (
-        <AgentCompareView />
-      )}
+      {isTestLab && <AgentCompareView />}
 
-      {currentTab === 'journeys' && (
-        <JourneysView
-          journeys={journeys}
-        />
-      )}
+      {currentTab === 'b2b' && <B2BView />}
 
-      {currentTab === 'b2b' && (
-        <B2BView />
-      )}
+      {currentTab === 'mandate' && <MandateView />}
 
-      {currentTab === 'mandate' && (
-        <MandateView />
-      )}
+      {currentTab === 'checkout' && <CheckoutView />}
 
-      {currentTab === 'checkout' && (
-        <CheckoutView />
-      )}
-
-      {currentTab === 'pay' && (
-        <PayPortalView />
-      )}
-
-      {/* === Legacy id fallbacks so old URLs / hashes still resolve === */}
-      {currentTab === 'overview' && (
-        <MerchantDashboard />
-      )}
-
-      {currentTab === 'merchant' && (
-        <MerchantDashboard />
-      )}
-
-      {currentTab === 'agentcompare' && (
-        <AgentCompareView />
-      )}
-
-      {currentTab === 'testbench' && (
-        <AgentCompareView />
-      )}
-
-      {currentTab === 'guardian' && (
-        <JourneysView journeys={journeys} />
-      )}
-
-      {currentTab === 'brain' && (
-        <JourneysView journeys={journeys} />
-      )}
+      {currentTab === 'pay' && <PayPortalView />}
     </AppShell>
   );
 };

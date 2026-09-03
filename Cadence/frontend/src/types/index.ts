@@ -244,3 +244,67 @@ export interface Anomaly {
   threshold: number;
   recommendation: string;
 }
+
+/** Razorpay Payment Links statuses, mirrored 1:1 so the Dashboard table
+ *  reads like the merchant dashboard a judge already knows. */
+export type PlinkStatus =
+  | 'created'
+  | 'partially_paid'
+  | 'paid'
+  | 'cancelled'
+  | 'expired';
+
+export interface PlinkLifecycleEntry {
+  at: string;
+  to_status: string;
+  source: string;
+  detail: Record<string, any>;
+}
+
+export interface PaymentLinkRow {
+  plink_id: string;
+  journey_id: string;
+  subscription_id?: string | null;
+  customer_id?: string | null;
+  reference_id: string;
+  short_url: string;
+  amount_minor: number;
+  amount_inr: number;
+  currency: string;
+  status: PlinkStatus;
+  amount_paid_minor: number;
+  journey_state?: string | null;
+  root_cause?: string | null;
+  failure_code?: string | null;
+  attempts_used: number;
+  touches_used: number;
+  simulated: boolean;
+  created_at: string;
+  updated_at: string;
+  lifecycle: PlinkLifecycleEntry[];
+}
+
+export interface DashboardStats {
+  recovered_inr: number;
+  lost_inr: number;
+  at_risk_inr: number;
+  open_count: number;
+  recovered_count: number;
+  lost_count: number;
+  recovered_since: number;
+  recovered_inr_since: number;
+  mean_time_to_recover_min: number;
+  plink_count: number;
+  plink_paid_count: number;
+  recovery_rate_pct: number;
+  since: string;
+  generated_at: string;
+}
+
+export interface CloudPlinks {
+  enabled: boolean;
+  count: number;
+  rows: Record<string, any>[];
+  mirror: Record<string, any>;
+  table_url: string | null;
+}

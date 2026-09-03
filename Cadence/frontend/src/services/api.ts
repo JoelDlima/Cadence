@@ -20,6 +20,9 @@ import {
   AgentReasoning,
   MerchantSummary,
   Anomaly,
+  PaymentLinkRow,
+  DashboardStats,
+  CloudPlinks,
 } from '../types';
 
 export const inrFormatter = new Intl.NumberFormat('en-IN', {
@@ -52,6 +55,16 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 }
 
 export const api = {
+
+
+  async lifecycleForce(body: { reference_id: string; operation: string }): Promise<any> {
+    return postJson('/api/live/lifecycle/' + body.operation.replace('force_', 'force-').replace('complete_journey', 'complete-journey'), body);
+  },
+
+  async lifecycleSmart(body: { reference_id: string; customer_hint?: string }): Promise<any> {
+    return postJson('/api/live/lifecycle/smart', body);
+  },
+
   async getStatus(): Promise<Status> {
     return jsonFetch<Status>('/api/status');
   },
@@ -99,6 +112,31 @@ export const api = {
 
   async getMerchantSummary(): Promise<MerchantSummary> {
     return jsonFetch<MerchantSummary>('/api/merchant/summary');
+  },
+
+  // --- Dashboard (Razorpay-style payment links + money counters) ---
+
+  /** Every payment link the agent created, newest first. `status` filters to
+   *  one tab; omit (or 'all') for everything. */
+  async getPaymentLinks(limit: number = 50, status?: string): Promise<PaymentLinkRow[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (status && status !== 'all') params.set('status', status);
+    return jsonFetch<PaymentLinkRow[]>(`/api/dashboard/payment-links?${params.toString()}`);
+  },
+
+  /** Money counters. `since` (ISO 8601) bounds the windowed numbers; the
+   *  backend defaults to 24 h ago, the RBI mandate-revoke window. */
+  async getDashboardStats(since?: string): Promise<DashboardStats> {
+    const params = new URLSearchParams();
+    if (since) params.set('since', since);
+    const qs = params.toString();
+    return jsonFetch<DashboardStats>(`/api/dashboard/stats${qs ? `?${qs}` : ''}`);
+  },
+
+  /** Server-side proxy of the Supabase cadence_payment_links mirror; the
+   *  service_role key never reaches the browser. */
+  async getCloudPlinks(limit: number = 50): Promise<CloudPlinks> {
+    return jsonFetch<CloudPlinks>(`/api/cloud/plinks?limit=${limit}`);
   },
 
   async getAnomaly(windowMinutes: number = 10, threshold: number = 3): Promise<Anomaly[]> {

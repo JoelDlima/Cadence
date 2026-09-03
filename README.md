@@ -91,11 +91,13 @@ Cadence runs fully offline with zero keys — the Razorpay client and every chan
 | `RESEND_API_KEY` | Real email to your inbox (`/api/live/send-email`) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | Cloud mirror of every journey + event |
 
+The cloud mirror also keeps a `cadence_payment_links` table so every payment link and status change is visible live in Supabase Studio. Create it once with `.venv\Scripts\python.exe scripts\supabase_apply_plink_table.py` — it applies `supabase/migrations/V7__cadence_payment_links.sql` automatically when `SUPABASE_PAT` is set, and otherwise prints the SQL plus the SQL-editor URL to paste it into. Skipping this is safe: the mirror reports the missing table on `/api/cloud/plinks` and every recovery drill still runs.
+
 Everything else has a sensible default in `Cadence/.env.example`.
 
 ## API surface
 
-The one endpoint that matters: the webhook receiver. Plus the 9 endpoints a judge or integrator will actually call.
+The one endpoint that matters: the webhook receiver. Plus the 15 endpoints a judge or integrator will actually call.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -103,12 +105,17 @@ The one endpoint that matters: the webhook receiver. Plus the 9 endpoints a judg
 | `POST` | `/api/live/customer` | Create a real Razorpay test-mode customer. |
 | `POST` | `/api/live/failure` | Create a payment link + post an HMAC-signed `payment.failed` webhook. |
 | `POST` | `/api/live/payment-paid` | Post a `payment_link.paid` webhook to close the journey. |
+| `POST` | `/api/live/lifecycle/{force-paid,force-failed,force-expired,complete-journey}` | Drive the rest of a link's lifecycle deterministically, through the same HMAC-signed ingest path a real webhook takes. `force-expired` really does call Razorpay's cancel API. |
+| `POST` | `/api/live/lifecycle/smart` | Autonomous orchestrator: the LLM reads the link, the audit chain and an operator hint, picks paid/failed/expired, then dispatches it. Falls back to a deterministic default arm with no key. |
+| `GET`  | `/api/dashboard/payment-links` | Every payment link the agent created, in Razorpay's own row shape, rebuilt from the hash chain. Powers the Dashboard table. |
+| `GET`  | `/api/dashboard/stats` | Recovered / lost / at-risk INR, open count, mean time to recover, 24-hour window. |
+| `GET`  | `/api/cloud/plinks` | Server-side proxy of the Supabase `cadence_payment_links` mirror, so the SPA never sees the service key. |
 | `POST` | `/api/live/send-email` | Send the LLM-written Hinglish body to a real inbox via Resend. Optional PDF attachment. |
 | `GET`  | `/api/voice/preview` | Synthesize the Hinglish body via ElevenLabs (or stub WAV if no key). |
 | `GET`  | `/api/journey/{id}/reasoning` | Chat-style 3-step agent reasoning (I saw / I considered / I acted). |
 | `GET`  | `/api/merchant/summary` | Recovered INR, journey count, top root causes, intervention performance. |
 | `GET`  | `/api/eval/agent-compare?seeds=42,7,99,123,2024&n=50` | Multi-seed head-to-head. Returns per-seed rows + mean. |
-| `GET`  | `/api/audit/verify` | Verify the SHA-256 hash chain. Returns `chain_ok=true` on 274 events. |
+| `GET`  | `/api/audit/verify` | Verify the SHA-256 hash chain. Returns `chain_ok=true` and the current event count. |
 
 Full OpenAPI at <http://127.0.0.1:8000/openapi.json>.
 
@@ -193,14 +200,14 @@ Cadence/
 │       ├── sim/                  (head-to-head simulator)
 │       └── cloud/                (Supabase mirror)
 ├── frontend/                     (React 18 + Vite + TypeScript)
-│   └── src/views/                (8 SPA tabs)
-└── tests/                        (41 test files, 463 cases)
+│   └── src/views/                (7 SPA tabs)
+└── tests/                        (42 test files, 472 cases)
 ```
 
 ## Development
 
 ```bash
-# run the full test suite (463 tests, ~31s)
+# run the full test suite (472 tests, ~32s)
 cd Cadence && .venv\Scripts\python.exe -m pytest -q
 
 # run a single test
@@ -256,4 +263,4 @@ The Guardian rules are deliberately conservative. If you think a rule is wrong, 
 
 Every external source cited in this README is in [References.md](./References.md).
 
-<sub>Tested on Python 3.12, Node 22. 463 tests passing. 274 hash-chained events. Head commit on `submission-clean` branch.</sub>
+<sub>Tested on Python 3.12, Node 22. 472 tests passing. Hash-chained audit ledger verified on every run. Head commit on `submission-clean` branch.</sub>

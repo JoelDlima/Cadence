@@ -6,7 +6,7 @@
 // four chaos drills below. Each drill has a real button that POSTs to the
 // live API; failures are surfaced honestly in the UI.
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardHeader, Badge, Button, PageHeader, EmptyState, Input } from '../components/primitives';
 import { api } from '../services/api';
 import type { AgentCompare } from '../types';
@@ -19,6 +19,11 @@ import {
   ZapOff,
   Shuffle,
   AlertOctagon,
+  CheckCircle2,
+  XCircle,
+  Clock4,
+  CheckCheck,
+  Sparkles,
   ExternalLink,
   Mail,
 } from 'lucide-react';
@@ -30,7 +35,16 @@ interface DrillResult {
   detail?: string;
 }
 
-type DrillId = 'duplicate_webhook' | 'inject_no_funds' | 'reorder' | 'kill_switch';
+type DrillId =
+  | 'duplicate_webhook'
+  | 'inject_no_funds'
+  | 'reorder'
+  | 'kill_switch'
+  | 'force_paid'
+  | 'force_failed'
+  | 'force_expired'
+  | 'complete_journey'
+  | 'smart';
 
 interface DrillMeta {
   title: string;
@@ -58,6 +72,31 @@ const DRILL_META: Record<DrillId, DrillMeta> = {
     title: 'Kill switch test',
     subtitle: 'Toggles the kill switch; outbound sends must halt.',
     icon: AlertOctagon,
+  },
+  force_paid: {
+    title: 'Force plink paid',
+    subtitle: 'Razorpay plink: created -> paid. Closes the journey RECOVERED.',
+    icon: CheckCircle2,
+  },
+  force_failed: {
+    title: 'Force plink failed',
+    subtitle: 'Posts payment.failed. Cadence marks INTERVENING + queues recovery.',
+    icon: XCircle,
+  },
+  force_expired: {
+    title: 'Force plink expired',
+    subtitle: 'Razorpay plink: created -> cancelled/expired. Closes 24-h window.',
+    icon: Clock4,
+  },
+  complete_journey: {
+    title: 'Complete journey (1-click)',
+    subtitle: 'Equivalent to fire-paid. Paid + audit + Razorpay status updated.',
+    icon: CheckCheck,
+  },
+  smart: {
+    title: 'Smart (autonomous)',
+    subtitle: 'LLM picks the right outcome (paid / failed / expired) and dispatches it. Uses customer hint if provided.',
+    icon: Sparkles,
   },
 };
 
@@ -89,7 +128,38 @@ const TestLabView: React.FC = () => {
   const [subId, setSubId] = useState('sub_judge_live');
   const [custId, setCustId] = useState('cust_judge_01');
   const [activeDrill, setActiveDrill] = useState<DrillId | null>(null);
+  const [custHint, setCustHint] = useState<string>('');
   const [drillOutputs, setDrillOutputs] = useState<Record<string, DrillResult>>({});
+
+  // Lifecycle drills address a journey attempt ('<journey_id>:<attempt_no>'),
+  // not a subscription id. Rather than making the operator copy it off another
+  // tab, resolve the newest payment link from the Dashboard feed and let them
+  // override it if they want an older one.
+  const [refId, setRefId] = useState('');
+  const [refAuto, setRefAuto] = useState<string | null>(null);
+
+  const latestReference = useCallback(async (): Promise<string> => {
+    if (refId.trim()) return refId.trim();
+    const rows = await api.getPaymentLinks(1);
+    const found = rows[0]?.reference_id;
+    if (!found) {
+      throw new Error(
+        'no payment link yet — run "Fire live failure" (or Live Recovery steps 1-2) first',
+      );
+    }
+    setRefAuto(found);
+    return found;
+  }, [refId]);
+
+  // Pre-fill the hint as soon as a link exists so the cards show what they
+  // will target before the operator clicks anything.
+  useEffect(() => {
+    let cancelled = false;
+    api.getPaymentLinks(1)
+      .then((rows) => { if (!cancelled && rows[0]) setRefAuto(rows[0].reference_id); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // --- Live failure: real Razorpay customer + plink_* + dashboard link ---
   const [liveFiring, setLiveFiring] = useState(false);
@@ -156,6 +226,28 @@ const TestLabView: React.FC = () => {
           error_description: 'Chaos drill: reorder (later event, replayed first)',
         });
         detail = `http ${res.http_status} (reorder test)`;
+      } else if (id === 'force_paid' || id === 'force_failed' || id === 'force_expired' || id === 'complete_journey') {
+        const label = id.replace('force_', 'Force ').replace('_', ' ').replace('complete journey', 'Complete journey');
+        const reference_id = await latestReference();
+        const res: any = await api.lifecycleForce({ reference_id, operation: id });
+        detail = [
+          `${label} on ${reference_id}`,
+          `link ${res?.plink_id ?? '?'} -> ${res?.plink_state ?? '?'}`,
+          `Cadence: ${res?.cadence_state ?? '?'} · Razorpay: ${res?.razorpay_state ?? '?'}`,
+          res?.razorpay_note ? `note: ${res.razorpay_note}` : '',
+        ].filter(Boolean).join('\n');
+      } else if (id === 'smart') {
+        const reference_id = await latestReference();
+        const res: any = await api.lifecycleSmart({
+          reference_id,
+          customer_hint: custHint || undefined,
+        });
+        const chosen = res?.chosen;
+        const conf = chosen?.confidence ? ` (${Math.round(chosen.confidence * 100)}%)` : '';
+        const reason = chosen?.reason ? ` — ${chosen.reason}` : '';
+        detail = `Smart: ${chosen?.outcome?.toUpperCase() ?? '?'}${conf}${reason}\nLLM thought: ${res?.llm_thought ?? '(none)'}`;
+        setDrillOutputs((prev) => ({ ...prev, [id]: { status: 'passed', detail, llmThought: res?.llm_thought } }));
+        return;  // skip the default 'passed' set below since we have a richer detail
       } else {
         const current = await api.getKillSwitch().catch(() => false);
         const next = !current;
@@ -171,7 +263,7 @@ const TestLabView: React.FC = () => {
     } finally {
       setActiveDrill(null);
     }
-  }, [subId, custId]);
+  }, [subId, custId, custHint, latestReference]);
 
   return (
     <div className="space-y-6">
@@ -304,30 +396,53 @@ const TestLabView: React.FC = () => {
         <CardHeader
           title="Chaos drills"
           subtitle="Adversarial inputs against the live engine. Honest failures are surfaced below — check the result box for status."
-          action={<Badge tone="neutral">4 drills</Badge>}
+          action={<Badge tone="neutral">9 drills</Badge>}
         />
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Subscription</div>
+              <div className="mb-1">Subscription ID (webhook drills)</div>
               <Input
                 value={subId}
                 onChange={(e) => setSubId(e.target.value)}
-                placeholder="sub_..."
+                placeholder="sub_judge_live"
                 className="numeric text-[14px]"
               />
             </label>
             <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Customer</div>
+              <div className="mb-1">Reference ID (lifecycle drills)</div>
               <Input
-                value={custId}
-                onChange={(e) => setCustId(e.target.value)}
-                placeholder="cust_..."
+                value={refId}
+                onChange={(e) => setRefId(e.target.value)}
+                placeholder={refAuto ?? 'auto: newest payment link'}
                 className="numeric text-[14px]"
               />
             </label>
+            <label className="text-[13px] text-[var(--color-ink-muted)]">
+              <div className="mb-1">Customer hint (Smart only)</div>
+              <Input
+                value={custHint}
+                onChange={(e) => setCustHint(e.target.value)}
+                placeholder="e.g. always pays on time"
+                className="text-[14px]"
+              />
+            </label>
           </div>
-
+          <div className="text-[11px] text-[var(--color-ink-muted)] mb-3">
+            {refAuto ? (
+              <>
+                Lifecycle drills target{' '}
+                <span className="font-mono">{refId.trim() || refAuto}</span>
+                {!refId.trim() && ' (newest payment link, resolved automatically)'}.
+              </>
+            ) : (
+              <>
+                No payment link yet — click <span className="font-medium">Fire live failure</span>{' '}
+                above (or run Live Recovery steps 1-2) and the lifecycle drills will target it
+                automatically.
+              </>
+            )}
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {(Object.keys(DRILL_META) as DrillId[]).map((id) => {
               const meta = DRILL_META[id];

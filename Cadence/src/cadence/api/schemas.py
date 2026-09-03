@@ -11,6 +11,66 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class PaymentLinkRowOut(BaseModel):
+    """One row of the Dashboard's Razorpay-style Payment Links table.
+
+    Reconstructed from the hash chain: `action.executed{kind=PAYMENT_LINK}`
+    creates the row, `plink.lifecycle` events move its status, and the
+    journeys projection supplies the recovery context.
+    """
+
+    plink_id: str
+    journey_id: str
+    subscription_id: str | None = None
+    customer_id: str | None = None
+    reference_id: str = ""
+    short_url: str = ""
+    amount_minor: int = 0
+    amount_inr: float = 0.0
+    currency: str = "INR"
+    status: str = "created"          # created | paid | partially_paid | cancelled | expired
+    amount_paid_minor: int = 0
+    journey_state: str | None = None
+    root_cause: str | None = None
+    failure_code: str | None = None
+    attempts_used: int = 0
+    touches_used: int = 0
+    simulated: bool = False
+    created_at: str
+    updated_at: str
+    lifecycle: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class DashboardStatsOut(BaseModel):
+    """Top-of-dashboard money counters. `since` bounds the 24-h style window."""
+
+    recovered_inr: float
+    lost_inr: float
+    at_risk_inr: float
+    open_count: int
+    recovered_count: int
+    lost_count: int
+    recovered_since: int
+    recovered_inr_since: float
+    mean_time_to_recover_min: float
+    plink_count: int
+    plink_paid_count: int
+    recovery_rate_pct: float
+    since: str
+    generated_at: str
+
+
+class CloudPlinkOut(BaseModel):
+    """Server-side proxy of the Supabase `cadence_payment_links` table, so the
+    SPA can read the cloud mirror without ever seeing the service key."""
+
+    enabled: bool
+    count: int
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+    mirror: dict[str, Any] = Field(default_factory=dict)
+    table_url: str | None = None
+
+
 class JourneyOut(BaseModel):
     journey_id: str
     subscription_id: str
