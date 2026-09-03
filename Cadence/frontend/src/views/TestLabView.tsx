@@ -138,6 +138,24 @@ const TestLabView: React.FC = () => {
   const [refId, setRefId] = useState('');
   const [refAuto, setRefAuto] = useState<string | null>(null);
 
+  // Which link the drills will hit. Refreshed on a timer (and right after
+  // "Fire live failure") because a mount-only fetch goes stale the moment the
+  // operator creates a link, and a stale hint is worse than none.
+  const refreshRefAuto = useCallback(async () => {
+    try {
+      const rows = await api.getPaymentLinks(1);
+      setRefAuto(rows[0]?.reference_id ?? null);
+    } catch {
+      /* leave the previous value; the drill re-resolves at click time anyway */
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshRefAuto();
+    const id = setInterval(refreshRefAuto, 5000);
+    return () => clearInterval(id);
+  }, [refreshRefAuto]);
+
   const latestReference = useCallback(async (): Promise<string> => {
     if (refId.trim()) return refId.trim();
     const rows = await api.getPaymentLinks(1);
@@ -150,16 +168,6 @@ const TestLabView: React.FC = () => {
     setRefAuto(found);
     return found;
   }, [refId]);
-
-  // Pre-fill the hint as soon as a link exists so the cards show what they
-  // will target before the operator clicks anything.
-  useEffect(() => {
-    let cancelled = false;
-    api.getPaymentLinks(1)
-      .then((rows) => { if (!cancelled && rows[0]) setRefAuto(rows[0].reference_id); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
 
   // --- Live failure: real Razorpay customer + plink_* + dashboard link ---
   const [liveFiring, setLiveFiring] = useState(false);
@@ -178,6 +186,9 @@ const TestLabView: React.FC = () => {
     try {
       const c = await api.createLiveCustomer({ name: 'Demo (judge)', email: 'demo@x.local', contact: '+910000000000' });
       const f = await api.createLiveFailure({ customer_id: c.id });
+      // Point the lifecycle drills at the link we just made, without waiting
+      // for the 5s poll.
+      if (f.payment_link?.reference_id) setRefAuto(f.payment_link.reference_id);
       setLiveResult({
         customer_id: c.id,
         payment_link_id: f.payment_link?.id,
@@ -433,7 +444,9 @@ const TestLabView: React.FC = () => {
               <>
                 Lifecycle drills target{' '}
                 <span className="font-mono">{refId.trim() || refAuto}</span>
-                {!refId.trim() && ' (newest payment link, resolved automatically)'}.
+                {!refId.trim() && ' — the most recently updated payment link, '
+                  + 'resolved automatically. Paste a Reference ID from the '
+                  + 'Dashboard to pin a different one.'}
               </>
             ) : (
               <>
