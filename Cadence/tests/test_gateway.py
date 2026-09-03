@@ -13,17 +13,17 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from revive.clock import FakeClock
-from revive.events import (
+from cadence.clock import FakeClock
+from cadence.events import (
     AGG_JOURNEY,
     AGG_WEBHOOK,
     E_PAYMENT_FAILED,
     E_PAYMENT_RECOVERED,
     E_WEBHOOK_RECEIVED,
 )
-from revive.ingest.gateway import SIGNATURE_HEADER, create_webhook_router
-from revive.store.db import Database
-from revive.store.event_store import EventStore
+from cadence.ingest.gateway import SIGNATURE_HEADER, create_webhook_router
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
 
 WEBHOOK_SECRET = "s3cret"
 

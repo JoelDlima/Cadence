@@ -28,7 +28,7 @@ from pathlib import Path
 DEFAULT_PROJECT = "vzrasadomyrycafbzdwg"
 # Edge Functions on the cadence project
 DEFAULT_FUNCTIONS = ["webhook-collector", "cadence-llm-summary"]
-# S2: aligned with the names read by src/revive/config.py. The previous
+# S2: aligned with the names read by src/cadence/config.py. The previous
 # list used RAZORPAY_* but Cadence reads RZP_* (and SUPABASE_SERVICE_KEY
 # not SUPABASE_SERVICE_ROLE_KEY), so every Razorpay + Supabase secret
 # was silently skipped on a stock .env.

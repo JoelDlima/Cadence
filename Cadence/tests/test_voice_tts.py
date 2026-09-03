@@ -6,7 +6,7 @@ import struct
 
 import pytest
 
-from revive.policy.voice_tts import (
+from cadence.policy.voice_tts import (
     BITS_PER_SAMPLE,
     CHANNELS,
     DURATION_SECONDS,
@@ -81,7 +81,7 @@ def test_different_texts_produce_different_seeds() -> None:
 
 def test_api_voice_preview_endpoint(tmp_path, monkeypatch) -> None:
     from fastapi.testclient import TestClient
-    from revive.api.app import create_app
+    from cadence.api.app import create_app
     from tests.test_api import _config
 
     # Force no TTS provider set so the endpoint returns the deterministic stub

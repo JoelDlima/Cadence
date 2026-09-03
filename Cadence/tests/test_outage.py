@@ -8,16 +8,16 @@ from typing import Any
 
 import pytest
 
-from revive.classify.taxonomy import BANK_DOWN, NO_FUNDS, RETRY_LATER
-from revive.clock import FakeClock, parse_iso, utc_iso
-from revive.config import PolicyConfig
-from revive.events import AGG_JOURNEY, E_INTERVENTION_VETOED, E_PAYMENT_FAILED
-from revive.journey.engine import RecoveryEngine
-from revive.policy.outage import detect_cause_outage
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import JourneyRepo
-from revive.store.queue_repo import QueueRepo
+from cadence.classify.taxonomy import BANK_DOWN, NO_FUNDS, RETRY_LATER
+from cadence.clock import FakeClock, parse_iso, utc_iso
+from cadence.config import PolicyConfig
+from cadence.events import AGG_JOURNEY, E_INTERVENTION_VETOED, E_PAYMENT_FAILED
+from cadence.journey.engine import RecoveryEngine
+from cadence.policy.outage import detect_cause_outage
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import JourneyRepo
+from cadence.store.queue_repo import QueueRepo
 
 pytestmark = [pytest.mark.unit]
 

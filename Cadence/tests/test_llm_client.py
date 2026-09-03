@@ -7,10 +7,10 @@ import json
 import httpx
 import pytest
 
-from revive.agents.llm_client import BudgetExhausted, LLMClient
-from revive.clock import FakeClock
-from revive.config import LLMConfig
-from revive.store.db import Database
+from cadence.agents.llm_client import BudgetExhausted, LLMClient
+from cadence.clock import FakeClock
+from cadence.config import LLMConfig
+from cadence.store.db import Database
 
 
 def _config() -> LLMConfig:

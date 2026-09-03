@@ -19,15 +19,15 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from revive.api.live_routes import create_live_router
-from revive.clock import FakeClock
-from revive.config import PolicyConfig
-from revive.executors.dispatcher import Dispatcher
-from revive.executors.razorpay_client import SimulatedRazorpayClient
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import JourneyRepo
-from revive.store.queue_repo import QueueRepo
+from cadence.api.live_routes import create_live_router
+from cadence.clock import FakeClock
+from cadence.config import PolicyConfig
+from cadence.executors.dispatcher import Dispatcher
+from cadence.executors.razorpay_client import SimulatedRazorpayClient
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import JourneyRepo
+from cadence.store.queue_repo import QueueRepo
 
 pytestmark = [pytest.mark.integration]
 
@@ -66,7 +66,7 @@ def _build_test_client():
     # A real-ish runtime: a stub that exposes the four attrs the
     # live router needs. We use a plain object (not a dataclass with
     # a property) because the live route calls runtime.config.razorpay.
-    from revive.config import AppConfig, RazorpayConfig, LLMConfig, ChannelConfig, CloudConfig
+    from cadence.config import AppConfig, RazorpayConfig, LLMConfig, ChannelConfig, CloudConfig
     from pathlib import Path as _P
     runtime = type("R", (), {})()
     runtime.db = db

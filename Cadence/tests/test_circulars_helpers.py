@@ -4,7 +4,7 @@ These exercise the heuristic extractors without touching the policy
 or storage layer. The full pipeline is tested in tests/test_api.py.
 """
 
-from revive.policy.circulars import (
+from cadence.policy.circulars import (
     _detect_source,
     _extract_date,
     _extract_reference,

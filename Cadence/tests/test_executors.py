@@ -9,10 +9,10 @@ from typing import Any
 import httpx
 import pytest
 
-from revive.classify.taxonomy import PAYMENT_LINK, RETRY_NOW, WHATSAPP_NUDGE
-from revive.clock import utc_iso
-from revive.config import ChannelConfig, PolicyConfig, RazorpayConfig
-from revive.events import (
+from cadence.classify.taxonomy import PAYMENT_LINK, RETRY_NOW, WHATSAPP_NUDGE
+from cadence.clock import utc_iso
+from cadence.config import ChannelConfig, PolicyConfig, RazorpayConfig
+from cadence.events import (
     AGG_JOURNEY,
     E_ACTION_EXECUTED,
     E_CUSTOMER_REPLIED,
@@ -21,8 +21,8 @@ from revive.events import (
     E_PAYMENT_RECOVERED,
     E_PTP_COMMITTED,
 )
-from revive.executors.channels import EmailChannel, MockWhatsApp
-from revive.executors.contracts import (
+from cadence.executors.channels import EmailChannel, MockWhatsApp
+from cadence.executors.contracts import (
     STATUS_EXECUTED,
     STATUS_FAILED,
     STATUS_SKIPPED,
@@ -31,15 +31,15 @@ from revive.executors.contracts import (
     TASK_OUTCOME_CHECK,
     InterventionRequest,
 )
-from revive.executors.dispatcher import Dispatcher, default_outcome_fn
-from revive.executors.razorpay_client import (
+from cadence.executors.dispatcher import Dispatcher, default_outcome_fn
+from cadence.executors.razorpay_client import (
     LiveRazorpayClient,
     SimulatedRazorpayClient,
     build_client,
 )
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import (
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import (
     STATE_CLASSIFIED,
     STATE_CLOSED_UNRECOVERED,
     STATE_INTERVENING,
@@ -47,7 +47,7 @@ from revive.store.journey_repo import (
     STATE_WAITING_OUTCOME,
     JourneyRepo,
 )
-from revive.store.queue_repo import QueueRepo
+from cadence.store.queue_repo import QueueRepo
 
 pytestmark = [pytest.mark.unit]
 
@@ -114,7 +114,7 @@ def _mock_channels() -> dict[str, Any]:
     return {
         "whatsapp": MockWhatsApp(),
         "email": EmailChannel(
-            cfg=ChannelConfig(resend_api_key="", email_from="revive@example.com")
+            cfg=ChannelConfig(resend_api_key="", email_from="cadence@example.com")
         ),
     }
 
@@ -391,7 +391,7 @@ def test_live_client_posts_basic_auth_json_to_payment_links() -> None:
         amount_minor=49900,
         currency="INR",
         customer_id="cust-1",
-        description="Revive recovery",
+        description="Cadence recovery",
         reference_id="j-1:1",
     )
 

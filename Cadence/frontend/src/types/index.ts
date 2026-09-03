@@ -108,12 +108,12 @@ export interface EvalSummary {
   seed: number;
   naive_recovered_inr: number;
   naive_recovery_pct: number;
-  revive_recovered_inr: number;
-  revive_recovery_pct: number;
+  cadence_recovered_inr: number;
+  cadence_recovery_pct: number;
   uplift_pct: number;
   contacts_naive: number;
   contacts_recovery_naive: number;
-  contacts_recovery_revive: number;
+  contacts_recovery_cadence: number;
   fast_path_pct: number;
   source: 'live' | 'cached' | 'missing';
 }
@@ -122,11 +122,11 @@ export interface AgentComparePerSeed {
   seed: number;
   n: number;
   naive_recovery_pct: number;
-  revive_recovery_pct: number;
+  cadence_recovery_pct: number;
   naive_recovered_inr: number;
-  revive_recovered_inr: number;
+  cadence_recovered_inr: number;
   naive_contacts: number;
-  revive_contacts: number;
+  cadence_contacts: number;
 }
 
 export interface AgentCompare {
@@ -137,10 +137,10 @@ export interface AgentCompare {
   naive_recovery_pct: number;
   naive_contacts: number;
   naive_attempts: number;
-  revive_recovered_inr: number;
-  revive_recovery_pct: number;
-  revive_contacts: number;
-  revive_attempts: number;
+  cadence_recovered_inr: number;
+  cadence_recovery_pct: number;
+  cadence_contacts: number;
+  cadence_attempts: number;
   uplift_pct: number;
   recovered_delta: number;
   fast_path_pct: number;
@@ -148,7 +148,7 @@ export interface AgentCompare {
   runtime_ms: number;
   source: 'live_experiment';
   mean_naive_recovery_pct: number;
-  mean_revive_recovery_pct: number;
+  mean_cadence_recovery_pct: number;
   mean_uplift_pct: number;
   mean_recovered_delta_inr: number;
   per_seed: AgentComparePerSeed[];

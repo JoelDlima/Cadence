@@ -50,7 +50,7 @@ REM ---------------------------------------------------------------
 REM Step 2: start backend in a new minimized window
 REM ---------------------------------------------------------------
 echo [2/4] starting backend (uvicorn) on :8000 ...
-start "Cadence - backend" /MIN "%VENV_PY%" -m uvicorn revive.api.app:app --host 127.0.0.1 --port 8000 --app-dir "%REPO_ROOT%\Cadence" > "%REPO_ROOT%\Cadence\logs\api.out" 2> "%REPO_ROOT%\Cadence\logs\api.err"
+start "Cadence - backend" /MIN "%VENV_PY%" -m uvicorn cadence.api.app:app --host 127.0.0.1 --port 8000 --app-dir "%REPO_ROOT%\Cadence" > "%REPO_ROOT%\Cadence\logs\api.out" 2> "%REPO_ROOT%\Cadence\logs\api.err"
 echo       launched.
 
 REM ---------------------------------------------------------------

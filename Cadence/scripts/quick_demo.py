@@ -13,17 +13,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from revive.clock import FakeClock, utc_iso
-from revive.config import PolicyConfig
-from revive.executors.contracts import TASK_EXECUTE_INTENT, request_from_payload
-from revive.executors.dispatcher import Dispatcher
-from revive.executors.razorpay_client import SimulatedRazorpayClient
-from revive.journey.engine import RecoveryEngine
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import JourneyRepo
-from revive.store.queue_repo import QueueRepo
-from revive.worker.bus import Worker
+from cadence.clock import FakeClock, utc_iso
+from cadence.config import PolicyConfig
+from cadence.executors.contracts import TASK_EXECUTE_INTENT, request_from_payload
+from cadence.executors.dispatcher import Dispatcher
+from cadence.executors.razorpay_client import SimulatedRazorpayClient
+from cadence.journey.engine import RecoveryEngine
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import JourneyRepo
+from cadence.store.queue_repo import QueueRepo
+from cadence.worker.bus import Worker
 
 DB_PATH = Path("data/demo.db")
 if DB_PATH.exists():

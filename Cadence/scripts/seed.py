@@ -2,7 +2,7 @@
 clone shows real numbers in the console within seconds.
 
 What it does:
-  1. Creates a fresh SQLite DB (data/revive.db) with all migrations applied.
+  1. Creates a fresh SQLite DB (data/cadence.db) with all migrations applied.
   2. Signs a payment.failed webhook with the dev webhook secret.
   3. Replays it through the same gateway the live app uses.
   4. Lets the engine classify + dispatch.
@@ -32,15 +32,15 @@ def _bootstrap_path() -> None:
 
 _bootstrap_path()
 
-from revive.clock import SystemClock  # noqa: E402
-from revive.config import load_config  # noqa: E402
-from revive.events import AGG_JOURNEY  # noqa: E402
-from revive.ingest.gateway import process_delivery  # noqa: E402
-from revive.journey.engine import RecoveryEngine  # noqa: E402
-from revive.store.db import Database  # noqa: E402
-from revive.store.event_store import EventStore  # noqa: E402
-from revive.store.journey_repo import JourneyRepo  # noqa: E402
-from revive.store.queue_repo import QueueRepo  # noqa: E402
+from cadence.clock import SystemClock  # noqa: E402
+from cadence.config import load_config  # noqa: E402
+from cadence.events import AGG_JOURNEY  # noqa: E402
+from cadence.ingest.gateway import process_delivery  # noqa: E402
+from cadence.journey.engine import RecoveryEngine  # noqa: E402
+from cadence.store.db import Database  # noqa: E402
+from cadence.store.event_store import EventStore  # noqa: E402
+from cadence.store.journey_repo import JourneyRepo  # noqa: E402
+from cadence.store.queue_repo import QueueRepo  # noqa: E402
 
 
 def _wipe_db(db_path: Path) -> None:
@@ -82,8 +82,8 @@ def _make_payload(subscription_id: str) -> dict:
 def main() -> int:
     import os as _os
     # Use a separate DB path so we don't collide with a running API / pytest
-    # that has data/revive.db open. Default: data/revive-seed.db.
-    seed_db = _os.environ.get("SEED_DB_PATH", "data/revive-seed.db")
+    # that has data/cadence.db open. Default: data/cadence-seed.db.
+    seed_db = _os.environ.get("SEED_DB_PATH", "data/cadence-seed.db")
     db_path = Path(seed_db)
     # Keep the user's normal config (razorpay secret, timezone) but force DB.
     config = load_config()
@@ -153,7 +153,7 @@ def main() -> int:
     )
     print()
     print("Next steps:")
-    print("  - Run the API:   python -m uvicorn revive.api.app:app --port 8000")
+    print("  - Run the API:   python -m uvicorn cadence.api.app:app --port 8000")
     print("  - Open the SPA:  cd frontend && npm run dev   (http://127.0.0.1:3000)")
     print("  - Re-inject:     curl -X POST http://127.0.0.1:8000/api/test/inject \\")
     print("                       -H 'Content-Type: application/json' \\")

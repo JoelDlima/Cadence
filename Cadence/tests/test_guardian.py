@@ -6,7 +6,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from revive.classify.taxonomy import (
+from cadence.classify.taxonomy import (
     EMAIL_NUDGE,
     GRACE_OFFER,
     HARD_DECLINE,
@@ -15,10 +15,10 @@ from revive.classify.taxonomy import (
     RETRY_PAYDAY,
     WHATSAPP_NUDGE,
 )
-from revive.clock import FakeClock, utc_iso
-from revive.config import PolicyConfig
-from revive.policy.guardian import Decision, JourneyContext, Proposal, evaluate
-from revive.policy.preferences import Preferences
+from cadence.clock import FakeClock, utc_iso
+from cadence.config import PolicyConfig
+from cadence.policy.guardian import Decision, JourneyContext, Proposal, evaluate
+from cadence.policy.preferences import Preferences
 
 BASELINE = datetime(2026, 8, 22, 10, 0, tzinfo=UTC)
 

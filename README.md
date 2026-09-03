@@ -31,20 +31,20 @@ Razorpay Smart Retries covers generic retry timing. It does not cover persona se
 Three commands. They work on a fresh Windows machine with Python 3.12 and Node 22 installed.
 
 ```bash
-git clone https://github.com/JoelDlima/Revive.git C:\Revive
-cd C:\Revive
+git clone https://github.com/JoelDlima/Cadence.git C:\Cadence
+cd C:\Cadence
 copy .env.example .env
 ```
 
 ```bash
 # Boots the venv, installs deps, launches uvicorn + vite in parallel.
 # Opens http://127.0.0.1:3000 when ready.
-C:\Revive\start.bat
+C:\Cadence\start.bat
 ```
 
 ```bash
 # To stop both processes:
-C:\Revive\exit.bat
+C:\Cadence\exit.bat
 ```
 
 ## Features
@@ -91,18 +91,18 @@ flowchart LR
 | `payment.captured` | Recovery confirmation — close the journey RECOVERED |
 | `payment_link.paid` | Close-the-loop signal — RECOVERED in < 4 s |
 
-See the [Razorpay Webhooks docs](https://razorpay.com/docs/webhooks/) for the contract; Cadence's HMAC-SHA256 verification lives in `src/revive/ingest/gateway.py`.
+See the [Razorpay Webhooks docs](https://razorpay.com/docs/webhooks/) for the contract; Cadence's HMAC-SHA256 verification lives in `src/cadence/ingest/gateway.py`.
 
 ## Quickstart
 
 Five commands. Total time on a clean machine: under 4 minutes.
 
 ```bash
-git clone https://github.com/JoelDlima/Revive.git C:\Revive
-cd C:\Revive
+git clone https://github.com/JoelDlima/Cadence.git C:\Cadence
+cd C:\Cadence
 copy .env.example .env
 # fill in your Razorpay test-mode keys, Groq, Resend, ElevenLabs, Supabase
-C:\Revive\start.bat
+C:\Cadence\start.bat
 ```
 
 Open <http://127.0.0.1:3000>. The Live Recovery tab is the page-1 demo: click the 3 step cards to create a real customer, fire a real failure, close the loop in 4 seconds. Then click Test Lab → "Run comparison" to see the 5-seed mean +25.8% headline.
@@ -148,21 +148,21 @@ The `?seeds=42,7,99,123,2024` parameter runs the calibrated outcome table on eac
 
 ```bash
 # run the full test suite (463 tests, ~31s)
-cd C:\Revive\Cadence && .venv\Scripts\python.exe -m pytest -q
+cd C:\Cadence\Cadence && .venv\Scripts\python.exe -m pytest -q
 
 # run a single test
-cd C:\Revive\Cadence && .venv\Scripts\python.exe -m pytest tests\test_p0_live_rerun.py -q
+cd C:\Cadence\Cadence && .venv\Scripts\python.exe -m pytest tests\test_p0_live_rerun.py -q
 
 # rebuild the SPA
-cd C:\Revive\Cadence\frontend && npm run build
+cd C:\Cadence\Cadence\frontend && npm run build
 ```
 
 | Script | Purpose |
 | --- | --- |
-| `C:\Revive\start.bat` | Boots venv, installs deps, launches uvicorn + vite in parallel. |
-| `C:\Revive\exit.bat` | Kills both processes cleanly. |
+| `C:\Cadence\start.bat` | Boots venv, installs deps, launches uvicorn + vite in parallel. |
+| `C:\Cadence\exit.bat` | Kills both processes cleanly. |
 
-The repo root is `C:\Revive\`. Backend lives in `C:\Revive\Cadence\` (FastAPI + SQLAlchemy + SQLite). Frontend lives in `C:\Revive\Cadence\frontend\` (React 18 + Vite + TypeScript). Tests live in `C:\Revive\Cadence\tests\`. Configuration is a single `.env` at the repo root.
+The repo root is `C:\Cadence\`. Backend lives in `C:\Cadence\Cadence\` (FastAPI + SQLAlchemy + SQLite). Frontend lives in `C:\Cadence\Cadence\frontend\` (React 18 + Vite + TypeScript). Tests live in `C:\Cadence\Cadence\tests\`. Configuration is a single `.env` at the repo root.
 
 ## Deployment
 
@@ -215,7 +215,7 @@ Pull requests welcome. The repo's two non-obvious rules: (1) any change to the G
 ## Contact
 
 - **Maintainer:** Joel D'lima — <https://github.com/JoelDlima>
-- **Repo:** <https://github.com/JoelDlima/Revive>
+- **Repo:** <https://github.com/JoelDlima/Cadence>
 - **Buildathon:** Razorpay Buildathon 2026, Track 3
 - **Pitch deck:** [`Cadence/docs/Cadence-Pitch.pdf`](./Cadence/docs/Cadence-Pitch.pdf) and [`.pptx`](./Cadence/docs/Cadence-Pitch.pptx)
 - **Submission form answers:** [`Cadence/docs/Submission-Form-Answers.pdf`](./Cadence/docs/Submission-Form-Answers.pdf)

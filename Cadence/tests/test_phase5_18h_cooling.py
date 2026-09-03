@@ -11,11 +11,11 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from revive.classify.taxonomy import NO_FUNDS, RETRY_LATER, RETRY_NOW, RETRY_PAYDAY
-from revive.clock import FakeClock, utc_iso
-from revive.config import PolicyConfig
-from revive.policy.guardian import JourneyContext, Proposal, evaluate
-from revive.policy.preferences import Preferences
+from cadence.classify.taxonomy import NO_FUNDS, RETRY_LATER, RETRY_NOW, RETRY_PAYDAY
+from cadence.clock import FakeClock, utc_iso
+from cadence.config import PolicyConfig
+from cadence.policy.guardian import JourneyContext, Proposal, evaluate
+from cadence.policy.preferences import Preferences
 
 BASELINE = datetime(2026, 8, 22, 10, 0, tzinfo=UTC)
 

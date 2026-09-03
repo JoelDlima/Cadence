@@ -2,7 +2,7 @@
 
 Before this fix the SPA asked for n=100/200 but the backend silently
 capped at 50, AND it ran only one seed (default 42). On seed 42 the
-revive arm can lose to the naive arm (the bandit picks exploit
+cadence arm can lose to the naive arm (the bandit picks exploit
 exploration early; the simulator's outcome table is calibrated but
 not deterministic per seed). A judge who drags the seed slider
 immediately found the losing seed.
@@ -30,9 +30,9 @@ def app_client():
     # isolation from the full app (no on-disk state).
     app = FastAPI()
     import time as _t
-    from revive.sim.experiment import run_arm_naive, run_arm_revive
-    from revive.sim.cohort import generate_cohort
-    from revive.sim.experiment import _arm_metrics
+    from cadence.sim.experiment import run_arm_naive, run_arm_cadence
+    from cadence.sim.cohort import generate_cohort
+    from cadence.sim.experiment import _arm_metrics
     import tempfile
     from pathlib import Path as _P
 
@@ -56,27 +56,27 @@ def app_client():
                 row = cached["data"]
             else:
                 cohort = generate_cohort(n_live, s)
-                with tempfile.TemporaryDirectory(prefix="revive_compare_") as tmp:
+                with tempfile.TemporaryDirectory(prefix="cadence_compare_") as tmp:
                     naive = run_arm_naive(cohort, _P(tmp) / "naive")
-                    revive = run_arm_revive(cohort, _P(tmp) / "revive")
+                    cadence = run_arm_cadence(cohort, _P(tmp) / "cadence")
                 naive_m = _arm_metrics(naive, n_live)
-                revive_m = _arm_metrics(revive, n_live)
+                cadence_m = _arm_metrics(cadence, n_live)
                 row = {
                     "seed": s, "n": n_live,
                     "naive_recovery_pct": float(naive_m["recovery_rate_pct"]),
-                    "revive_recovery_pct": float(revive_m["recovery_rate_pct"]),
+                    "cadence_recovery_pct": float(cadence_m["recovery_rate_pct"]),
                     "naive_recovered_inr": float(naive_m["recovered_inr_major"]),
-                    "revive_recovered_inr": float(revive_m["recovered_inr_major"]),
+                    "cadence_recovered_inr": float(cadence_m["recovered_inr_major"]),
                     "naive_contacts": int(naive_m["contacts"]),
-                    "revive_contacts": int(revive_m["contacts"]),
+                    "cadence_contacts": int(cadence_m["contacts"]),
                 }
                 cache[cache_key] = {"ts": now, "data": row}
             per_seed_rows.append(row)
         naive_pcts = [r["naive_recovery_pct"] for r in per_seed_rows]
-        revive_pcts = [r["revive_recovery_pct"] for r in per_seed_rows]
+        cadence_pcts = [r["cadence_recovery_pct"] for r in per_seed_rows]
         mean_naive = sum(naive_pcts) / len(naive_pcts)
-        mean_revive = sum(revive_pcts) / len(revive_pcts)
-        mean_uplift = round((mean_revive - mean_naive) / mean_naive * 100, 1) if mean_naive > 0 else 0.0
+        mean_cadence = sum(cadence_pcts) / len(cadence_pcts)
+        mean_uplift = round((mean_cadence - mean_naive) / mean_naive * 100, 1) if mean_naive > 0 else 0.0
         first = per_seed_rows[0]
         return {
             "n": n_live, "seed": seed_eff, "seeds": seed_list,
@@ -84,16 +84,16 @@ def app_client():
             "naive_recovery_pct": first["naive_recovery_pct"],
             "naive_contacts": first["naive_contacts"],
             "naive_attempts": 0,
-            "revive_recovered_inr": first["revive_recovered_inr"],
-            "revive_recovery_pct": first["revive_recovery_pct"],
-            "revive_contacts": first["revive_contacts"],
-            "revive_attempts": 0,
-            "uplift_pct": round((first["revive_recovery_pct"] - first["naive_recovery_pct"]) / max(first["naive_recovery_pct"], 1) * 100, 1),
-            "recovered_delta": first["revive_recovered_inr"] - first["naive_recovered_inr"],
+            "cadence_recovered_inr": first["cadence_recovered_inr"],
+            "cadence_recovery_pct": first["cadence_recovery_pct"],
+            "cadence_contacts": first["cadence_contacts"],
+            "cadence_attempts": 0,
+            "uplift_pct": round((first["cadence_recovery_pct"] - first["naive_recovery_pct"]) / max(first["naive_recovery_pct"], 1) * 100, 1),
+            "recovered_delta": first["cadence_recovered_inr"] - first["naive_recovered_inr"],
             "fast_path_pct": 100.0, "cohort": "indian", "runtime_ms": 0,
             "source": "live_experiment",
             "mean_naive_recovery_pct": round(mean_naive, 2),
-            "mean_revive_recovery_pct": round(mean_revive, 2),
+            "mean_cadence_recovery_pct": round(mean_cadence, 2),
             "mean_uplift_pct": mean_uplift,
             "mean_recovered_delta_inr": 0.0,
             "per_seed": per_seed_rows,
@@ -114,16 +114,16 @@ def test_multi_seed_returns_per_seed_rows_plus_means(app_client) -> None:
     assert seeds_in_rows == [42, 7, 99]
     for row in data["per_seed"]:
         assert 0 <= row["naive_recovery_pct"] <= 100
-        assert 0 <= row["revive_recovery_pct"] <= 100
+        assert 0 <= row["cadence_recovery_pct"] <= 100
         assert row["n"] == 30
     # Means are computed correctly
     mean_naive = sum(r["naive_recovery_pct"] for r in data["per_seed"]) / 3
-    mean_revive = sum(r["revive_recovery_pct"] for r in data["per_seed"]) / 3
+    mean_cadence = sum(r["cadence_recovery_pct"] for r in data["per_seed"]) / 3
     assert abs(data["mean_naive_recovery_pct"] - round(mean_naive, 2)) < 0.01
-    assert abs(data["mean_revive_recovery_pct"] - round(mean_revive, 2)) < 0.01
+    assert abs(data["mean_cadence_recovery_pct"] - round(mean_cadence, 2)) < 0.01
     # And the mean uplift is the mean of the per-seed uplifts, NOT a
     # cherry-picked single seed.
-    expected_uplift = round((mean_revive - mean_naive) / mean_naive * 100, 1) if mean_naive > 0 else 0.0
+    expected_uplift = round((mean_cadence - mean_naive) / mean_naive * 100, 1) if mean_naive > 0 else 0.0
     assert abs(data["mean_uplift_pct"] - expected_uplift) < 0.01
 
 

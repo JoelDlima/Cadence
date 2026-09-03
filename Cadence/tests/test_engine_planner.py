@@ -11,27 +11,27 @@ from typing import Any
 import pytest
 from tests.test_engine import _engine, _payload, _policy_config
 
-from revive.agents.planner import PlannerAgent
-from revive.clock import FakeClock
-from revive.events import (
+from cadence.agents.planner import PlannerAgent
+from cadence.clock import FakeClock
+from cadence.events import (
     E_CLASSIFICATION_COMPLETED,
     E_INTERVENTION_PROPOSED,
     E_JOURNEY_STATE_CHANGED,
 )
-from revive.executors.contracts import (
+from cadence.executors.contracts import (
     TASK_EXECUTE_INTENT,
 )
-from revive.journey.engine import RecoveryEngine
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import (
+from cadence.journey.engine import RecoveryEngine
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import (
     STATE_HUMAN_REVIEW,
     STATE_INTERVENING,
     STATE_RECOVERED,
     STATE_WAITING_OUTCOME,
     JourneyRepo,
 )
-from revive.store.queue_repo import QueueRepo
+from cadence.store.queue_repo import QueueRepo
 
 pytestmark = [pytest.mark.integration]
 
@@ -237,7 +237,7 @@ def test_captured_is_idempotent_for_terminal_journeys(
 def test_gateway_task_rehydrates_full_payload_from_event_store(
     tmp_db: Database, fake_clock: FakeClock
 ) -> None:
-    from revive.api.app import _rehydrated_failure_payload
+    from cadence.api.app import _rehydrated_failure_payload
 
     store = EventStore(tmp_db)
     store.append(

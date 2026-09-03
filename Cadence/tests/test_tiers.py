@@ -2,13 +2,13 @@
 
 import pytest
 
-from revive.clock import FakeClock
-from revive.config import PolicyConfig
-from revive.journey.engine import RecoveryEngine
-from revive.policy.guardian import JourneyContext, Proposal, evaluate
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import STATE_HUMAN_REVIEW, JourneyRepo
-from revive.store.queue_repo import QueueRepo
+from cadence.clock import FakeClock
+from cadence.config import PolicyConfig
+from cadence.journey.engine import RecoveryEngine
+from cadence.policy.guardian import JourneyContext, Proposal, evaluate
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import STATE_HUMAN_REVIEW, JourneyRepo
+from cadence.store.queue_repo import QueueRepo
 
 
 def _cfg() -> PolicyConfig:

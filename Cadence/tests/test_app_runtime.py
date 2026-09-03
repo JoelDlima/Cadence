@@ -13,8 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 from tests.test_api import _config
 
-from revive.api.app import create_app
-from revive.store.journey_repo import STATE_INTERVENING, JourneyRepo
+from cadence.api.app import create_app
+from cadence.store.journey_repo import STATE_INTERVENING, JourneyRepo
 
 pytestmark = [pytest.mark.integration]
 

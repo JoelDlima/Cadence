@@ -2,7 +2,7 @@
 setlocal
 
 REM ============================================================
-REM Cadence / Revive - start backend + frontend
+REM Cadence / Cadence - start backend + frontend
 REM ============================================================
 echo.
 
@@ -13,16 +13,16 @@ echo.
 
 REM --- 1. kill stale processes -------------------------------------
 echo [1/4] killing any stale backend / vite processes...
-powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*uvicorn*revive.api*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*uvicorn*cadence.api*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -like '*vite*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 timeout /t 2 /nobreak >nul
 
 REM --- 2. start backend -------------------------------------------
 echo [2/4] starting FastAPI backend on port 8000...
-cd /d C:\Revive\Cadence
+cd /d C:\Cadence\Cadence
 if exist api.out del api.out >nul 2>&1
 if exist api.err del api.err >nul 2>&1
-start "Cadence Backend" /MIN "C:\Revive\Cadence\.venv\Scripts\python.exe" -m uvicorn revive.api.app:app --host 127.0.0.1 --port 8000 --app-dir "C:\Revive\Cadence" > api.out 2> api.err
+start "Cadence Backend" /MIN "C:\Cadence\Cadence\.venv\Scripts\python.exe" -m uvicorn cadence.api.app:app --host 127.0.0.1 --port 8000 --app-dir "C:\Cadence\Cadence" > api.out 2> api.err
 echo       waiting for backend to respond on :8000 (max 30s)...
 set /a tries=0
 :wait_backend
@@ -39,7 +39,7 @@ echo.
 
 REM --- 3. start frontend ------------------------------------------
 echo [3/4] starting Vite dev server on port 3000...
-cd /d C:\Revive\Cadence\frontend
+cd /d C:\Cadence\Cadence\frontend
 if exist spa.out del spa.out >nul 2>&1
 if exist spa.err del spa.err >nul 2>&1
 start "Cadence Frontend" /MIN "C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" run dev > spa.out 2> spa.err

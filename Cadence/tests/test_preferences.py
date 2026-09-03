@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from revive.policy.preferences import Preferences, PreferencesRepo
-from revive.store.db import Database
+from cadence.policy.preferences import Preferences, PreferencesRepo
+from cadence.store.db import Database
 
 pytestmark = [pytest.mark.unit]
 

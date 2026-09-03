@@ -29,10 +29,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import httpx
 from fastapi.testclient import TestClient
 
-from revive.agents.llm_client import LLMClient
-from revive.agents.planner import PlannerAgent
-from revive.api.app import create_app
-from revive.classify.taxonomy import (
+from cadence.agents.llm_client import LLMClient
+from cadence.agents.planner import PlannerAgent
+from cadence.api.app import create_app
+from cadence.classify.taxonomy import (
     EXPIRED_INSTRUMENT,
     HARD_DECLINE,
     LEGAL_MOVES,
@@ -40,8 +40,8 @@ from revive.classify.taxonomy import (
     RETRY_PAYDAY,
     WHATSAPP_NUDGE,
 )
-from revive.clock import FakeClock, utc_iso
-from revive.config import (
+from cadence.clock import FakeClock, utc_iso
+from cadence.config import (
     AppConfig,
     ChannelConfig,
     CloudConfig,
@@ -49,23 +49,23 @@ from revive.config import (
     PolicyConfig,
     RazorpayConfig,
 )
-from revive.events import AGG_JOURNEY, E_ACTION_EXECUTED, E_CLASSIFICATION_COMPLETED
-from revive.executors.contracts import TASK_EXECUTE_INTENT, request_from_payload
-from revive.executors.dispatcher import Dispatcher
-from revive.executors.razorpay_client import SimulatedRazorpayClient
-from revive.ingest.gateway import SIGNATURE_HEADER
-from revive.journey.engine import RecoveryEngine
-from revive.policy.guardian import JourneyContext, Proposal, evaluate
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import (
+from cadence.events import AGG_JOURNEY, E_ACTION_EXECUTED, E_CLASSIFICATION_COMPLETED
+from cadence.executors.contracts import TASK_EXECUTE_INTENT, request_from_payload
+from cadence.executors.dispatcher import Dispatcher
+from cadence.executors.razorpay_client import SimulatedRazorpayClient
+from cadence.ingest.gateway import SIGNATURE_HEADER
+from cadence.journey.engine import RecoveryEngine
+from cadence.policy.guardian import JourneyContext, Proposal, evaluate
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import (
     STATE_INTERVENING,
     STATE_RECOVERED,
     STATE_WAITING_OUTCOME,
     JourneyRepo,
 )
-from revive.store.queue_repo import QueueRepo
-from revive.worker.bus import Worker
+from cadence.store.queue_repo import QueueRepo
+from cadence.worker.bus import Worker
 
 
 def _policy_cfg() -> PolicyConfig:
@@ -100,7 +100,7 @@ def _app_cfg(db_path: Path) -> AppConfig:
         log_level="INFO",
         razorpay=RazorpayConfig(key_id="", key_secret="", webhook_secret="chaos_s3cret"),
         llm=_llm_cfg(),
-        channels=ChannelConfig(resend_api_key="", email_from="revive@example.com"),
+        channels=ChannelConfig(resend_api_key="", email_from="cadence@example.com"),
         policy=_policy_cfg(),
         cloud=CloudConfig(supabase_url="", supabase_service_key="", sync_enabled=False),
     )
@@ -420,14 +420,14 @@ def run_drill(name: str, workdir: Path | None = None) -> dict[str, Any]:
     if runner is None:
         return {"drill": name, "passed": False, "detail": f"unknown drill: {name}"}
     if workdir is None:
-        workdir = Path(tempfile.mkdtemp(prefix="revive_chaos_api_"))
+        workdir = Path(tempfile.mkdtemp(prefix="cadence_chaos_api_"))
     return runner(workdir)
 
 
 def main() -> int:
     # Windows: some drill connections (e.g. TestClient-owned app state) cannot be
     # closed from here; ignore_cleanup_errors prevents rmtree lock errors masking results.
-    with tempfile.TemporaryDirectory(prefix="revive_chaos_", ignore_cleanup_errors=True) as tmp:
+    with tempfile.TemporaryDirectory(prefix="cadence_chaos_", ignore_cleanup_errors=True) as tmp:
         work = Path(tmp)
         passed = [
             drill_duplicate_webhook(work),

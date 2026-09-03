@@ -12,11 +12,11 @@ from typing import Any
 
 import pytest
 
-from revive.events import AGG_JOURNEY, E_CLASSIFICATION_COMPLETED, E_JOURNEY_OPENED
-from revive.mcp_server import mcp
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import JourneyRepo
+from cadence.events import AGG_JOURNEY, E_CLASSIFICATION_COMPLETED, E_JOURNEY_OPENED
+from cadence.mcp_server import mcp
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import JourneyRepo
 
 pytestmark = [pytest.mark.unit]
 
@@ -79,32 +79,32 @@ def seeded_db(tmp_path) -> Database:
 @pytest.mark.asyncio
 async def test_list_tools_advertises_eight_read_only_tools(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.list_tools()
     names = sorted(t.name for t in result.tools)
     assert names == sorted([
-        "revive_list_journeys",
-        "revive_get_timeline",
-        "revive_get_metrics",
-        "revive_list_dead_letters",
-        "revive_get_status",
-        "revive_get_attention",
-        "revive_audit_verify",
-        "revive_get_guardian_stats",
+        "cadence_list_journeys",
+        "cadence_get_timeline",
+        "cadence_get_metrics",
+        "cadence_list_dead_letters",
+        "cadence_get_status",
+        "cadence_get_attention",
+        "cadence_audit_verify",
+        "cadence_get_guardian_stats",
     ])
 
 
 @pytest.mark.asyncio
-async def test_revive_list_journeys_returns_seeded_journey(seeded_db):
+async def test_cadence_list_journeys_returns_seeded_journey(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_list_journeys", {"limit": 10})
+        result = await client.call_tool("cadence_list_journeys", {"limit": 10})
     parsed = _result_payload(result)
     assert isinstance(parsed, list)
     assert any(j["journey_id"] == "j_abc123" for j in parsed)
@@ -112,13 +112,13 @@ async def test_revive_list_journeys_returns_seeded_journey(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_revive_get_metrics_reports_recovered_inr_and_states(seeded_db):
+async def test_cadence_get_metrics_reports_recovered_inr_and_states(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_get_metrics", {})
+        result = await client.call_tool("cadence_get_metrics", {})
     metrics = _result_payload(result)
     assert metrics["recovered_inr_major"] == 0.0
     assert metrics["journeys_by_state"] == {"OPENED": 1}
@@ -126,13 +126,13 @@ async def test_revive_get_metrics_reports_recovered_inr_and_states(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_revive_get_timeline_returns_events_in_seq_order(seeded_db):
+async def test_cadence_get_timeline_returns_events_in_seq_order(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_get_timeline", {"journey_key": "j_abc123"})
+        result = await client.call_tool("cadence_get_timeline", {"journey_key": "j_abc123"})
     parsed = _result_payload(result)
     assert parsed["journey_id"] == "j_abc123"
     seqs = [e["seq"] for e in parsed["events"]]
@@ -141,19 +141,19 @@ async def test_revive_get_timeline_returns_events_in_seq_order(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_revive_get_timeline_404_like_for_unknown_key(seeded_db):
+async def test_cadence_get_timeline_404_like_for_unknown_key(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_get_timeline", {"journey_key": "sub_nope"})
+        result = await client.call_tool("cadence_get_timeline", {"journey_key": "sub_nope"})
     parsed = _result_payload(result)
     assert "error" in parsed
 
 
 @pytest.mark.asyncio
-async def test_revive_get_status_reports_demo_mode_with_no_keys(seeded_db, monkeypatch):
+async def test_cadence_get_status_reports_demo_mode_with_no_keys(seeded_db, monkeypatch):
     """D1: this test must pass on a machine with a real Cadence/.env.
 
     The previous implementation called load_config() which read the
@@ -162,7 +162,7 @@ async def test_revive_get_status_reports_demo_mode_with_no_keys(seeded_db, monke
     without weakening any assertion.
     """
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     for var in ("RZP_KEY_ID", "RZP_KEY_SECRET", "RZP_WEBHOOK_SECRET",
                  "GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY",
@@ -173,7 +173,7 @@ async def test_revive_get_status_reports_demo_mode_with_no_keys(seeded_db, monke
         monkeypatch.setenv(var, "")
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_get_status", {})
+        result = await client.call_tool("cadence_get_status", {})
     parsed = _result_payload(result)
     assert parsed["mode"] == "DEMO"
     assert parsed["razorpay_keys_present"] is False
@@ -184,13 +184,13 @@ async def test_revive_get_status_reports_demo_mode_with_no_keys(seeded_db, monke
 
 
 @pytest.mark.asyncio
-async def test_revive_audit_verify_reports_chain_ok_on_fresh_db(seeded_db):
+async def test_cadence_audit_verify_reports_chain_ok_on_fresh_db(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_audit_verify", {})
+        result = await client.call_tool("cadence_audit_verify", {})
     parsed = _result_payload(result)
     assert parsed["chain_ok"] is True
     assert parsed["event_count"] == 2
@@ -199,9 +199,9 @@ async def test_revive_audit_verify_reports_chain_ok_on_fresh_db(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_revive_audit_verify_detects_tamper(seeded_db):
+async def test_cadence_audit_verify_detects_tamper(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     # Tamper with the first event's payload
@@ -210,16 +210,16 @@ async def test_revive_audit_verify_detects_tamper(seeded_db):
         ('{"event":"subscription.cancelled"}', "e_open"),
     )
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_audit_verify", {})
+        result = await client.call_tool("cadence_audit_verify", {})
     parsed = _result_payload(result)
     assert parsed["chain_ok"] is False
     assert parsed["first_bad_seq"] == 1
 
 
 @pytest.mark.asyncio
-async def test_revive_get_guardian_stats_aggregates_veto_reasons(seeded_db):
+async def test_cadence_get_guardian_stats_aggregates_veto_reasons(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
     from datetime import datetime, UTC
 
     _set_db(seeded_db)
@@ -237,7 +237,7 @@ async def test_revive_get_guardian_stats_aggregates_veto_reasons(seeded_db):
                  f'{{"reason":"{reason}"}}'),
             )
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_get_guardian_stats", {})
+        result = await client.call_tool("cadence_get_guardian_stats", {})
     parsed = _result_payload(result)
     assert parsed["total_vetoes"] == 4
     assert parsed["by_reason"]["touch_cap_reached"] == 3
@@ -245,36 +245,36 @@ async def test_revive_get_guardian_stats_aggregates_veto_reasons(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_revive_list_dead_letters_returns_empty_when_queue_healthy(seeded_db):
+async def test_cadence_list_dead_letters_returns_empty_when_queue_healthy(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_list_dead_letters", {"limit": 10})
+        result = await client.call_tool("cadence_list_dead_letters", {"limit": 10})
     parsed = _result_payload(result)
     assert parsed == []
 
 
 @pytest.mark.asyncio
-async def test_revive_get_attention_returns_empty_for_fresh_db(seeded_db):
+async def test_cadence_get_attention_returns_empty_for_fresh_db(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_get_attention", {"limit": 8})
+        result = await client.call_tool("cadence_get_attention", {"limit": 8})
     parsed = _result_payload(result)
     assert parsed == []
 
 
 @pytest.mark.asyncio
-async def test_revive_get_attention_returns_empty_for_fresh_db(seeded_db):
+async def test_cadence_get_attention_returns_empty_for_fresh_db(seeded_db):
     from mcp.shared.memory import create_connected_server_and_client_session
-    from revive.mcp_server import _set_db
+    from cadence.mcp_server import _set_db
 
     _set_db(seeded_db)
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("revive_get_attention", {"limit": 8})
+        result = await client.call_tool("cadence_get_attention", {"limit": 8})
     parsed = _result_payload(result)
     assert parsed == []

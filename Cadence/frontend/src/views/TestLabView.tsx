@@ -318,9 +318,9 @@ export default TestLabView;
 const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
   const multiSeed = (result.per_seed?.length ?? 0) > 1;
   const naivePct = multiSeed ? result.mean_naive_recovery_pct : result.naive_recovery_pct;
-  const revivePct = multiSeed ? result.mean_revive_recovery_pct : result.revive_recovery_pct;
+  const cadencePct = multiSeed ? result.mean_cadence_recovery_pct : result.cadence_recovery_pct;
   const uplift = multiSeed ? result.mean_uplift_pct : result.uplift_pct;
-  const maxPct = Math.max(naivePct, revivePct, 1);
+  const maxPct = Math.max(naivePct, cadencePct, 1);
 
   return (
     <>
@@ -337,9 +337,9 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
           </span>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-5">
-          <Bar label={multiSeed ? 'Mean recovered %' : 'Recovered %'} naive={naivePct} revive={revivePct} max={maxPct} suffix="%" />
-          <Bar label="Follow-up messages" naive={result.naive_contacts} revive={result.revive_contacts} max={Math.max(result.naive_contacts, result.revive_contacts, 1)} />
-          <Bar label="Recovery attempts" naive={result.naive_attempts} revive={result.revive_attempts} max={Math.max(result.naive_attempts, result.revive_attempts, 1)} />
+          <Bar label={multiSeed ? 'Mean recovered %' : 'Recovered %'} naive={naivePct} cadence={cadencePct} max={maxPct} suffix="%" />
+          <Bar label="Follow-up messages" naive={result.naive_contacts} cadence={result.cadence_contacts} max={Math.max(result.naive_contacts, result.cadence_contacts, 1)} />
+          <Bar label="Recovery attempts" naive={result.naive_attempts} cadence={result.cadence_attempts} max={Math.max(result.naive_attempts, result.cadence_attempts, 1)} />
         </div>
       </Card>
 
@@ -363,16 +363,16 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
                 <tr key={row.seed} className="border-t border-[var(--color-line)]">
                   <td className="py-1 pr-3 text-[var(--color-ink)]">{row.seed}</td>
                   <td className="py-1 pr-3">{row.naive_recovery_pct.toFixed(1)}%</td>
-                  <td className="py-1 pr-3 text-[var(--color-accent)] font-semibold">{row.revive_recovery_pct.toFixed(1)}%</td>
-                  <td className="py-1 pr-3">Rs.{row.revive_recovered_inr.toFixed(0)}</td>
-                  <td className="py-1 pr-3">Rs.{(row.revive_recovered_inr - row.naive_recovered_inr).toFixed(0)}</td>
+                  <td className="py-1 pr-3 text-[var(--color-accent)] font-semibold">{row.cadence_recovery_pct.toFixed(1)}%</td>
+                  <td className="py-1 pr-3">Rs.{row.cadence_recovered_inr.toFixed(0)}</td>
+                  <td className="py-1 pr-3">Rs.{(row.cadence_recovered_inr - row.naive_recovered_inr).toFixed(0)}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-[var(--color-line)] font-semibold">
                 <td className="py-1 pr-3">mean</td>
                 <td className="py-1 pr-3">{result.mean_naive_recovery_pct.toFixed(1)}%</td>
-                <td className="py-1 pr-3 text-[var(--color-accent)]">{result.mean_revive_recovery_pct.toFixed(1)}%</td>
-                <td className="py-1 pr-3">Rs.{result.per_seed.reduce((s, r) => s + r.revive_recovered_inr, 0).toFixed(0)}</td>
+                <td className="py-1 pr-3 text-[var(--color-accent)]">{result.mean_cadence_recovery_pct.toFixed(1)}%</td>
+                <td className="py-1 pr-3">Rs.{result.per_seed.reduce((s, r) => s + r.cadence_recovered_inr, 0).toFixed(0)}</td>
                 <td className="py-1 pr-3">Rs.{result.mean_recovered_delta_inr.toFixed(0)}</td>
               </tr>
             </tbody>
@@ -403,10 +403,10 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
               <Trophy size={14} className="text-[var(--color-accent)]" />
             </div>
             <div className="text-3xl font-semibold text-[var(--color-accent)] mt-2 font-mono">
-              Rs.{result.revive_recovered_inr.toFixed(2)}
+              Rs.{result.cadence_recovered_inr.toFixed(2)}
             </div>
             <div className="text-[13px] text-[var(--color-ink-muted)] mt-1">
-              {revivePct.toFixed(1)}% recovered
+              {cadencePct.toFixed(1)}% recovered
             </div>
             <div className="text-[12px] text-[var(--color-ink-soft)] mt-3">
               Cause-aware decision: only contacts within touch cap, no
@@ -460,12 +460,12 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
 const Bar: React.FC<{
   label: string;
   naive: number;
-  revive: number;
+  cadence: number;
   max: number;
   suffix?: string;
-}> = ({ label, naive, revive, max, suffix = '' }) => {
+}> = ({ label, naive, cadence, max, suffix = '' }) => {
   const naiveW = Math.max(2, (naive / max) * 100);
-  const reviveW = Math.max(2, (revive / max) * 100);
+  const cadenceW = Math.max(2, (cadence / max) * 100);
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
@@ -484,10 +484,10 @@ const Bar: React.FC<{
         <div className="flex items-center gap-2">
           <span className="w-16 text-[11px] text-[var(--color-ink-muted)] font-mono">Cadence</span>
           <div className="flex-1 h-3 bg-[var(--color-paper-2)] rounded overflow-hidden">
-            <div className="h-full bg-[var(--color-accent)]" style={{ width: `${reviveW}%` }} />
+            <div className="h-full bg-[var(--color-accent)]" style={{ width: `${cadenceW}%` }} />
           </div>
           <span className="w-16 text-right text-[12px] font-mono">
-            {revive.toFixed(0)}{suffix}
+            {cadence.toFixed(0)}{suffix}
           </span>
         </div>
       </div>

@@ -1,6 +1,6 @@
 """5,000-subscriber Faker-driven Indian-cohort evaluation.
 
-Runs the same naive-vs-Revive experiment on a Faker-generated cohort of
+Runs the same naive-vs-Cadence experiment on a Faker-generated cohort of
 realistic Indian subscribers (names, UPI handles, IFSC codes via the
 ``hi_IN`` locale). Writes:
 
@@ -30,13 +30,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from revive.sim.experiment import run_experiment
-from revive.sim.indian_cohort import generate_indian_cohort
+from cadence.sim.experiment import run_experiment
+from cadence.sim.indian_cohort import generate_indian_cohort
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run Revive eval on a 5,000-sub Faker-driven Indian cohort."
+        description="Run Cadence eval on a 5,000-sub Faker-driven Indian cohort."
     )
     parser.add_argument("--n", type=int, default=5000, help="cohort size (default 5000)")
     parser.add_argument("--seed", type=int, default=42, help="RNG seed (default 42)")
@@ -63,21 +63,21 @@ def main() -> None:
     # Run the experiment arm-by-arm (mirrors run_experiment's structure so
     # the same ArmResult aggregator works).
     print("Running naive arm...")
-    from revive.sim.experiment import _arm_metrics, _collect_results, _run_revive_on
+    from cadence.sim.experiment import _arm_metrics, _collect_results, _run_cadence_on
     import tempfile
-    from revive.sim.experiment import run_arm_naive, run_arm_revive
+    from cadence.sim.experiment import run_arm_naive, run_arm_cadence
 
-    with tempfile.TemporaryDirectory(prefix="revive_eval_indian_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="cadence_eval_indian_") as tmp:
         naive = run_arm_naive(cohort, Path(tmp) / "naive")
-        # The revive arm takes a directory; reuse the existing run_arm_revive.
-        revive = run_arm_revive(cohort, Path(tmp) / "revive")
+        # The cadence arm takes a directory; reuse the existing run_arm_cadence.
+        cadence = run_arm_cadence(cohort, Path(tmp) / "cadence")
         metrics = {
             "n": len(cohort),
             "seed": args.seed,
             "naive": _arm_metrics(naive, len(cohort)),
-            "revive": _arm_metrics(revive, len(cohort)),
+            "cadence": _arm_metrics(cadence, len(cohort)),
             "uplift_pct": (
-                (_arm_metrics(revive, len(cohort))["recovery_rate_pct"]
+                (_arm_metrics(cadence, len(cohort))["recovery_rate_pct"]
                  - _arm_metrics(naive, len(cohort))["recovery_rate_pct"])
                 / max(1e-9, _arm_metrics(naive, len(cohort))["recovery_rate_pct"])
             ) * 100,
@@ -111,15 +111,15 @@ def main() -> None:
     print(f"Wrote Faker profiles: {profiles_path}")
 
     # One-line summary, matching the format of scripts/run_eval.py.
-    naive, revive = metrics["naive"], metrics["revive"]
+    naive, cadence = metrics["naive"], metrics["cadence"]
     print(
         f"\nEval (Faker, n={args.n} seed={args.seed}):\n"
         f"  naive   : {naive['recovered_inr_major']:.0f} INR ({naive['recovery_rate_pct']}%)\n"
-        f"  revive  : {revive['recovered_inr_major']:.0f} INR ({revive['recovery_rate_pct']}%)\n"
+        f"  cadence  : {cadence['recovered_inr_major']:.0f} INR ({cadence['recovery_rate_pct']}%)\n"
         f"  uplift  : {metrics['uplift_pct']:+.1f}%\n"
-        f"  contacts: {naive['contacts_per_recovery']} naive vs {revive['contacts_per_recovery']} revive\n"
-        f"  vetoes  : {revive['vetoes']}\n"
-        f"  llm     : {revive['llm_requests']}"
+        f"  contacts: {naive['contacts_per_recovery']} naive vs {cadence['contacts_per_recovery']} cadence\n"
+        f"  vetoes  : {cadence['vetoes']}\n"
+        f"  llm     : {cadence['llm_requests']}"
     )
 
 

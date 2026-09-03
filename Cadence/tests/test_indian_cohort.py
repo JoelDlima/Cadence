@@ -10,7 +10,7 @@ when present.
 
 from __future__ import annotations
 
-from revive.sim.indian_cohort import generate_indian_cohort
+from cadence.sim.indian_cohort import generate_indian_cohort
 
 
 def test_indian_cohort_deterministic_for_same_seed() -> None:
@@ -53,7 +53,7 @@ def test_indian_cohort_failure_code_distribution_realistic() -> None:
     assert total_mapped > 700  # at least 70 % of 1,000 are mapped
 
     # All codes must be in the Razorpay error-code map (or None for unknown).
-    from revive.classify.taxonomy import ERROR_CODE_MAP
+    from cadence.classify.taxonomy import ERROR_CODE_MAP
     for c in codes:
         assert c is None or c in ERROR_CODE_MAP
 
@@ -90,7 +90,7 @@ def test_indian_cohort_profiles_have_required_fields() -> None:
 def test_indian_cohort_is_isolated_from_original_500_sub() -> None:
     """The Faker IDs (sub_fk_*) are distinct from the original simulator's
     IDs (sub_sim_*) so mixing the two cohorts in the SPA is unambiguous."""
-    from revive.sim.cohort import generate_cohort
+    from cadence.sim.cohort import generate_cohort
     # Note: generate_cohort returns a list (not a tuple), so we unpack
     # the list directly. The Faker cohort returns (cohort, profiles).
     a = generate_cohort(n=10, seed=42)

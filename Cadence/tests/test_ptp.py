@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from revive.agents.ptp_parser import (
+from cadence.agents.ptp_parser import (
     KIND_DATE,
     KIND_DURATION,
     KIND_REFUSAL,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from revive.journey.fsm import (
+from cadence.journey.fsm import (
     EVENT_ACTION_EXECUTED,
     EVENT_APPROVED,
     EVENT_CLASSIFIED,
@@ -16,7 +16,7 @@ from revive.journey.fsm import (
     is_terminal,
     transition,
 )
-from revive.store.journey_repo import (
+from cadence.store.journey_repo import (
     STATE_CLASSIFIED,
     STATE_CLOSED_UNRECOVERED,
     STATE_HUMAN_REVIEW,

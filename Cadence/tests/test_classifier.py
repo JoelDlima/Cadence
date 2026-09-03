@@ -1,7 +1,7 @@
 """Classifier tests: exact-code, keyword-fallback, unknown, and case-insensitive paths."""
 
-from revive.classify.classifier import Classification, classify
-from revive.classify.taxonomy import NO_FUNDS, UNKNOWN
+from cadence.classify.classifier import Classification, classify
+from cadence.classify.taxonomy import NO_FUNDS, UNKNOWN
 
 
 def test_exact_error_code_hit_yields_full_confidence_and_matched_code() -> None:

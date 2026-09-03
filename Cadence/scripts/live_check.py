@@ -16,10 +16,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import httpx
 
-from revive.agents.llm_client import LLMClient
-from revive.clock import SystemClock
-from revive.config import load_config
-from revive.store.db import Database
+from cadence.agents.llm_client import LLMClient
+from cadence.clock import SystemClock
+from cadence.config import load_config
+from cadence.store.db import Database
 
 _WIDTH = 62
 
@@ -52,7 +52,7 @@ def check_razorpay(cfg) -> None:
     except httpx.HTTPError as exc:
         _row("Razorpay API", "LIVE?", f"network error probing: {exc}")
     secret = cfg.razorpay.webhook_secret
-    if secret == "revive_dev_webhook_secret":
+    if secret == "cadence_dev_webhook_secret":
         _row("Webhook secret", "DEV DEFAULT", "set RZP_WEBHOOK_SECRET before real webhooks")
     else:
         _row("Webhook secret", "SET", f"{len(secret)} chars; must equal Supabase secret")

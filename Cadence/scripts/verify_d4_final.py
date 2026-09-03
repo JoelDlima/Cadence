@@ -59,13 +59,13 @@ def main() -> int:
     s, c = get("/api/eval/agent-compare?seeds=42,7,99,123,2024&n=50", timeout=90)
     print(f"    http {s}")
     print(f"    mean_naive={c.get('mean_naive_recovery_pct')}%  "
-          f"mean_revive={c.get('mean_revive_recovery_pct')}%  "
+          f"mean_cadence={c.get('mean_cadence_recovery_pct')}%  "
           f"mean_uplift={c.get('mean_uplift_pct')}%  "
           f"mean_delta=INR {c.get('mean_recovered_delta_inr')}")
     for r in c.get("per_seed", []):
         print(f"      seed {r['seed']:>5}: naive {r['naive_recovery_pct']:.1f}%  "
-              f"revive {r['revive_recovery_pct']:.1f}%  "
-              f"INR {r['revive_recovered_inr']:.0f}")
+              f"cadence {r['cadence_recovery_pct']:.1f}%  "
+              f"INR {r['cadence_recovered_inr']:.0f}")
 
     # --- 4) live recovery end-to-end ---
     print("\n[4] Live Recovery end-to-end (real Razorpay test mode)")

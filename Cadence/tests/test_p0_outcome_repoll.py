@@ -22,16 +22,16 @@ from typing import Any
 
 import pytest
 
-from revive.clock import FakeClock, utc_iso
-from revive.config import PolicyConfig
-from revive.executors.dispatcher import Dispatcher, default_outcome_fn
-from revive.executors.razorpay_client import SimulatedRazorpayClient
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import (
+from cadence.clock import FakeClock, utc_iso
+from cadence.config import PolicyConfig
+from cadence.executors.dispatcher import Dispatcher, default_outcome_fn
+from cadence.executors.razorpay_client import SimulatedRazorpayClient
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import (
     STATE_RECOVERED, STATE_WAITING_OUTCOME, JourneyRepo,
 )
-from revive.store.queue_repo import QueueRepo
+from cadence.store.queue_repo import QueueRepo
 
 _POLICY = PolicyConfig(
     touch_cap_per_window=3,

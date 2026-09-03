@@ -36,17 +36,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from revive.logging_setup import setup_logging
-from revive.mcp_server import serve
-from revive.store.db import Database
+from cadence.logging_setup import setup_logging
+from cadence.mcp_server import serve
+from cadence.store.db import Database
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the Cadence MCP (stdio) server.")
     parser.add_argument(
         "--db",
-        default="data/revive.db",
-        help="path to the Cadence SQLite database (default: data/revive.db)",
+        default="data/cadence.db",
+        help="path to the Cadence SQLite database (default: data/cadence.db)",
     )
     args = parser.parse_args()
 

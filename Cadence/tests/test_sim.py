@@ -9,7 +9,7 @@ from random import Random
 
 import pytest
 
-from revive.classify.taxonomy import (
+from cadence.classify.taxonomy import (
     BAD_VPA,
     BANK_DOWN,
     CUSTOMER_ABORTED,
@@ -22,9 +22,9 @@ from revive.classify.taxonomy import (
     TIMEOUT,
     UNKNOWN,
 )
-from revive.sim.cohort import SIM_UNKNOWN_CODE, generate_cohort, root_cause_of, webhook_payload
-from revive.sim.experiment import run_experiment
-from revive.sim.outcomes import outcome_for, recovery_probability
+from cadence.sim.cohort import SIM_UNKNOWN_CODE, generate_cohort, root_cause_of, webhook_payload
+from cadence.sim.experiment import run_experiment
+from cadence.sim.outcomes import outcome_for, recovery_probability
 
 
 @pytest.mark.unit
@@ -117,9 +117,9 @@ def test_run_experiment_produces_artifacts_under_budget(tmp_path: Path) -> None:
     assert elapsed < 60
     assert "INR" in report
     assert "naive" in report
-    assert "revive" in report
-    assert metrics["revive"]["recovered_inr_major"] >= 0
-    assert metrics["revive"]["llm_requests"] == 0
+    assert "cadence" in report
+    assert metrics["cadence"]["recovered_inr_major"] >= 0
+    assert metrics["cadence"]["llm_requests"] == 0
     assert isinstance(metrics["uplift_pct"], float)
 
 

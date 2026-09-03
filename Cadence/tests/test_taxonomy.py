@@ -1,6 +1,6 @@
 """Taxonomy tests: error-code coverage, cause inventory, legality-matrix integrity."""
 
-from revive.classify.taxonomy import (
+from cadence.classify.taxonomy import (
     BAD_VPA,
     BANK_DOWN,
     CUSTOMER_ABORTED,

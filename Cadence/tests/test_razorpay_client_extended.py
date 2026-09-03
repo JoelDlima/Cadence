@@ -6,12 +6,12 @@ import json
 import httpx
 import pytest
 
-from revive.executors.razorpay_client import (
+from cadence.executors.razorpay_client import (
     LiveRazorpayClient,
     SimulatedRazorpayClient,
     build_client,
 )
-from revive.config import RazorpayConfig
+from cadence.config import RazorpayConfig
 
 
 def _make_transport(responses: list[tuple[int, dict | str]]) -> httpx.MockTransport:
@@ -105,8 +105,8 @@ def test_live_create_customer_sends_expected_body():
     The mock returns success on POST; lookup-first path is exercised
     separately in test_live_create_customer_reuses_when_match_exists."""
     import httpx
-    from revive.executors.razorpay_client import LiveRazorpayClient
-    from revive.config import RazorpayConfig
+    from cadence.executors.razorpay_client import LiveRazorpayClient
+    from cadence.config import RazorpayConfig
 
     captured: dict = {}
 
@@ -136,8 +136,8 @@ def test_live_create_customer_reuses_when_match_exists():
     transport so the mock is honoured."""
     import json
     import httpx
-    from revive.executors.razorpay_client import LiveRazorpayClient
-    from revive.config import RazorpayConfig
+    from cadence.executors.razorpay_client import LiveRazorpayClient
+    from cadence.config import RazorpayConfig
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "GET":

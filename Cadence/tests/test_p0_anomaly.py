@@ -6,10 +6,10 @@ client-side from the live journeys list. The audit flagged this as
 recommended actions were the same canned text for every cause.
 
 After this fix:
-- src/revive/api/app.py: new /api/anomaly endpoint backed by
-  revive.policy.outage.detect_cause_outage. Returns a list of
+- src/cadence/api/app.py: new /api/anomaly endpoint backed by
+  cadence.policy.outage.detect_cause_outage. Returns a list of
   {cause, count, severity, window_minutes, threshold, recommendation}.
-- src/revive/api/schemas.py: AnomalyOut pydantic model.
+- src/cadence/api/schemas.py: AnomalyOut pydantic model.
 - frontend/src/views/OverviewView.tsx: card now consumes the live
   endpoint and surfaces the per-cause recommendation text.
 - frontend/src/services/api.ts + types/index.ts: getAnomaly + Anomaly.
@@ -23,10 +23,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from revive.clock import FakeClock
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import JourneyRepo
+from cadence.clock import FakeClock
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import JourneyRepo
 
 pytestmark = [pytest.mark.unit]
 
@@ -38,8 +38,8 @@ def api_client():
     clock = FakeClock()
     clock.set(datetime(2026, 8, 30, 0, 0, 0, tzinfo=timezone.utc))
     app = FastAPI()
-    from revive.api.schemas import AnomalyOut
-    from revive.policy.outage import detect_cause_outage
+    from cadence.api.schemas import AnomalyOut
+    from cadence.policy.outage import detect_cause_outage
 
     def handler(window_minutes: int = 10, threshold: int = 3):
         now = clock.now()

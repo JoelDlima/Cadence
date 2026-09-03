@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "revive"
+name = "cadence"
 version = "0.1.0"
 description = "Autonomous revenue recovery system - event-sourced journeys, governed agent, measured outcomes"
 requires-python = ">=3.12"

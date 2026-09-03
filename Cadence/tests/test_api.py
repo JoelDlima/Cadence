@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from revive.api.app import create_app
-from revive.config import (
+from cadence.api.app import create_app
+from cadence.config import (
     AppConfig,
     ChannelConfig,
     CloudConfig,
@@ -17,11 +17,11 @@ from revive.config import (
     PolicyConfig,
     RazorpayConfig,
 )
-from revive.events import AGG_JOURNEY, E_CLASSIFICATION_COMPLETED, E_JOURNEY_OPENED, E_TIMER_SET
-from revive.executors.razorpay_client import build_client
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import JourneyRepo
+from cadence.events import AGG_JOURNEY, E_CLASSIFICATION_COMPLETED, E_JOURNEY_OPENED, E_TIMER_SET
+from cadence.executors.razorpay_client import build_client
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import JourneyRepo
 
 pytestmark = [pytest.mark.integration]
 
@@ -47,7 +47,7 @@ def _config(db_path: Path) -> AppConfig:
             model_openrouter="or-model",
             daily_request_cap=10,
         ),
-        channels=ChannelConfig(resend_api_key="", email_from="revive@example.com"),
+        channels=ChannelConfig(resend_api_key="", email_from="cadence@example.com"),
         policy=PolicyConfig(
             touch_cap_per_window=3,
             touch_window_days=14,
@@ -377,7 +377,7 @@ def test_banks_endpoint_returns_four_known_issuers(api: Api) -> None:
 
 def test_banks_marks_sbi_in_outage_when_outage_pause_fires(api: Api) -> None:
     from datetime import UTC, datetime, timedelta
-    from revive.policy.outage import DEFAULT_THRESHOLD
+    from cadence.policy.outage import DEFAULT_THRESHOLD
     recent = (datetime.now(UTC) - timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
     for i in range(DEFAULT_THRESHOLD + 1):
         api.store.append(
@@ -416,7 +416,7 @@ def test_attention_returns_human_review_journey(api: Api) -> None:
 
 
 def test_attention_returns_high_value_journey(api: Api) -> None:
-    from revive.config import PolicyConfig
+    from cadence.config import PolicyConfig
     # 60 lakh paise = 6,000,000 -> >= require_human_above_minor (5,000,000)
     _seed_journey(api, journey_id="j_hv1", subscription_id="sub_hv1")
     api.journeys.update_fields(
@@ -450,7 +450,7 @@ def test_eval_summary_prefers_large_file_when_present(tmp_path: Path, monkeypatc
     (docs_dir / "eval-metrics-large.json").write_text(
         '{"n": 5000, "seed": 42, "naive": {"recovered_inr_major": 1154660.0, '
         '"recovery_rate_pct": 38.8, "contacts": 15434, "contacts_per_recovery": 7.96, '
-        '"llm_requests": 0}, "revive": {"recovered_inr_major": 1610927.0, '
+        '"llm_requests": 0}, "cadence": {"recovered_inr_major": 1610927.0, '
         '"recovery_rate_pct": 53.46, "contacts_per_recovery": 0.76, "llm_requests": 0}, '
         '"uplift_pct": 37.78, "source": "live-faker-indian"}',
         encoding="utf-8",
@@ -459,8 +459,8 @@ def test_eval_summary_prefers_large_file_when_present(tmp_path: Path, monkeypatc
     body = client.get("/api/eval-summary").json()
     assert body["source"] == "live-faker-indian"
     assert body["n"] == 5000
-    assert body["revive_recovery_pct"] == 53.46
-    assert body["revive_recovered_inr"] == 1610927.0
+    assert body["cadence_recovery_pct"] == 53.46
+    assert body["cadence_recovered_inr"] == 1610927.0
     assert body["naive_recovered_inr"] == 1154660.0
     assert body["uplift_pct"] == 37.78
 
@@ -476,7 +476,7 @@ def test_eval_summary_falls_back_to_canonical_500_when_no_large_file(
     (docs_dir / "eval-metrics.json").write_text(
         '{"n": 500, "seed": 42, "naive": {"recovered_inr_major": 113311.0, '
         '"recovery_rate_pct": 37.8, "contacts": 1554, "contacts_per_recovery": 8.22}, '
-        '"revive": {"recovered_inr_major": 166228.0, "recovery_rate_pct": 54.4, '
+        '"cadence": {"recovered_inr_major": 166228.0, "recovery_rate_pct": 54.4, '
         '"contacts_per_recovery": 0.64, "llm_requests": 0}, "uplift_pct": 43.9, '
         '"source": "canonical"}',
         encoding="utf-8",
@@ -484,7 +484,7 @@ def test_eval_summary_falls_back_to_canonical_500_when_no_large_file(
     client = TestClient(create_app(cfg=_config(db_path)))
     body = client.get("/api/eval-summary").json()
     assert body["n"] == 500
-    assert body["revive_recovery_pct"] == 54.4
+    assert body["cadence_recovery_pct"] == 54.4
     # Source is "cached" (not "live-faker-indian") when only the canonical
     # file is present, even though the 500-sub number is the headline.
     assert body["source"] == "cached"
@@ -620,7 +620,7 @@ def test_simulate_paid_in_live_mode_attempts_real_capture(tmp_path: Path) -> Non
         return httpx.Response(401, content=b'{"error":{"code":"BAD_REQUEST_ERROR"}}')
 
     client = TestClient(create_app(cfg=cfg))
-    from revive.executors.razorpay_client import LiveRazorpayClient
+    from cadence.executors.razorpay_client import LiveRazorpayClient
     orig = client.app.state.runtime.dispatcher._client
     new_client = LiveRazorpayClient(
         cfg=cfg.razorpay, transport=httpx.Client(transport=httpx.MockTransport(_fake_handler))
@@ -674,10 +674,10 @@ def test_cloud_status_offline_when_no_keys(api: Api) -> None:
 def test_cloud_status_error_when_upsert_fails(tmp_path: Path, monkeypatch) -> None:
     """A configured-but-broken Supabase client reports sync_state=error."""
     import httpx
-    from revive.api import app as app_module
-    from revive.cloud.sync import CloudSync
-    from revive.clock import SystemClock
-    from revive.config import CloudConfig
+    from cadence.api import app as app_module
+    from cadence.cloud.sync import CloudSync
+    from cadence.clock import SystemClock
+    from cadence.config import CloudConfig
 
     db_path = tmp_path / "live_cloud.db"
     # Build a CloudConfig that looks live (is_live=True) so the status endpoint
@@ -730,7 +730,7 @@ def test_cloud_status_error_when_upsert_fails(tmp_path: Path, monkeypatch) -> No
 
 def test_status_reports_all_four_key_classes(tmp_path: Path) -> None:
     """All four key classes present => mode=LIVE and all flags set."""
-    from revive.config import CloudConfig
+    from cadence.config import CloudConfig
     cfg = _config(tmp_path / "live_full.db")
     cfg = AppConfig(
         **{
@@ -769,7 +769,7 @@ def test_status_reports_all_four_key_classes(tmp_path: Path) -> None:
 
 def test_live_razorpay_client_selected_when_keys_present(tmp_path: Path) -> None:
     """The build_client() factory picks LiveRazorpayClient (not Simulated) when is_live."""
-    from revive.executors.razorpay_client import (
+    from cadence.executors.razorpay_client import (
         LiveRazorpayClient, SimulatedRazorpayClient, build_client,
     )
     cfg = _config(tmp_path / "live_client.db")
@@ -789,7 +789,7 @@ def test_live_razorpay_client_selected_when_keys_present(tmp_path: Path) -> None
 
 def test_demo_razorpay_client_selected_when_keys_absent(tmp_path: Path) -> None:
     """The build_client() factory picks SimulatedRazorpayClient when no keys."""
-    from revive.executors.razorpay_client import (
+    from cadence.executors.razorpay_client import (
         LiveRazorpayClient, SimulatedRazorpayClient, build_client,
     )
     cfg = _config(tmp_path / "demo_client.db")
@@ -850,7 +850,7 @@ def test_pay_link_in_live_mode_simulate_paid_attempts_real_capture(tmp_path: Pat
         return httpx.Response(401, content=b'{"error":{"code":"BAD_REQUEST_ERROR"}}')
 
     client = TestClient(create_app(cfg=cfg))
-    from revive.executors.razorpay_client import LiveRazorpayClient
+    from cadence.executors.razorpay_client import LiveRazorpayClient
     orig = client.app.state.runtime.dispatcher._client
     client.app.state.runtime.dispatcher._client = LiveRazorpayClient(
         cfg=cfg.razorpay, transport=httpx.Client(transport=httpx.MockTransport(_fake_handler))
@@ -895,7 +895,7 @@ def test_live_check_prints_cadence_header(tmp_path: Path) -> None:
 def test_phoenix_is_available_is_false_when_module_missing(monkeypatch) -> None:
     """``is_available()`` returns False when the optional Phoenix sidecar
     is not installed. This is the path the 297 existing tests run on."""
-    from revive.observability.phoenix import is_available
+    from cadence.observability.phoenix import is_available
     # The test runner has no arviz-phoenix installed.
     assert is_available() is False
 
@@ -903,7 +903,7 @@ def test_phoenix_is_available_is_false_when_module_missing(monkeypatch) -> None:
 def test_phoenix_instrument_is_safe_noop_when_not_available() -> None:
     """``instrument()`` returns False and never raises when Phoenix is missing.
     This is the contract the keyless path relies on."""
-    from revive.observability.phoenix import instrument
+    from cadence.observability.phoenix import instrument
     assert instrument() is False  # no app arg -> no-op + returns False
 
 

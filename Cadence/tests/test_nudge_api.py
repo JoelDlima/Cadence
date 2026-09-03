@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from revive.api.app import create_app
+from cadence.api.app import create_app
 from tests.test_api import _config
 
 pytestmark = [pytest.mark.integration]

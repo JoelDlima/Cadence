@@ -6,8 +6,8 @@ from datetime import datetime, UTC, timedelta
 from pathlib import Path
 from fastapi.testclient import TestClient
 
-from revive.api.app import create_app
-from revive.b2b.chaser import (
+from cadence.api.app import create_app
+from cadence.b2b.chaser import (
     ACTION_FIRMER,
     ACTION_FRIENDLY,
     ACTION_MANAGER,

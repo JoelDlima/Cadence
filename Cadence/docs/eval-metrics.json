@@ -12,7 +12,7 @@
     "recovery_rate_pct": 37.8,
     "vetoes": 0
   },
-  "revive": {
+  "cadence": {
     "attempts": 836,
     "contacts": 175,
     "contacts_per_recovery": 0.64,

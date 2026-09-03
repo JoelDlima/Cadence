@@ -41,7 +41,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .join("");
 
   if (sigHeader !== expected) {
-    console.error("revive-ingest: signature mismatch");
+    console.error("cadence-ingest: signature mismatch");
     return Response.json({ ok: false }, { status: 401 });
   }
 
@@ -53,7 +53,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     payload = JSON.parse(raw);
   } catch (_err) {
-    console.error("revive-ingest: valid signature but malformed json; dropping");
+    console.error("cadence-ingest: valid signature but malformed json; dropping");
     return Response.json({ ok: true });
   }
 
@@ -96,10 +96,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       },
     );
     if (!res.ok) {
-      console.error(`revive-ingest: inbox insert failed HTTP ${res.status}`);
+      console.error(`cadence-ingest: inbox insert failed HTTP ${res.status}`);
     }
   } catch (err) {
-    console.error("revive-ingest: inbox insert threw", err);
+    console.error("cadence-ingest: inbox insert threw", err);
   }
 
   return Response.json({ ok: true });

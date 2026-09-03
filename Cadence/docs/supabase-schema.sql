@@ -1,5 +1,5 @@
--- Revive Supabase schema (Phase E3). Run once in Supabase Studio SQL Editor.
--- Raw webhook payloads staged by the revive-ingest Edge Function; drained by
+-- Cadence Supabase schema (Phase E3). Run once in Supabase Studio SQL Editor.
+-- Raw webhook payloads staged by the cadence-ingest Edge Function; drained by
 -- the local SupabaseInboxPoller.
 create table webhook_inbox (
     id           uuid primary key default gen_random_uuid(),

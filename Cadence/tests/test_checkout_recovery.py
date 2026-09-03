@@ -6,8 +6,8 @@ from datetime import datetime, UTC, timedelta
 from pathlib import Path
 from fastapi.testclient import TestClient
 
-from revive.api.app import create_app
-from revive.checkout.recovery import (
+from cadence.api.app import create_app
+from cadence.checkout.recovery import (
     ABANDON_AFTER,
     EXPIRE_AFTER,
     MAX_NUDGES,

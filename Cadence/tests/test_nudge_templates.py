@@ -1,7 +1,7 @@
 """Tests for the Indic-language recovery nudge templates."""
 from __future__ import annotations
 
-from revive.policy.nudge_templates import (
+from cadence.policy.nudge_templates import (
     SUPPORTED_LANGUAGES,
     nudge_for_language,
 )

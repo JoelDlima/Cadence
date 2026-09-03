@@ -12,12 +12,12 @@ from collections.abc import Callable
 import httpx
 import pytest
 
-from revive.clock import FakeClock
-from revive.cloud.poller import SupabaseInboxPoller
-from revive.cloud.sync import CloudSync
-from revive.config import CloudConfig
-from revive.store.db import Database
-from revive.store.journey_repo import JourneyRepo
+from cadence.clock import FakeClock
+from cadence.cloud.poller import SupabaseInboxPoller
+from cadence.cloud.sync import CloudSync
+from cadence.config import CloudConfig
+from cadence.store.db import Database
+from cadence.store.journey_repo import JourneyRepo
 
 LIVE_CFG = CloudConfig("https://xyz.supabase.co", "service-key", True)
 OFFLINE_CFG = CloudConfig("", "", False)

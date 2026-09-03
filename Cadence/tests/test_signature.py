@@ -7,7 +7,7 @@ import hmac
 
 import pytest
 
-from revive.ingest.signature import verify_signature
+from cadence.ingest.signature import verify_signature
 
 SECRET = "whsec_test_123"
 BODY = b'{"event":"payment.failed","payload":{}}'

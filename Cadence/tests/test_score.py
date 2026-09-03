@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from revive.classify.taxonomy import (
+from cadence.classify.taxonomy import (
     BANK_DOWN,
     CUSTOMER_ABORTED,
     HARD_DECLINE,
@@ -12,7 +12,7 @@ from revive.classify.taxonomy import (
     TIMEOUT,
     UNKNOWN,
 )
-from revive.policy.score import recovery_score
+from cadence.policy.score import recovery_score
 
 pytestmark = [pytest.mark.unit]
 

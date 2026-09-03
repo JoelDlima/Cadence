@@ -29,7 +29,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from revive.classify.taxonomy import (
+from cadence.classify.taxonomy import (
     BANK_DOWN,
     CUSTOMER_ABORTED,
     EMAIL_NUDGE,
@@ -45,9 +45,9 @@ from revive.classify.taxonomy import (
     TIMEOUT,
     WHATSAPP_NUDGE,
 )
-from revive.clock import FakeClock
-from revive.config import PolicyConfig
-from revive.policy.guardian import JourneyContext, Proposal, evaluate
+from cadence.clock import FakeClock
+from cadence.config import PolicyConfig
+from cadence.policy.guardian import JourneyContext, Proposal, evaluate
 
 # Two clocks so we cover BOTH quiet-hours branches without monkey-patching.
 CLOCK_QUIET = FakeClock()

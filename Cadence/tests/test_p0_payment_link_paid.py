@@ -19,12 +19,12 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from revive.clock import FakeClock
-from revive.events import E_PAYMENT_RECOVERED
-from revive.ingest.gateway import SIGNATURE_HEADER, create_webhook_router
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import JourneyRepo
+from cadence.clock import FakeClock
+from cadence.events import E_PAYMENT_RECOVERED
+from cadence.ingest.gateway import SIGNATURE_HEADER, create_webhook_router
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import JourneyRepo
 
 WEBHOOK_SECRET = "s3cret"
 
@@ -68,7 +68,7 @@ def _plink_paid_body(*, reference_id: str, payment_id: str = "pay_PLINK1",
 
 
 def _seed_journey(db: Database, journey_id: str, subscription_id: str) -> None:
-    from revive.clock import utc_iso
+    from cadence.clock import utc_iso
     jr = JourneyRepo(db)
     now = utc_iso(datetime(2026, 8, 30, 0, 0, 0, tzinfo=timezone.utc))
     jr.create(

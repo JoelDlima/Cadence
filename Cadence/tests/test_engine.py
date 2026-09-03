@@ -10,10 +10,10 @@ from typing import Any
 
 import pytest
 
-from revive.classify.taxonomy import BANK_DOWN, NO_FUNDS, TIMEOUT, legal_moves
-from revive.clock import FakeClock, parse_iso, utc_iso
-from revive.config import PolicyConfig
-from revive.events import (
+from cadence.classify.taxonomy import BANK_DOWN, NO_FUNDS, TIMEOUT, legal_moves
+from cadence.clock import FakeClock, parse_iso, utc_iso
+from cadence.config import PolicyConfig
+from cadence.events import (
     E_ACTION_EXECUTED,
     E_BANDIT_RANKED,
     E_CLASSIFICATION_COMPLETED,
@@ -24,18 +24,18 @@ from revive.events import (
     E_TIMER_SET,
     Event,
 )
-from revive.executors.contracts import TASK_EXECUTE_INTENT, TASK_HANDLE_PAYMENT_FAILED
-from revive.journey.engine import RecoveryEngine
-from revive.store.db import Database
-from revive.store.event_store import EventStore
-from revive.store.journey_repo import (
+from cadence.executors.contracts import TASK_EXECUTE_INTENT, TASK_HANDLE_PAYMENT_FAILED
+from cadence.journey.engine import RecoveryEngine
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
+from cadence.store.journey_repo import (
     STATE_CLOSED_UNRECOVERED,
     STATE_HUMAN_REVIEW,
     STATE_INTERVENING,
     JourneyRepo,
 )
-from revive.store.queue_repo import QueueRepo
-from revive.worker.bus import Worker
+from cadence.store.queue_repo import QueueRepo
+from cadence.worker.bus import Worker
 
 
 def _policy_config() -> PolicyConfig:

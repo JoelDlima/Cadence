@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from revive.agents.planner import PlannerAgent, PlannerProposal
-from revive.classify.taxonomy import LEGAL_MOVES, NO_FUNDS
+from cadence.agents.planner import PlannerAgent, PlannerProposal
+from cadence.classify.taxonomy import LEGAL_MOVES, NO_FUNDS
 
 
 class FakeLLM:

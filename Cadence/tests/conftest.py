@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from revive.clock import FakeClock
-from revive.store.db import Database
+from cadence.clock import FakeClock
+from cadence.store.db import Database
 
 
 @pytest.fixture

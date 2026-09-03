@@ -12,11 +12,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from revive.agents.message_writer import write_nudge
-from revive.clock import FakeClock
-from revive.events import E_LLM_THINKING, EVENT_TYPES
-from revive.store.db import Database
-from revive.store.event_store import EventStore
+from cadence.agents.message_writer import write_nudge
+from cadence.clock import FakeClock
+from cadence.events import E_LLM_THINKING, EVENT_TYPES
+from cadence.store.db import Database
+from cadence.store.event_store import EventStore
 
 
 def test_e_llm_thinking_in_event_types_whitelist() -> None:
@@ -60,7 +60,7 @@ def test_write_nudge_template_fallback_records_agent_thinking_event() -> None:
 def test_write_nudge_no_store_still_returns_body() -> None:
     """Without a store, the writer returns a body but does not raise.
     (This is the dispatcher path when the audit chain is mid-init.)"""
-    from revive.clock import FakeClock
+    from cadence.clock import FakeClock
     body, subject = write_nudge(
         channel="whatsapp",
         amount_minor=49900,

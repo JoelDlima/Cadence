@@ -8,8 +8,8 @@ import time
 import urllib.request
 import urllib.error
 
-OUT = r"C:\Revive\Cadence\frontend\spa.out"
-ERR = r"C:\Revive\Cadence\frontend\spa.err"
+OUT = r"C:\Cadence\Cadence\frontend\spa.out"
+ERR = r"C:\Cadence\Cadence\frontend\spa.err"
 
 # Kill any existing vite
 subprocess.run(
@@ -24,7 +24,7 @@ time.sleep(1)
 # Launch detached
 with open(OUT, "wb") as out, open(ERR, "wb") as err:
     subprocess.Popen(
-        ["cmd", "/c", "cd /d", r"C:\Revive\Cadence\frontend", "&&", "npm", "run", "dev"],
+        ["cmd", "/c", "cd /d", r"C:\Cadence\Cadence\frontend", "&&", "npm", "run", "dev"],
         stdout=out, stderr=err,
         creationflags=0x00000008,  # DETACHED_PROCESS
     )

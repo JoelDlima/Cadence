@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 import pytest
 
-from revive.config import (
+from cadence.config import (
     AppConfig,
     ChannelConfig,
     CloudConfig,
@@ -18,7 +18,7 @@ from revive.config import (
     PolicyConfig,
     RazorpayConfig,
 )
-from revive.executors.channels import (
+from cadence.executors.channels import (
     EmailChannel,
     MockWhatsApp,
     build_channels,
@@ -26,7 +26,7 @@ from revive.executors.channels import (
     select_channel,
     whatsapp_nudge_text,
 )
-from revive.policy.preferences import Preferences
+from cadence.policy.preferences import Preferences
 
 pytestmark = [pytest.mark.unit]
 
@@ -59,7 +59,7 @@ def _app_config(resend_api_key: str = "") -> AppConfig:
         log_level="INFO",
         razorpay=RazorpayConfig("", "", "whsec"),
         llm=_LLM,
-        channels=ChannelConfig(resend_api_key=resend_api_key, email_from="revive@example.com"),
+        channels=ChannelConfig(resend_api_key=resend_api_key, email_from="cadence@example.com"),
         policy=_POLICY,
         cloud=CloudConfig("", "", False),
     )
@@ -117,7 +117,7 @@ def test_live_email_posts_resend_shape_via_injected_transport() -> None:
     assert captured["method"] == "POST"
     assert captured["url"] == "https://api.resend.com/emails"
     assert captured["authorization"] == "Bearer re_test_key"
-    assert captured["body"]["from"] == "revive@example.com"
+    assert captured["body"]["from"] == "cadence@example.com"
     assert captured["body"]["to"] == ["cust-9@example.test"]
     assert captured["body"]["subject"] == "Action needed: your payment"
     assert captured["body"]["text"] == "please pay"
@@ -172,7 +172,7 @@ def test_whatsapp_template_appends_self_service_page_link_when_wired() -> None:
 
 
 def test_email_template_appends_self_service_page_line_when_wired() -> None:
-    page_url = "https://revive.example.com/pay/j_xyz"
+    page_url = "https://cadence.example.com/pay/j_xyz"
 
     text = email_nudge_text(129900, page_url=page_url)
 

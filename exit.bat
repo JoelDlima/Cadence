@@ -2,7 +2,7 @@
 setlocal
 
 REM ============================================================
-REM Cadence / Revive - stop backend + frontend
+REM Cadence / Cadence - stop backend + frontend
 REM ============================================================
 REM Kills any running uvicorn (backend) and vite (frontend)
 REM processes for the Cadence project.
@@ -15,7 +15,7 @@ echo ============================================================
 echo.
 
 echo [1/2] killing backend (uvicorn on :8000)...
-powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*uvicorn*revive.api*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*uvicorn*cadence.api*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
 timeout /t 1 /nobreak >nul
 
 echo [2/2] killing frontend (vite on :3000)...
@@ -30,8 +30,8 @@ echo ============================================================
 echo   Cadence stopped.
 echo.
 echo   Logs preserved at:
-echo     C:\Revive\Cadence\api.out / api.err
-echo     C:\Revive\Cadence\frontend\spa.out / spa.err
+echo     C:\Cadence\Cadence\api.out / api.err
+echo     C:\Cadence\Cadence\frontend\spa.out / spa.err
 echo ============================================================
 echo.
 

@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from revive.api.app import create_app
-from revive.config import (
+from cadence.api.app import create_app
+from cadence.config import (
     AppConfig,
     ChannelConfig,
     CloudConfig,
@@ -35,7 +35,7 @@ def test_agent_compare_endpoint_returns_both_arms(tmp_path: Path) -> None:
     assert d["source"] == "live_experiment"
     # Both arms should have recovered at least 0 INR
     assert d["naive_recovered_inr"] >= 0
-    assert d["revive_recovered_inr"] >= 0
+    assert d["cadence_recovered_inr"] >= 0
     # Uplift is well-defined (could be 0 if recovery rates match, otherwise >0)
     assert "uplift_pct" in d
     assert "recovered_delta" in d

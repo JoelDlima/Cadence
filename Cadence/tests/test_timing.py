@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from revive.classify.taxonomy import (
+from cadence.classify.taxonomy import (
     BAD_VPA,
     BANK_DOWN,
     CUSTOMER_ABORTED,
@@ -15,7 +15,7 @@ from revive.classify.taxonomy import (
     NO_FUNDS,
     TIMEOUT,
 )
-from revive.policy.timing import (
+from cadence.policy.timing import (
     INDIAN_HOLIDAYS_2026,
     NPCI_MAINTENANCE_WINDOW,
     PEAK_HOLD_WINDOWS_IST,

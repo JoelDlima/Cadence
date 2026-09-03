@@ -186,7 +186,7 @@ export const RecoveryBrainView: React.FC = () => {
         </div>
         <p className="text-[11px] text-[var(--color-ink-muted)] mt-3">
           Positive values push the bandit toward that action; negative values push against.
-          Weights come from FEATURE_IMPORTANCES in <code className="font-mono">revive/policy/bandit.py</code>
+          Weights come from FEATURE_IMPORTANCES in <code className="font-mono">cadence/policy/bandit.py</code>
           and are auditable in the source.
         </p>
       </Card>
