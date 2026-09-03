@@ -1,6 +1,7 @@
 # Cadence
 
-> **Autonomous revenue-recovery agent for Indian recurring payments, built on Razorpay.**
+> **Autonomous AI agent that recovers failed Indian recurring payments end-to-end on Razorpay.**
+> Detects the failure, picks the best retry channel, and executes the bounded recovery.
 > Razorpay Buildathon 2026, Track 3 (AI Revenue Recovery).
 
 ---

@@ -11,6 +11,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, Badge, Button, PageHeader, EmptyState } from '../components/primitives';
 import { api } from '../services/api';
 import { ShoppingCart, Play, RefreshCw } from 'lucide-react';
+import { DemoSeedBadge } from '../components/DemoSeedBadge';
 
 interface CheckoutSession {
   id: string;
@@ -125,7 +126,8 @@ export const CheckoutView: React.FC = () => {
         title="Checkout Drop-off Recovery"
         description="Razorpay payment_link started but not paid within 30 min. The chaser sends a soft reminder (T+0, T+24h, T+7d) that respects NPCI's 18-hour quiet-hours rule and the touch cap. The 3rd follow-up carries a 5% discount signal. Same AI agent + rule engine as the consumer path."
         action={
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <DemoSeedBadge />
             <Button onClick={simulateAbandon} disabled={busy} variant="secondary">
               <ShoppingCart size={14} className="inline-block mr-1" />
               Simulate abandon

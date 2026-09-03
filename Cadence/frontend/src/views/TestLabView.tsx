@@ -19,6 +19,8 @@ import {
   ZapOff,
   Shuffle,
   AlertOctagon,
+  ExternalLink,
+  Mail,
 } from 'lucide-react';
 
 const DEFAULT_SEEDS = [42, 7, 99, 123, 2024] as const;
@@ -88,6 +90,37 @@ const TestLabView: React.FC = () => {
   const [custId, setCustId] = useState('cust_judge_01');
   const [activeDrill, setActiveDrill] = useState<DrillId | null>(null);
   const [drillOutputs, setDrillOutputs] = useState<Record<string, DrillResult>>({});
+
+  // --- Live failure: real Razorpay customer + plink_* + dashboard link ---
+  const [liveFiring, setLiveFiring] = useState(false);
+  const [liveResult, setLiveResult] = useState<{
+    customer_id?: string;
+    payment_link_id?: string;
+    short_url?: string;
+    journey_id?: string;
+    simulated?: boolean;
+    detail?: string;
+  } | null>(null);
+
+  const fireLiveFailure = useCallback(async () => {
+    setLiveFiring(true);
+    setLiveResult(null);
+    try {
+      const c = await api.createLiveCustomer({ name: 'Demo (judge)', email: 'demo@x.local', contact: '+910000000000' });
+      const f = await api.createLiveFailure({ customer_id: c.id });
+      setLiveResult({
+        customer_id: c.id,
+        payment_link_id: f.payment_link?.id,
+        short_url: f.payment_link?.short_url,
+        journey_id: f.journey_id,
+        simulated: f.payment_link?.simulated,
+      });
+    } catch (e: any) {
+      setLiveResult({ detail: e?.message ?? 'live failure request failed' });
+    } finally {
+      setLiveFiring(false);
+    }
+  }, []);
 
   const runDrill = useCallback(async (id: DrillId) => {
     setActiveDrill(id);
@@ -205,6 +238,64 @@ const TestLabView: React.FC = () => {
           )}
 
           {result && <CompareResultView result={result} />}
+        </div>
+      </Card>
+
+      {/* --- Live failure: real Razorpay object on click --- */}
+      <Card>
+        <CardHeader
+          title="Fire a live test failure"
+          subtitle="Creates a real Razorpay test-mode customer + payment link + HMAC-signed payment.failed webhook. The plink_* id will appear in the Razorpay dashboard in ~1s."
+          action={<Badge tone="info">Real Razorpay</Badge>}
+        />
+        <div className="p-5 space-y-3">
+          <Button onClick={fireLiveFailure} disabled={liveFiring} variant="primary" size="sm">
+            {liveFiring ? 'Firing…' : 'Fire live failure'}
+          </Button>
+          {liveResult && (
+            <div className="text-[12.5px] font-mono space-y-1 bg-[var(--color-surface-subtle)] border border-[var(--color-line)] rounded p-3">
+              {liveResult.detail && <div className="text-[var(--color-coral)]">{liveResult.detail}</div>}
+              {liveResult.customer_id && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[var(--color-ink-muted)] shrink-0">customer id:</span>
+                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded break-all">{liveResult.customer_id}</code>
+                </div>
+              )}
+              {liveResult.payment_link_id && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[var(--color-ink-muted)] shrink-0">payment link id:</span>
+                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded break-all">{liveResult.payment_link_id}</code>
+                </div>
+              )}
+              {liveResult.short_url && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[var(--color-ink-muted)] shrink-0">short_url:</span>
+                  <a href={liveResult.short_url} target="_blank" rel="noreferrer" className="text-[var(--color-accent)] underline break-all">
+                    {liveResult.short_url}
+                  </a>
+                </div>
+              )}
+              {liveResult.journey_id && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[var(--color-ink-muted)] shrink-0">journey id:</span>
+                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded break-all">{liveResult.journey_id}</code>
+                </div>
+              )}
+              {liveResult.simulated !== undefined && (
+                <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                  simulated: {String(liveResult.simulated)}
+                </div>
+              )}
+              <a
+                href="https://dashboard.razorpay.com/app/payment-links"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-accent)] underline hover:no-underline mt-2"
+              >
+                <ExternalLink size={11} /> Open in Razorpay Dashboard (Payment Links)
+              </a>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -422,6 +513,9 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
             </div>
             <div className="text-2xl font-semibold text-[var(--color-accent)] mt-1 font-mono">
               +{uplift.toFixed(1)}%
+            </div>
+            <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] mt-1">
+              calibrated outcome simulator &middot; not a live Razorpay cohort
             </div>
           </div>
           <div className="flex-1">

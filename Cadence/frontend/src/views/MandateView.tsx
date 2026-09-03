@@ -11,6 +11,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, Badge, Button, PageHeader, EmptyState } from '../components/primitives';
 import { api } from '../services/api';
 import { GitBranch, Play } from 'lucide-react';
+import { DemoSeedBadge } from '../components/DemoSeedBadge';
 
 interface SequencedMandate {
   mandate_id: string;
@@ -93,10 +94,13 @@ export const MandateView: React.FC = () => {
         title="UPI Auto-pay Retry Sequencer"
         description="A failed UPI auto-pay or card e-mandate needs cross-channel cadence. The sequencer ladder: RETRY_NOW (cause != BANK_DOWN) -> RETRY_24H (BANK_DOWN) -> REMITTER_OUTREACH (3+ BANK_DOWN in 7d) -> SWITCH_METHOD (mandate paused > 14d) -> STOP_AND_HUMAN_REVIEW (3+ distinct causes). Every decision is replayable from the hash-chained audit log."
         action={
-          <Button onClick={simulateBankDown} disabled={busy} variant="secondary">
+          <div className="flex gap-2 items-center">
+            <DemoSeedBadge />
+            <Button onClick={simulateBankDown} disabled={busy} variant="secondary">
             <Play size={14} className="inline-block mr-1" />
             Simulate a UPI auto-pay failure
           </Button>
+          </div>
         }
       />
 

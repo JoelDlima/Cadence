@@ -11,6 +11,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, Badge, Button, PageHeader, EmptyState } from '../components/primitives';
 import { api } from '../services/api';
 import { Briefcase, Play, Plus } from 'lucide-react';
+import { DemoSeedBadge } from '../components/DemoSeedBadge';
 
 interface B2BInvoice {
   id: string;
@@ -129,7 +130,8 @@ export const B2BView: React.FC = () => {
         title="B2B Receivables Chaser"
         description="Razorpay invoice API. The chaser runs a 5-rung ladder: pre-due reminder (T-3) -> friendly nudge (T+3) -> firmer nudge with UPI deep-link (T+7) -> escalate to manager (T+14) -> written notice (T+21) -> write-off (T+45). Respects quiet hours; each chase is auditable."
         action={
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <DemoSeedBadge />
             <Button onClick={createOne} disabled={busy} variant="secondary">
               <Plus size={14} className="inline-block mr-1" />
               Create overdue invoice

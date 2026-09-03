@@ -10,6 +10,7 @@ import {
 import { Card, Badge, Button, PageHeader } from '../components/primitives';
 import { api, formatINR } from '../services/api';
 import { Journey } from '../types';
+import { DemoSeedBadge } from '../components/DemoSeedBadge';
 
 export const PayPortalView: React.FC = () => {
   const [journey, setJourney] = useState<Journey | null>(null);
@@ -112,7 +113,7 @@ export const PayPortalView: React.FC = () => {
         <PageHeader
           title="Customer Payment Resolution"
           description="Self-service recovery experience shown to subscribers (`/pay/{journey_id}`). Converts involuntary churn into instant resolution."
-          action={<Badge tone="approved">Demo</Badge>}
+          action={<DemoSeedBadge />}
         />
         <div className="max-w-md mx-auto">
           <Card className="p-6 glass-modal border border-[var(--color-line-strong)] text-center space-y-2">
