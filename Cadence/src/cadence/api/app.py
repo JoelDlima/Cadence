@@ -870,7 +870,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         # Read recent journeys with opened_at in the window.
         try:
             rows = db.conn.execute(
-                "SELECT failure_code, opened_at FROM journeys "
+                "SELECT COALESCE(root_cause, failure_code), opened_at FROM journeys "
                 "WHERE opened_at IS NOT NULL "
                 "ORDER BY opened_at DESC LIMIT 500"
             ).fetchall()
@@ -1398,17 +1398,18 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
 
     @app.post("/api/test/inject", response_model=InjectOut)
     def test_inject(body: InjectIn) -> InjectOut:
-        """Sign a payment.failed webhook with the configured webhook secret and
-        push it through the same gateway the live app uses. Works keyless (default
-        dev secret) and in LIVE mode (configured secret)."""
+        """Inject one signed ``payment.failed`` delivery, with optional exact
+        replays for the duplicate-webhook drill. This remains a Cadence test
+        path; it never changes a Razorpay payment-link status."""
+        delivery_id = f"evt_test_{uuid.uuid4().hex}"
         payload = {
-            "id": f"evt_test_{int(time.time() * 1000)}",
-            "event": "subscription.pending",
+            "id": delivery_id,
+            "event": "payment.failed",
             "payload": {
                 "subscription": {"entity": {"id": body.subscription_id, "customer_id": body.customer_id}},
                 "payment": {
                     "entity": {
-                        "id": f"pay_test_{int(time.time() * 1000)}",
+                        "id": f"pay_test_{uuid.uuid4().hex}",
                         "order_id": f"order_{body.subscription_id}",
                         "amount": body.amount_minor,
                         "currency": body.currency,
@@ -1420,25 +1421,34 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         }
         raw = json.dumps(payload, sort_keys=True).encode("utf-8")
         sig = hmac.new(config.razorpay.webhook_secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
-        status, body_out = process_delivery(
-            db=db,
-            webhook_secret=config.razorpay.webhook_secret,
-            clock=clock,
-            raw=raw,
-            signature=sig,
-            event_id=payload["id"],
-        )
-        # Drain the engine once so the journey opens + classifies immediately
-        # for the caller's verify loop. (The background worker would do this
-        # in ~2s, but the SPA testbench view expects near-real-time feedback.)
+        first_status = 500
+        first_body: dict[str, str] = {"detail": "delivery was not attempted"}
+        delivery_statuses: list[str] = []
+        for delivery_number in range(body.delivery_count):
+            status, body_out = process_delivery(
+                db=db,
+                webhook_secret=config.razorpay.webhook_secret,
+                clock=clock,
+                raw=raw,
+                signature=sig,
+                event_id=delivery_id,
+            )
+            if delivery_number == 0:
+                first_status, first_body = status, body_out
+            delivery_statuses.append(str(body_out.get("status") or body_out.get("detail") or f"http {status}"))
+        # Drain the engine once so callers can inspect the opened journey.
         try:
             runtime.worker.run_once(runtime.handlers, max_tasks=5)
         except Exception:
             log.exception("test/inject: post-ingest worker tick failed")
+        journey = journeys.get_by_subscription(body.subscription_id)
         return InjectOut(
-            http_status=status,
-            body=body_out,
+            http_status=first_status,
+            body=first_body,
             signature_prefix=sig[:8],
+            delivery_statuses=delivery_statuses,
+            journey_id=journey.journey_id if journey else None,
+            journey_state=journey.state if journey else None,
         )
 
     @app.get("/api/eval/agent-compare", response_model=AgentCompareOut)

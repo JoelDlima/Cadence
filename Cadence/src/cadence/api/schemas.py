@@ -211,20 +211,24 @@ class ChaosResultOut(BaseModel):
 
 class InjectIn(BaseModel):
     """Body for /api/test/inject. Backend signs with RZP_WEBHOOK_SECRET and
-    posts the same webhook Razorpay would send. Works in DEMO mode (default
-    dev secret) and in LIVE mode (configured secret)."""
+    posts the same webhook Razorpay would send. ``delivery_count`` replays the
+    exact signed delivery to demonstrate webhook deduplication."""
     subscription_id: str = Field(min_length=1, max_length=128)
     customer_id: str = Field(min_length=1, max_length=128)
     failure_code: str = Field(min_length=1, max_length=64)
     error_description: str | None = None
     amount_minor: int = Field(ge=0, le=1_000_000_000_000)
     currency: str = Field(default="INR", min_length=3, max_length=3)
+    delivery_count: int = Field(default=1, ge=1, le=5)
 
 
 class InjectOut(BaseModel):
     http_status: int
     body: dict[str, Any]
     signature_prefix: str  # first 8 chars of the HMAC for proof-of-receipt
+    delivery_statuses: list[str]
+    journey_id: str | None = None
+    journey_state: str | None = None
 
 
 class PaySimulateIn(BaseModel):

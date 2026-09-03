@@ -167,12 +167,16 @@ export interface InjectRequest {
   error_description?: string | null;
   amount_minor: number;
   currency?: string;
+  delivery_count?: number;
 }
 
 export interface InjectResponse {
   http_status: number;
   body: Record<string, any>;
   signature_prefix: string;
+  delivery_statuses: string[];
+  journey_id?: string | null;
+  journey_state?: string | null;
 }
 
 export interface PayLink {

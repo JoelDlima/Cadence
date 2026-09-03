@@ -215,19 +215,42 @@ const TestLabView: React.FC = () => {
           failure_code: 'insufficient_funds',
           amount_minor: 149900,
           error_description: 'Chaos drill: duplicate webhook',
+          delivery_count: 2,
         });
-        detail = `http ${res.http_status} · journey ${res.body?.journey_id ?? 'n/a'}`;
+        const [firstDelivery, replay] = res.delivery_statuses;
+        if (firstDelivery !== 'accepted' || replay !== 'duplicate') {
+          throw new Error(`expected accepted then duplicate; received ${res.delivery_statuses.join(', ') || 'no delivery status'}`);
+        }
+        detail = [
+          `delivery 1: ${firstDelivery}`,
+          `replay: ${replay}`,
+          `one recovery journey: ${res.journey_id ?? 'not found'}${res.journey_state ? ` (${res.journey_state})` : ''}`,
+        ].join('\n');
       } else if (id === 'inject_no_funds') {
+        const responses = [];
         for (let i = 0; i < 3; i++) {
-          await api.injectFailure({
+          responses.push(await api.injectFailure({
             subscription_id: `${subId}_${i}`,
             customer_id: `${custId}_${i}`,
             failure_code: 'insufficient_funds',
             amount_minor: 49900,
             error_description: 'Chaos drill: NO_FUNDS burst',
-          });
+          }));
         }
-        detail = '3 NO_FUNDS events injected';
+        const openedJourneys = responses.filter((res) => res.delivery_statuses[0] === 'accepted' && res.journey_id);
+        if (openedJourneys.length !== 3) {
+          throw new Error(`${openedJourneys.length}/3 controlled failures opened a recovery journey`);
+        }
+        const anomaly = (await api.getAnomaly(10, 3)).find((row) => row.cause === 'NO_FUNDS');
+        if (!anomaly) {
+          throw new Error('3 journeys opened, but the NO_FUNDS anomaly was not detected');
+        }
+        detail = [
+          `3 signed NO_FUNDS events accepted`,
+          `recovery journeys opened: ${openedJourneys.length}/3`,
+          `anomaly: ${anomaly.severity.toUpperCase()} — ${anomaly.count} NO_FUNDS in ${anomaly.window_minutes} min`,
+          `recommendation: ${anomaly.recommendation}`,
+        ].join('\n');
       } else if (id === 'reorder') {
         const res = await api.injectFailure({
           subscription_id: subId,
@@ -280,7 +303,7 @@ const TestLabView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Test Lab"
-        description="Break the engine on purpose. Fire a real failure, then drive the payment link wherever you want it to go."
+        description="Test delivery and safety behaviour. The expiry drill is the only lifecycle action shown because it makes a real Razorpay cancel request."
         action={<Badge tone="approved">Live</Badge>}
       />
 
@@ -346,11 +369,11 @@ const TestLabView: React.FC = () => {
       <Card>
         <CardHeader
           title="Drills"
-          subtitle="Each button does something real to the live engine. If a drill fails, it says so here — nothing is hidden."
-          action={<Badge tone="neutral">9 drills</Badge>}
+          subtitle="Reliability and safety drills for Cadence. The expiry drill also makes a real Razorpay cancellation request."
+          action={<Badge tone="neutral">5 drills</Badge>}
         />
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <label className="text-[13px] text-[var(--color-ink-muted)]">
               <div className="mb-1">Subscription ID — for the first four drills</div>
               <Input
@@ -367,15 +390,6 @@ const TestLabView: React.FC = () => {
                 onChange={(e) => setRefId(e.target.value)}
                 placeholder={refAuto ?? 'filled in automatically'}
                 className="numeric text-[14px]"
-              />
-            </label>
-            <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Customer hint — only the agent reads this</div>
-              <Input
-                value={custHint}
-                onChange={(e) => setCustHint(e.target.value)}
-                placeholder="e.g. always pays after a reminder"
-                className="text-[14px]"
               />
             </label>
           </div>
@@ -395,7 +409,9 @@ const TestLabView: React.FC = () => {
             )}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {(Object.keys(DRILL_META) as DrillId[]).map((id) => {
+            {(
+              ['duplicate_webhook', 'inject_no_funds', 'reorder', 'kill_switch', 'force_expired'] as DrillId[]
+            ).map((id) => {
               const meta = DRILL_META[id];
               const Icon = meta.icon;
               const drillState = drillOutputs[id];

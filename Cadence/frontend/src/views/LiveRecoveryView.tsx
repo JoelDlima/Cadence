@@ -313,22 +313,25 @@ export const LiveRecoveryView: React.FC = () => {
 
           <StepCard
             n={3}
-            title="Pay now"
+            title="Simulate customer paid"
             done={step === 'paid' && journeyState === 'RECOVERED'}
             active={step === 'paid' && journeyState !== 'RECOVERED'}
             cta={failure ? (
               <div className="space-y-2">
                 <Button onClick={markPaid} disabled={recoverDisabled} variant="primary" size="sm">
                   <CheckCircle2 size={13} className="inline-block mr-1" />
-                  Simulate payment_link.paid (close-the-loop)
+                  Close Cadence journey (demo)
                 </Button>
+                <p className="text-[12px] leading-5 text-[var(--color-ink-muted)]">
+                  This simulates a payment event for Cadence only. Razorpay stays <strong>Created</strong> until the real link is paid.
+                </p>
                 <a
                   href={failure.payment_link.short_url}
                   target="_blank"
                   rel="noreferrer"
                   className="block text-[12px] text-[var(--color-ink-muted)] underline"
                 >
-                  Or open the real link in a new tab
+                  Pay the real Razorpay link in a new tab
                 </a>
               </div>
             ) : (

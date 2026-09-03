@@ -510,6 +510,40 @@ def test_test_inject_creates_a_journey_with_known_root_cause(api: Api) -> None:
     assert journey is not None
     assert journey.root_cause == "NO_FUNDS"
     assert journey.state in ("INTERVENING", "WAITING_OUTCOME")
+    assert out["delivery_statuses"] == ["accepted"]
+    assert out["journey_id"] == journey.journey_id
+
+
+def test_test_inject_replay_reports_duplicate_and_one_journey(api: Api) -> None:
+    body = {
+        "subscription_id": "sub_inj_replay",
+        "customer_id": "cust_inj_replay",
+        "failure_code": "insufficient_funds",
+        "amount_minor": 49900,
+        "delivery_count": 2,
+    }
+    out = api.client.post("/api/test/inject", json=body).json()
+    assert out["http_status"] == 200
+    assert out["delivery_statuses"] == ["accepted", "duplicate"]
+    journey = api.journeys.get_by_subscription("sub_inj_replay")
+    assert journey is not None
+    assert out["journey_id"] == journey.journey_id
+
+
+def test_test_inject_burst_reports_no_funds_anomaly(api: Api) -> None:
+    for index in range(3):
+        response = api.client.post("/api/test/inject", json={
+            "subscription_id": f"sub_inj_burst_{index}",
+            "customer_id": f"cust_inj_burst_{index}",
+            "failure_code": "insufficient_funds",
+            "amount_minor": 49900,
+        })
+        assert response.status_code == 200
+        assert response.json()["delivery_statuses"] == ["accepted"]
+    anomalies = api.client.get("/api/anomaly?window_minutes=10&threshold=3").json()
+    no_funds = next(row for row in anomalies if row["cause"] == "NO_FUNDS")
+    assert no_funds["severity"] == "warn"
+    assert no_funds["count"] >= 3
 
 
 def test_test_inject_bad_failure_code_lands_in_human_review(api: Api) -> None:
