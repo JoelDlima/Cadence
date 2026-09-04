@@ -53,7 +53,7 @@
 </head>
 <body>
 <div class="page">
-  <h1>Cadence - Architecture Flow (Razorpay Track 3, AI Revenue Recovery)</h1>
+  <h1>Cadence - Architecture Flow (Autonomous AI Revenue Recovery)</h1>
   <div class="subtitle">Self-contained: open in any browser, no CDN. Print to PDF via Ctrl+P (A3 landscape). One box, one machine: SQLite is the queue, the event store, the projections, the audit chain.</div>
 
   <div class="legend">
@@ -690,7 +690,7 @@
   <div class="meta">
     <div><b>One local process</b><span>Everything except Razorpay / LLM / Supabase / Customer runs in one Python process on one machine. SQLite = the queue, the event store, the projections, the preferences, the audit chain.</span></div>
     <div><b>Keyless first</b><span>Every external dep has a deterministic offline simulator. Drop Razorpay / Sarvam / Resend / Supabase keys into <code>Cadence/.env</code> to flip LIVE. No code change.</span></div>
-    <div><b>422 tests, 4 chaos drills, 50/50 Guardian matrix</b><span><code>pytest tests -q</code> runs in ~16s, no keys, no network. The same suite guards every commit on <code>submission-clean</code>.</span></div>
+    <div><b>422 tests, 4 chaos drills, 50/50 Guardian matrix</b><span><code>pytest tests -q</code> runs in ~16s, no keys, no network. The same suite guards every commit on <code>main</code>.</span></div>
     <div><b>5,000-sub Indian cohort</b><span>Faker-driven, seed 42, byte-identical: <b>+37.8 %</b> recovery uplift over naive (Rs.1.61M vs Rs.1.15M), <b>0 LLM tokens</b> spent, <b>2,560</b> Guardian vetoes, <b>0 violations</b>.</span></div>
   </div>
 

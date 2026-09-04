@@ -4,7 +4,7 @@ Run from Cadence/:  python scripts/live_check.py
 
 Reads Cadence/.env (via load_config) and probes each integration with the
 cheapest possible real call where safe. Prints a table you can paste into a
-demo README or judge notes; exit code is always 0. No keys configured is a
+demo README or release notes; exit code is always 0. No keys configured is a
 valid outcome - the whole product runs simulated (see the README honesty
 table); this script just tells you which world you are in.
 """

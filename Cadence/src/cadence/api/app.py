@@ -135,7 +135,7 @@ _MIRROR_INTERVAL_SECONDS = 30.0
 
 # plink.lifecycle `to_status` -> the status column the Dashboard shows. Named
 # after Razorpay's own Payment Links statuses so the table reads identically
-# to the merchant dashboard a judge already knows.
+# to the standard merchant dashboard.
 _PLINK_STATUS_MAP: dict[str, str] = {
     "paid": "paid",
     "partially_paid": "partially_paid",
@@ -1546,6 +1546,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         return GuardianStatsOut(total_vetoes=total, by_reason=by_reason)
 
     @app.get("/api/eval-summary", response_model=EvalSummaryOut)
+    @app.get("/api/eval/summary", response_model=EvalSummaryOut, include_in_schema=False)
     def get_eval_summary() -> EvalSummaryOut:
         from pathlib import Path as _P
         # The large cohort is preferred when present (the pitch-deck slide

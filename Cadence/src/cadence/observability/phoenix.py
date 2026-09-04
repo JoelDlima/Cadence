@@ -10,7 +10,7 @@ Why Phoenix 20.4.0: the release on 2026-08-26 ships an in-process MCP
 toolset, the "Used by Anthropic" pedigree, and ``phoenix-cli setup``
 one-command auto-instrumentation. Cadence is the autonomous recovery
 engine for Indian payments; Phoenix is the observability layer that
-shows the judges "every decision is replayable" with a visual trace
+demonstrates that every decision is replayable with a visual trace
 tree. The two compose: Cadence is the engine, Phoenix is the mirror.
 
 The observability module does *not* change any runtime contract:
@@ -21,8 +21,7 @@ The observability module does *not* change any runtime contract:
 - The LIVE path (with Phoenix installed) adds a sidecar that observes,
   never intervenes.
 - The license is ELv2 (Elastic License 2.0). Phoenix is observability,
-  not redistribution; for a hackathon submission this is fine and the
-  README already discloses it.
+  not redistribution, and the README discloses it.
 
 Usage::
 

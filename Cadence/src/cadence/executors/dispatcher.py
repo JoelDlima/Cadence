@@ -423,7 +423,7 @@ class Dispatcher:
                 "ref": ref,
                 # W3: store the link id and short_url so the outcome check
                 # can hit fetch_payment_link, and so the SPA's Evidence
-                # column can deep-link the judge to the live page.
+                # column can deep-link the user to the live page.
                 "payment_link_id": ref,
                 "plink_id": ref,
                 "short_url": short_url,

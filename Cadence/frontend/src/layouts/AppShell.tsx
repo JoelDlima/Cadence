@@ -24,9 +24,7 @@ const navItems: NavItem[] = [
 // Hidden from the nav, still routable by hash so nothing is lost:
 //   #b2b       B2B Receivables      #mandate   Mandate Sequencer
 //   #checkout  Checkout Recovery    #pay       Payment Portal
-// They are adjacent revenue-recovery surfaces, not the Track 3 story, and four
-// extra tabs cost a judge more attention than they earn. Move an entry back
-// into navItems above with group: 'more' to restore it.
+// Move an entry back into navItems above with group: 'more' to restore it.
 const HIDDEN_TABS = ['b2b', 'mandate', 'checkout', 'pay'] as const;
 
 export function AppShell({
@@ -321,7 +319,7 @@ export function AppShell({
               Workspace:
             </span>
             <Badge tone="neutral" className="text-[11px] font-mono">
-              Razorpay UPI AutoPay · Track 3
+              Razorpay UPI AutoPay · Live Recovery
             </Badge>
           </div>
 

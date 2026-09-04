@@ -1,6 +1,6 @@
 // DemoSeedBadge.tsx
 // A small badge that says "Demo seed data" on tabs whose data is generated
-// locally (not synced from live Razorpay). Helps judges tell at a glance
+// locally (not synced from live Razorpay). Helps operators tell at a glance
 // which tabs are "real Razorpay" vs "simulated / seeded".
 import React from 'react';
 import { Badge } from './primitives';

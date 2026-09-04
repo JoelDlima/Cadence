@@ -1,6 +1,6 @@
 # Failure-recovery narrative
 
-Cadence is designed to treat recovery evidence as a product feature. These are the concrete reliability defects found during the Buildathon revamp, how they were corrected, and the regression proof retained in the repository.
+Cadence is designed to treat recovery evidence as a product feature. These are the concrete reliability defects found during platform stress testing and reliability hardening, how they were corrected, and the regression proof retained in the repository.
 
 ## 1. Duplicate webhook proof was not a replay
 

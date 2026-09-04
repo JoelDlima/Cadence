@@ -125,8 +125,8 @@ const TestLabView: React.FC = () => {
   }, [n, seed, useMultiSeed]);
 
   // --- Chaos drills (bottom) ---
-  const [subId, setSubId] = useState('sub_judge_live');
-  const [custId, setCustId] = useState('cust_judge_01');
+  const [subId, setSubId] = useState('sub_demo_live');
+  const [custId, setCustId] = useState('cust_demo_01');
   const [activeDrill, setActiveDrill] = useState<DrillId | null>(null);
   const [custHint, setCustHint] = useState<string>('');
   const [drillOutputs, setDrillOutputs] = useState<Record<string, DrillResult>>({});
@@ -512,7 +512,7 @@ const TestLabView: React.FC = () => {
               <Input
                 value={subId}
                 onChange={(e) => setSubId(e.target.value)}
-                placeholder="sub_judge_live"
+                placeholder="sub_demo_live"
                 className="numeric text-[14px]"
               />
             </label>

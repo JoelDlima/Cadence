@@ -3,17 +3,17 @@
 // 3-step guided control on the left: (1) create a real Razorpay test
 // customer, (2) trigger a real payment_link.paid failure (HMAC-signed
 // webhook to /webhooks/razorpay), (3) "Pay now" opens the real
-// short_url so the judge can pay with the test UPI id. The center
+// short_url so the user can pay with the test UPI id. The center
 // column shows the live journey with the chat-style reasoning panel.
 // The right column shows the live evidence: webhook event id, customer
 // id, payment link id, payment id, the LLM-written message, and
 // buttons to open the Razorpay dashboard / jump into the audit page.
 //
 // This view is wired to /api/live/* (501 with a clear message when
-// Razorpay keys are absent) so the buildathon laptop can show the
-// "real Razorpay" story even without keys. The build exercise
-// exposes both: the live path AND a 'simulate locally' fallback
-// so the demo never hangs on missing infrastructure.
+// Razorpay keys are absent) so any operator machine can show the
+// "real Razorpay" story even without keys. The runtime exposes both:
+// the live path AND a 'simulate locally' fallback so the demo never
+// hangs on missing infrastructure.
 
 import React, { useState, useCallback, useEffect } from 'react';
 import {
@@ -101,7 +101,7 @@ export const LiveRecoveryView: React.FC = () => {
   const [recoverDisabled, setRecoverDisabled] = useState(false);
 
   // Recipient contact (persisted to localStorage so the demo
-  // never re-asks). Judge can type their own email to prove the
+  // never re-asks). The operator can type their own email to prove the
   // Resend live send, OR leave blank for the bubble-only demo.
   const [recipientEmail, setRecipientEmail] = useState<string>(
     () => localStorage.getItem('cadence.recipient.email') ?? '',
@@ -162,8 +162,8 @@ export const LiveRecoveryView: React.FC = () => {
     setError(null); setStep('customer');
     try {
       const r = await api.createLiveCustomer({
-        name: 'Judge (Buildathon)',
-        email: 'judge@buildathon.local',
+        name: 'Demo Subscriber',
+        email: 'subscriber@cadence.local',
         contact: '+919999900000',
       });
       setCustomer(r);
@@ -430,7 +430,7 @@ export const LiveRecoveryView: React.FC = () => {
           <div className="flex-1 space-y-3">
             <div>
               <div className="text-sm font-medium text-[var(--color-ink)]">
-                Send the Hinglish nudge to your inbox (proof for the judge)
+                Send the Hinglish nudge to your inbox (live delivery proof)
               </div>
               <div className="text-[13px] text-[var(--color-ink-muted)] mt-0.5">
                 Type your email below. After step 2 the engine writes a real Hinglish body — press the

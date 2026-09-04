@@ -14,14 +14,14 @@ The "auditable" is the Guardian's existing 8 hard-veto rules plus the
 circulars data plane. The "explainable" is the per-feature
 ``importances`` returned with every recommendation.
 
-Why this scores: the buildathon's "AI Revenue Recovery" bar names
-"Payment degradation -> root cause -> recovery action" as an
-example direction. The Adaptive Recovery Brain *is* the AI bit of
-that direction. A judge watching a demo sees the engine pick a
+Why this architecture: autonomous AI Revenue Recovery requires
+"Payment degradation -> root cause -> recovery action".
+The Adaptive Recovery Brain provides the adaptive decision-making of
+that direction. An operator inspecting the system sees the engine pick a
 *different* recommended next action for two journeys that differ
 only on a single feature (e.g. one was nudged 3 times last week,
 one was nudged 0 times). That visible adaptation is the
-"smart agent" claim done end-to-end.
+autonomous recovery agent loop operating end-to-end.
 
 Why this is safe: the bandit never picks a move that the Guardian
 rejects. If the bandit returns an empty ranking, the engine falls
@@ -76,8 +76,8 @@ class BanditScore:
 # Feature weights tuned against the 5000-sub Faker eval (Aug 2026).
 # These are the "AI weights" — the engine reads them at decision time.
 # Each weight is bounded in [-1, +1] in effect (raw weights are integers
-# summed; the score normalises 0-100). A judge can read these and
-# dispute any single value — the policy is auditable, not opaque.
+# summed; the score normalises 0-100). An auditor can read these and
+# inspect any single value — the policy is auditable, not opaque.
 # -------------------------------------------------------------------------
 _BASE_SCORE = 40  # baseline: every legal move starts at 40
 
@@ -169,7 +169,7 @@ _REASONS: dict[tuple[str, str], tuple[str, ...]] = {
 }
 
 # Pre-computed feature importances for the "why this scored this"
-# explainer. The judge sees these in the SPA's Recovery Brain tab.
+# explainer. Operators see these in the SPA's Recovery Brain tab.
 FEATURE_IMPORTANCES: dict[str, dict[str, float]] = {
     # Cause -> per-feature weight applied in the score.
     "NO_FUNDS": {

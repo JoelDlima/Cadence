@@ -10,10 +10,8 @@ The schema for the three mirrored tables lives in `Cadence/supabase/schema.sql`
 
 Design choices documented in `Cadence/docs/cloud-mirror.md`:
   - Supabase kept over Turso / Neon / D1 because the read-side ergonomics
-    (PostgREST, Supabase Dashboard) match a hackathon judge's expectations.
+    (PostgREST, Supabase Dashboard) match standard cloud dashboard expectations.
   - Mirror is one-way: SQLite -> Supabase. No sync the other direction.
-  - The 1-week auto-pause on the Supabase free tier is fine for a 2-day
-    hackathon (unpause is one click).
   - Schema is RLS-deny-all-by-default; only the service_role bypasses. The
     mirror endpoint is server-side only.
 """

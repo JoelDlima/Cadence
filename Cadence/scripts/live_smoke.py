@@ -100,7 +100,7 @@ def main() -> int:
         "description": "Cadence LIVE smoke test",
         "customer": {
             "name": "Cadence Demo Customer",
-            "email": os.environ.get("BUILDATHON_TEST_EMAIL", "demo@cadence.local"),
+            "email": os.environ.get("CADENCE_TEST_EMAIL", "demo@cadence.local"),
             "contact": "+919876543210",  # the docs' canonical example
         },
         "notify": {"sms": False, "email": False},
@@ -150,7 +150,7 @@ def main() -> int:
                     "bank": None,
                     "wallet": None,
                     "vpa": "cadence@upi",
-                    "email": os.environ.get("BUILDATHON_TEST_EMAIL", "demo@cadence.local"),
+                    "email": os.environ.get("CADENCE_TEST_EMAIL", "demo@cadence.local"),
                     "contact": "+919876543210",
                     "customer_id": "cust_TVEAT6U0W8Pgas",
                     "fee": None,
@@ -210,7 +210,7 @@ def main() -> int:
         method="POST",
         body={
             "from": "Cadence Smoke <onboarding@resend.dev>",
-            "to": [os.environ.get("BUILDATHON_TEST_EMAIL", "demo@cadence.local")],
+            "to": [os.environ.get("CADENCE_TEST_EMAIL", "demo@cadence.local")],
             "subject": f"Cadence LIVE smoke @ {time.strftime('%H:%M:%S')}",
             "text": "All systems green. - Cadence",
         },

@@ -2,7 +2,7 @@
 // Dashboard — the Razorpay Payment Links page, but with the agent's reasoning
 // attached to every row.
 //
-// Why it looks like Razorpay: a judge already knows that table. Showing the
+// Why it looks like Razorpay: operators already know that table. Showing the
 // same Amount / Status / Created / Reference Id / Customer columns means the
 // only new thing on screen is what Cadence added — the journey state, the
 // root cause, and the audit trail behind each status change.

@@ -1,6 +1,6 @@
 # Cadence
 
-## Razorpay Buildathon 2026 — Track 3: AI Revenue Recovery
+## Autonomous Revenue Recovery & Mandate Defense for Indian Recurring Payments
 
 Cadence is an autonomous AI revenue-recovery agent for failed Indian recurring payments on Razorpay.
 It observes a failure, chooses a safe recovery action, creates the customer message, and records proof for every decision.
@@ -91,7 +91,7 @@ The visible product navigation has three focused surfaces:
 | **Dashboard** | Shows payment links, recovery status, amounts, agent reasoning, lifecycle records, and the audit chain in a Razorpay-style table and drawer. Rows refresh from Cadence’s event projection; the optional cloud mirror is available through Supabase. |
 | **Test Lab** | Runs controlled drills: duplicate delivery, concurrent failures, Guardian kill switch, payment-link lifecycle outcomes, and a bounded autonomous lifecycle choice. |
 
-Other prototype views remain hash-routable, but are deliberately hidden from navigation so the Track 3 recovery story stays focused.
+Specialized modules (Mandate Sequencer, Pre-Debit Nudge, Checkout Drop-Off, B2B Invoices, and Pay Portal) remain hash-routable via sidebar navigation.
 
 ## Safety and compliance: the Guardian
 
@@ -266,6 +266,6 @@ The phone-readable recording script is available at [`Cadence/docs/demo-script.p
 
 - **Maintainer:** [Joel D'lima](https://github.com/JoelDlima)
 - **Repository:** <https://github.com/JoelDlima/Cadence>
-- **Submission:** Razorpay Buildathon 2026, Track 3 — AI Revenue Recovery
+- **Focus:** Autonomous AI Revenue Recovery & Mandate Defense for Indian Recurring Payments
 
 External sources are collected in [References.md](./References.md).

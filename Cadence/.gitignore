@@ -15,9 +15,16 @@ env/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
+data/
 
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
 
 logs/
 *.log

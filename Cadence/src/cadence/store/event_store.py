@@ -1,8 +1,8 @@
 """Append-only, hash-chained event store.
 
 hash_n = sha256(prev_hash || canonical_json(event_without_hash)).
-Tampering with any row breaks every subsequent hash - the audit trail the
-buildathon rubric asks for is verifiable, not just present.
+Tampering with any row breaks every subsequent hash - the audit trail is
+verifiable and cryptographically sound, not just present.
 """
 
 from __future__ import annotations

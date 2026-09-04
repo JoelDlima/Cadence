@@ -16,11 +16,11 @@ echo.
 
 echo [1/2] killing backend (uvicorn on :8000)...
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*uvicorn*cadence.api*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
-timeout /t 1 /nobreak >nul
+ping 127.0.0.1 -n 2 >nul
 
 echo [2/2] killing frontend (vite on :3000)...
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -like '*vite*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
-timeout /t 1 /nobreak >nul
+ping 127.0.0.1 -n 2 >nul
 
 REM also kill stray npm.cmd / cmd.exe spawned by vite if any
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='cmd.exe'\" | Where-Object { $_.CommandLine -like '*npm*' -or $_.CommandLine -like '*vite*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1

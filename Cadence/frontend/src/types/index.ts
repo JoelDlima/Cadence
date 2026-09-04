@@ -311,7 +311,7 @@ export interface Anomaly {
 }
 
 /** Razorpay Payment Links statuses, mirrored 1:1 so the Dashboard table
- *  reads like the merchant dashboard a judge already knows. */
+ *  reads like the standard merchant dashboard. */
 export type PlinkStatus =
   | 'created'
   | 'partially_paid'

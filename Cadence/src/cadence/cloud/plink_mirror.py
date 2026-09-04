@@ -2,9 +2,9 @@
 
 Local SQLite + the hash chain stay the source of truth. This module keeps a
 one-way projection of every payment link Cadence creates -- and every
-lifecycle transition it drives -- in the `cadence_payment_links` table, so a
-judge can watch rows appear in the Supabase Studio table editor while the
-demo runs.
+lifecycle transition it drives -- in the `cadence_payment_links` table, so an
+operator can watch rows appear in the Supabase Studio table editor while the
+service runs.
 
 Design notes, consistent with `cloud/sync.py`:
   - One-way: SQLite -> Supabase. Nothing is ever read back as truth.
@@ -17,7 +17,7 @@ Design notes, consistent with `cloud/sync.py`:
   - `lifecycle_events` is a JSONB array appended to via the read-modify-write
     below. PostgREST cannot append to JSONB in one call without a stored
     procedure, and a stored procedure would mean a second migration for the
-    judge to run; one extra GET is the cheaper trade at demo volume.
+    operator to run; one extra GET is the cheaper trade at demo volume.
 """
 
 from __future__ import annotations

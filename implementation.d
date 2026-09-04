@@ -2,7 +2,7 @@
 
 **Status:** implemented and awaiting final validation/publish
 **Branch target:** `revamp` (created and pushed during the final Git phase)
-**Scope:** turn Cadence from a strong controlled failed-payment demo into a defensible AI Revenue Recovery submission with four fully working product capabilities: strict mandate retry sequencing, pre-debit prevention, checkout-idle recovery, and visible calibrated batch evidence.
+**Scope:** turn Cadence from a strong controlled failed-payment demo into a defensible AI Revenue Recovery platform with four fully working product capabilities: strict mandate retry sequencing, pre-debit prevention, checkout-idle recovery, and visible calibrated batch evidence.
 
 ## Goals
 
@@ -205,7 +205,7 @@ Display data from `/api/eval/agent-compare`:
 - Seeded data is deterministic and clearly synthetic.
 - Live rows remain distinguishable from synthetic rows.
 
-## Phase 5 — documentation and judge story
+## Phase 5 — documentation and demo runbook
 
 ### Required updates
 

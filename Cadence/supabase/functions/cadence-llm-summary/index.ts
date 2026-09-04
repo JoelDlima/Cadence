@@ -6,8 +6,8 @@
 // Background job that periodically reads the latest journeys from
 // journeys_mirror, asks the LLM for a one-line merchant-facing
 // summary, and writes it back. In a real product this would be a
-// cron / Supabase scheduled function. For the buildathon demo this
-// runs on demand via a manual curl to the function URL.
+// cron / Supabase scheduled function. In demo mode this
+// runs on demand via a curl to the function URL.
 //
 // @ts-nocheck
 

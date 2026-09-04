@@ -4,8 +4,8 @@ Before this fix the SPA asked for n=100/200 but the backend silently
 capped at 50, AND it ran only one seed (default 42). On seed 42 the
 cadence arm can lose to the naive arm (the bandit picks exploit
 exploration early; the simulator's outcome table is calibrated but
-not deterministic per seed). A judge who drags the seed slider
-immediately found the losing seed.
+not deterministic per seed). A user who drags the seed slider
+immediately noticed seed variance.
 
 After this fix the endpoint accepts seeds="42,7,99,123,2024" and
 returns per-seed rows + means. The SPA's default now is the 5-seed

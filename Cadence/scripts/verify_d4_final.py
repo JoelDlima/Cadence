@@ -1,5 +1,5 @@
 """D4: final verification pass — print the headline numbers and all
-endpoints. Used as the closing block in the strict-judge review.
+endpoints. Used as the closing block in strict platform verification.
 """
 import json
 import sys
@@ -37,7 +37,7 @@ def post(path, body=None, timeout=30):
 
 def main() -> int:
     print("=" * 60)
-    print("D4 final verification - Cadence / Track 3 buildathon")
+    print("D4 final verification - Cadence / Revenue Recovery")
     print("=" * 60)
 
     # --- 1) live status ---
