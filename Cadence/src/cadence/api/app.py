@@ -70,6 +70,10 @@ from cadence.api.schemas import (
     PaymentLinkRowOut,
     PreDebitScheduleIn,
     PreDebitScheduleOut,
+    PromiseListOut,
+    PromiseRowOut,
+    SimulateCustomerReplyIn,
+    SimulateCustomerReplyOut,
     PreferencesIn,
     PreferencesOut,
     StatusOut,
@@ -849,6 +853,117 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             detected=detected,
             already_detected=already_detected,
             skipped_non_created=skipped_non_created,
+        )
+
+    @app.post("/api/promises/simulate-reply", response_model=SimulateCustomerReplyOut)
+    def simulate_customer_reply(body: SimulateCustomerReplyIn) -> SimulateCustomerReplyOut:
+        """Feed free text through the real promise-to-pay parser and dispatcher.
+
+        This is a Cadence-only trigger, not a live Resend inbound webhook: no
+        domain has Resend Inbound configured, so a real customer reply cannot
+        reach this path automatically yet. The parsing, event emission, and
+        retry scheduling below are the same production code a wired inbound
+        webhook would call; only the entry point (typed text vs. a webhook
+        payload) is simulated.
+        """
+        if ":" not in body.reference_id:
+            raise HTTPException(
+                status_code=404,
+                detail="reference_id must be '{journey_id}:{attempt_no}'",
+            )
+        journey_id, _, attempt_raw = body.reference_id.rpartition(":")
+        journey = journeys.get(journey_id)
+        if journey is None:
+            raise HTTPException(status_code=404, detail=f"unknown journey {journey_id}")
+        try:
+            attempt_no = max(int(attempt_raw), 1)
+        except ValueError:
+            attempt_no = max(journey.attempts_used, 1)
+        before = {e.seq for e in store.get_by_aggregate(AGG_JOURNEY, journey.journey_id)}
+        runtime.dispatcher.handle_customer_reply({
+            "journey_id": journey.journey_id,
+            "subscription_id": journey.subscription_id,
+            "customer_id": journey.customer_id,
+            "attempt_no": attempt_no,
+            "text": body.text,
+        })
+        events = [
+            e for e in store.get_by_aggregate(AGG_JOURNEY, journey.journey_id)
+            if e.seq not in before
+        ]
+        committed = next((e for e in events if e.type == "ptp.committed"), None)
+        refused = any(e.type == "journey.closed" and e.payload.get("reason") == "customer_refused"
+                      for e in events)
+        if refused:
+            return SimulateCustomerReplyOut(
+                journey_id=journey.journey_id, accepted=True, kind="refusal",
+                confidence=1.0,
+                detail="customer declined; journey closed unrecovered",
+            )
+        if committed is None:
+            return SimulateCustomerReplyOut(
+                journey_id=journey.journey_id, accepted=False,
+                detail="no promise-to-pay event was recorded for this reply",
+            )
+        return SimulateCustomerReplyOut(
+            journey_id=journey.journey_id, accepted=True,
+            kind=committed.payload.get("kind"),
+            commit_date=committed.payload.get("date"),
+            confidence=committed.payload.get("confidence"),
+            detail=f"promise recorded: {committed.payload.get('kind')}"
+                   + (f" due {committed.payload.get('date')}" if committed.payload.get("date") else ""),
+        )
+
+    @app.get("/api/promises", response_model=PromiseListOut)
+    def list_promises(limit: int = 100) -> PromiseListOut:
+        """Project every ``ptp.committed`` event into an open/kept/broken row.
+
+        Kept/broken is read from the same journey outcome every other view
+        uses: RECOVERED means the retry that followed the promise succeeded;
+        CLOSED_UNRECOVERED/ESCALATED after the promise means it was broken.
+        Anything still open is pending the promised date.
+        """
+        rows_by_key: dict[str, dict[str, Any]] = {}
+        for ev in store.get_by_type("ptp.committed", limit=500):
+            key = ev.aggregate_id
+            reply_text = ""
+            for prior in reversed(store.get_by_aggregate(AGG_JOURNEY, key)):
+                if prior.seq < ev.seq and prior.type == "customer.replied":
+                    reply_text = str(prior.payload.get("text", ""))
+                    break
+            rows_by_key[key] = {
+                "journey_id": key,
+                "kind": ev.payload.get("kind", "unparseable"),
+                "confidence": float(ev.payload.get("confidence") or 0.0),
+                "promised_date": ev.payload.get("date"),
+                "committed_at": ev.occurred_at,
+                "reply_text": reply_text,
+            }
+        out: list[PromiseRowOut] = []
+        for key, data in list(rows_by_key.items())[-limit:]:
+            journey = journeys.get(key)
+            status = "open"
+            if journey is not None:
+                if journey.state == "RECOVERED":
+                    status = "kept"
+                elif journey.state in ("CLOSED_UNRECOVERED", "ESCALATED"):
+                    status = "broken"
+            out.append(PromiseRowOut(
+                journey_id=data["journey_id"],
+                subscription_id=journey.subscription_id if journey else None,
+                customer_id=journey.customer_id if journey else None,
+                reply_text=data["reply_text"],
+                kind=data["kind"],
+                confidence=data["confidence"],
+                promised_date=data["promised_date"],
+                committed_at=data["committed_at"],
+                status=status,
+            ))
+        return PromiseListOut(
+            promises=out,
+            open_count=sum(1 for r in out if r.status == "open"),
+            kept_count=sum(1 for r in out if r.status == "kept"),
+            broken_count=sum(1 for r in out if r.status == "broken"),
         )
 
     @app.get("/api/dashboard/stats", response_model=DashboardStatsOut)

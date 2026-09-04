@@ -18,6 +18,8 @@ import {
   InjectResponse,
   AgentCompare,
   CheckoutIdleScan,
+  SimulateCustomerReplyResult,
+  PromiseList,
   AgentReasoning,
   MerchantSummary,
   Anomaly,
@@ -304,6 +306,17 @@ export const api = {
   async scanCheckoutIdle(idleMinutes?: number): Promise<CheckoutIdleScan> {
     const qs = idleMinutes === undefined ? '' : `?idle_minutes=${encodeURIComponent(String(idleMinutes))}`;
     return postJson<CheckoutIdleScan>(`/api/checkout-idle/scan${qs}`, {});
+  },
+
+  /** Feeds free text through the real ptp_parser/dispatcher path. No Resend
+   *  inbound webhook is wired (no verified domain with Inbound enabled), so
+   *  this is a Cadence-only simulated entry point, not a live inbound email. */
+  async simulateCustomerReply(payload: { reference_id: string; text: string }): Promise<SimulateCustomerReplyResult> {
+    return postJson<SimulateCustomerReplyResult>('/api/promises/simulate-reply', payload);
+  },
+
+  async getPromises(limit: number = 100): Promise<PromiseList> {
+    return jsonFetch<PromiseList>(`/api/promises?limit=${limit}`);
   },
 
   async runChaosDrill(drill: string): Promise<ChaosResult> {

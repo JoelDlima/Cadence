@@ -356,6 +356,49 @@ class CheckoutIdleScanOut(BaseModel):
     skipped_non_created: int = 0
 
 
+class SimulateCustomerReplyIn(BaseModel):
+    """Body for POST /api/promises/simulate-reply.
+
+    Feeds free text through the same ``ptp_parser``/``handle_customer_reply``
+    path a real inbound reply would use. No Resend inbound webhook is wired
+    yet, so this is the visible, honest way to demonstrate the promise-to-pay
+    tracker without claiming a live inbound email integration.
+    """
+
+    reference_id: str = Field(min_length=1, max_length=128)
+    text: str = Field(min_length=1, max_length=500)
+
+
+class SimulateCustomerReplyOut(BaseModel):
+    journey_id: str
+    accepted: bool  # the reply was processed and recorded; not "a date was found"
+    kind: str | None = None
+    commit_date: str | None = None
+    confidence: float | None = None
+    detail: str
+
+
+class PromiseRowOut(BaseModel):
+    """One promise-to-pay commitment, projected from the audit chain."""
+
+    journey_id: str
+    subscription_id: str | None = None
+    customer_id: str | None = None
+    reply_text: str
+    kind: str
+    confidence: float
+    promised_date: str | None = None
+    committed_at: str
+    status: str  # "open" | "kept" | "broken" | "refused"
+
+
+class PromiseListOut(BaseModel):
+    promises: list[PromiseRowOut] = Field(default_factory=list)
+    open_count: int = 0
+    kept_count: int = 0
+    broken_count: int = 0
+
+
 class PreferencesIn(BaseModel):
     allowed_channels: list[str] = Field(min_length=1)
     window_start: int = Field(ge=0, le=24)

@@ -9,7 +9,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardHeader, Badge, Button, PageHeader, EmptyState, Input } from '../components/primitives';
 import { api } from '../services/api';
-import type { AgentCompare } from '../types';
+import type { AgentCompare, PromiseRow } from '../types';
 import {
   BarChart3,
   RefreshCw,
@@ -26,6 +26,7 @@ import {
   Sparkles,
   ExternalLink,
   Mail,
+  MessageSquareText,
 } from 'lucide-react';
 
 const DEFAULT_SEEDS = [42, 7, 99, 123, 2024] as const;
@@ -224,6 +225,48 @@ const TestLabView: React.FC = () => {
       setPrevention({ status: 'failed', detail: e?.message ?? 'prevention workflow failed' });
     }
   }, [subId, custId]);
+
+  const [replyText, setReplyText] = useState('25 tarikh ko paisa bhej dunga');
+  const [replyResult, setReplyResult] = useState<{ status: 'idle' | 'running' | 'passed' | 'failed'; detail?: string }>({ status: 'idle' });
+  const [promises, setPromises] = useState<PromiseRow[] | null>(null);
+  const [promiseCounts, setPromiseCounts] = useState<{ open: number; kept: number; broken: number } | null>(null);
+  const [promisesLoading, setPromisesLoading] = useState(false);
+
+  const loadPromises = useCallback(async () => {
+    setPromisesLoading(true);
+    try {
+      const result = await api.getPromises();
+      setPromises(result.promises);
+      setPromiseCounts({ open: result.open_count, kept: result.kept_count, broken: result.broken_count });
+    } catch {
+      /* leave prior state; the card shows its own error on the next simulate click */
+    } finally {
+      setPromisesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPromises();
+  }, [loadPromises]);
+
+  const runSimulateReply = useCallback(async () => {
+    setReplyResult({ status: 'running' });
+    try {
+      const reference_id = await latestReference();
+      const result = await api.simulateCustomerReply({ reference_id, text: replyText });
+      setReplyResult({
+        status: result.accepted ? 'passed' : 'failed',
+        detail: [
+          `kind: ${result.kind ?? 'n/a'}`,
+          result.commit_date ? `promised date: ${result.commit_date}` : '',
+          `${result.detail}`,
+        ].filter(Boolean).join('\n'),
+      });
+      await loadPromises();
+    } catch (e: any) {
+      setReplyResult({ status: 'failed', detail: e?.message ?? 'simulate reply failed' });
+    }
+  }, [replyText, latestReference, loadPromises]);
 
   const runDrill = useCallback(async (id: DrillId) => {
     setActiveDrill(id);
@@ -430,6 +473,106 @@ const TestLabView: React.FC = () => {
               </strong>
               {prevention.detail ? ` · ${prevention.detail}` : ''}
             </div>
+          )}
+        </div>
+      </Card>
+
+      {/* --- Promise-to-pay tracker --- */}
+      <Card>
+        <CardHeader
+          title="Promise-to-pay tracker"
+          subtitle="Reuses the real ptp_parser and dispatcher path. No Resend inbound webhook is wired yet, so this types a reply instead of receiving a live inbound email."
+          action={<Badge tone="neutral">Simulated inbound</Badge>}
+        />
+        <div className="p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Input
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="e.g. 25 tarikh ko paisa bhej dunga"
+              className="flex-1 text-[14px]"
+            />
+            <Button onClick={runSimulateReply} disabled={replyResult.status === 'running'} variant="primary" size="sm">
+              <MessageSquareText size={12} />
+              {replyResult.status === 'running' ? 'Sending…' : 'Simulate customer reply'}
+            </Button>
+          </div>
+          <p className="text-[11.5px] text-[var(--color-ink-muted)]">
+            Applies to your newest payment link (same reference as the drills below). Try Hinglish phrasing:
+            date-of-month (<code>25 tarikh ko</code>), a duration (<code>3 din me</code>), a refusal (<code>cancel kar do</code>), or vague (<code>jaldi karunga</code>).
+          </p>
+          {replyResult.status !== 'idle' && (
+            <div
+              className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
+              style={{
+                backgroundColor: replyResult.status === 'running'
+                  ? 'var(--color-info-wash)'
+                  : replyResult.status === 'passed'
+                    ? 'var(--color-approved-wash)'
+                    : 'var(--color-rejected-wash)',
+                borderColor: replyResult.status === 'running'
+                  ? 'var(--color-info)'
+                  : replyResult.status === 'passed'
+                    ? 'var(--color-approved)'
+                    : 'var(--color-rejected)',
+                color: replyResult.status === 'running'
+                  ? 'var(--color-info)'
+                  : replyResult.status === 'passed'
+                    ? 'var(--color-approved)'
+                    : 'var(--color-rejected)',
+              }}
+            >
+              <strong>
+                {replyResult.status === 'running' ? 'SENDING…' : replyResult.status === 'passed' ? 'RECORDED' : 'FAILED'}
+              </strong>
+              {replyResult.detail ? ` · ${replyResult.detail}` : ''}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--color-line)]">
+            <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
+              {promiseCounts && (
+                <>
+                  <Badge tone="pending">{promiseCounts.open} open</Badge>
+                  <Badge tone="approved">{promiseCounts.kept} kept</Badge>
+                  <Badge tone="rejected">{promiseCounts.broken} broken</Badge>
+                </>
+              )}
+            </div>
+            <Button variant="secondary" size="sm" onClick={loadPromises} loading={promisesLoading}>
+              <RefreshCw size={12} /> Refresh
+            </Button>
+          </div>
+
+          {promises && promises.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[12px]">
+                <thead>
+                  <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
+                    <th className="py-1.5 pr-3">Reply</th>
+                    <th className="py-1.5 pr-3">Kind</th>
+                    <th className="py-1.5 pr-3">Promised date</th>
+                    <th className="py-1.5 pr-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {promises.map((row) => (
+                    <tr key={row.journey_id} className="border-t border-[var(--color-line)]">
+                      <td className="py-1.5 pr-3 max-w-[220px] truncate" title={row.reply_text}>{row.reply_text || '—'}</td>
+                      <td className="py-1.5 pr-3 font-mono">{row.kind}</td>
+                      <td className="py-1.5 pr-3 font-mono">{row.promised_date ?? '—'}</td>
+                      <td className="py-1.5 pr-3">
+                        <Badge tone={row.status === 'kept' ? 'approved' : row.status === 'broken' ? 'rejected' : 'pending'}>
+                          {row.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-[12px] text-[var(--color-ink-muted)]">No promises recorded yet — simulate a reply above.</p>
           )}
         </div>
       </Card>

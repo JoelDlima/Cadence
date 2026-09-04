@@ -170,6 +170,34 @@ export interface CheckoutIdleScan {
   skipped_non_created: number;
 }
 
+export interface SimulateCustomerReplyResult {
+  journey_id: string;
+  accepted: boolean;
+  kind?: string | null;
+  commit_date?: string | null;
+  confidence?: number | null;
+  detail: string;
+}
+
+export interface PromiseRow {
+  journey_id: string;
+  subscription_id?: string | null;
+  customer_id?: string | null;
+  reply_text: string;
+  kind: string;
+  confidence: number;
+  promised_date?: string | null;
+  committed_at: string;
+  status: 'open' | 'kept' | 'broken' | string;
+}
+
+export interface PromiseList {
+  promises: PromiseRow[];
+  open_count: number;
+  kept_count: number;
+  broken_count: number;
+}
+
 export interface ChaosResult {
   drill: string;
   passed: boolean;
