@@ -24,6 +24,7 @@ two-strike design. HARD_DECLINE and DND journeys still close immediately.
 from __future__ import annotations
 
 import json
+import hashlib
 import zlib
 import zoneinfo
 from datetime import UTC, datetime, timedelta
@@ -70,9 +71,12 @@ from cadence.events import (
     E_JOURNEY_OPENED,
     E_JOURNEY_STATE_CHANGED,
     E_PAYMENT_FAILED,
+    E_PREDEBIT_NOTIFIED,
+    E_PREDEBIT_SCHEDULED,
     E_TIMER_SET,
 )
 from cadence.executors.contracts import TASK_EXECUTE_INTENT, TASK_HANDLE_PAYMENT_FAILED
+from cadence.executors.channels import email_nudge_text, whatsapp_nudge_text
 from cadence.journey.fsm import (
     EVENT_ACTION_EXECUTED,
     EVENT_APPROVED,
@@ -143,6 +147,14 @@ _HOLD_RELEASE_REASON = "npci_peak_hold_release"
 # excluded: stopping recovery is a human call, never the model's.
 _STICKY_CAUSES: frozenset[str] = frozenset(ROOT_CAUSES) - {UNKNOWN, HARD_DECLINE}
 _CAPTURED_REASON = "payment_captured"
+# Preventive pre-debit nudge: a proactive workflow fired BEFORE a scheduled
+# debit (the RBI 24h pre-debit notice). It is intentionally NOT a recovery
+# journey: no FSM, no queue task — it appends predebit.scheduled, runs the
+# Guardian's contact guardrails (kill switch + quiet hours), and appends
+# predebit.notified when the notice is allowed to go out.
+PREDEBIT_INTERVENTION = "PREDEBIT_NUDGE"
+_PREDEBIT_KILL_SWITCH_REASON = "kill_switch"
+_PREDEBIT_QUIET_HOURS_REASON = "quiet_hours"
 
 
 def _failure_root_cause(payload: dict[str, Any]) -> str:
@@ -463,6 +475,110 @@ class RecoveryEngine:
         if is_terminal(state):
             fields["closed_at"] = now_iso
         self._journeys.update_fields(journey.journey_id, fields, updated_at=now_iso)
+
+    def schedule_predebit_nudge(
+        self,
+        *,
+        subscription_id: str,
+        customer_id: str,
+        amount_minor: int,
+        currency: str = "INR",
+        debit_at: str,
+        channel: str = "whatsapp",
+    ) -> dict[str, Any]:
+        """Preventive pre-debit nudge: notify a customer BEFORE a scheduled debit.
+
+        This is the proactive counterpart to ``handle_payment_failed``. Instead
+        of reacting to a failure, it fires ahead of an upcoming AutoPay debit so
+        the customer can top up in time — the RBI 24h pre-debit notification
+        obligation, run as a first-class workflow rather than a rider condition
+        on a retry approval.
+
+        The workflow is deliberately small and self-contained:
+          1. append ``predebit.scheduled`` (the intent, always recorded);
+          2. run the Guardian's contact guardrails — the global kill switch and
+             IST quiet hours (21:00-09:00). A block appends
+             ``intervention.vetoed`` and returns ``notified=False``;
+          3. otherwise build the customer-facing notice (amount only, no PII in
+             the payload) and append ``predebit.notified``.
+
+        No recovery journey is opened and no durable task is enqueued: a
+        pre-debit notice is a single outbound touch, fully synchronous, so the
+        two distinct events are visible on the journey timeline immediately.
+
+        Returns a summary dict: ``{subscription_id, notified, reason, channel,
+        debit_at, scheduled_event, notified_event, ref}``.
+        """
+        now_iso = utc_iso(self._clock.now())
+        channel_name = channel if channel in ("whatsapp", "email") else "whatsapp"
+
+        # 1. Record the intent to notify ahead of the debit.
+        self._append(
+            E_PREDEBIT_SCHEDULED,
+            subscription_id,
+            {
+                "intervention": PREDEBIT_INTERVENTION,
+                "debit_at": debit_at,
+                "amount_minor": int(amount_minor),
+                "currency": currency,
+                "channel": channel_name,
+                "customer_id": customer_id,
+            },
+            now_iso,
+        )
+
+        # 2. Guardian contact guardrails: kill switch and quiet hours.
+        reason: str | None = None
+        if self._kill_switch():
+            reason = _PREDEBIT_KILL_SWITCH_REASON
+        elif _is_quiet_hour(self._clock.in_tz(self._cfg.timezone).hour, self._cfg):
+            reason = _PREDEBIT_QUIET_HOURS_REASON
+        if reason is not None:
+            self._append(
+                E_INTERVENTION_VETOED,
+                subscription_id,
+                {"intervention": PREDEBIT_INTERVENTION, "reason": reason},
+                now_iso,
+            )
+            return {
+                "subscription_id": subscription_id,
+                "notified": False,
+                "reason": reason,
+                "channel": channel_name,
+                "debit_at": debit_at,
+                "scheduled_event": True,
+                "notified_event": False,
+                "ref": None,
+            }
+
+        # 3. Build the notice (amount is the only personal datum) and record it.
+        builder = whatsapp_nudge_text if channel_name == "whatsapp" else email_nudge_text
+        message = builder(int(amount_minor))
+        ref = f"pdn_{hashlib.sha1(f'{subscription_id}:{debit_at}:{channel_name}'.encode()).hexdigest()[:10]}"
+        self._append(
+            E_PREDEBIT_NOTIFIED,
+            subscription_id,
+            {
+                "intervention": PREDEBIT_INTERVENTION,
+                "channel": channel_name,
+                "debit_at": debit_at,
+                "amount_minor": int(amount_minor),
+                "currency": currency,
+                "message": message,
+                "ref": ref,
+            },
+            now_iso,
+        )
+        return {
+            "subscription_id": subscription_id,
+            "notified": True,
+            "reason": "ok",
+            "channel": channel_name,
+            "debit_at": debit_at,
+            "scheduled_event": True,
+            "notified_event": True,
+            "ref": ref,
+        }
 
     def _kill_switch(self) -> bool:
         row = self._db.conn.execute(
@@ -853,7 +969,13 @@ class RecoveryEngine:
         self._append(
             E_INTERVENTION_APPROVED,
             sub_id,
-            {"intervention": intervention, "scheduled_at": defer_until},
+            {
+                "intervention": intervention,
+                "scheduled_at": defer_until,
+                "mandate_execution_sequence": attempt_no,
+                "mandate_retry_number": max(0, attempt_no - 1),
+                "mandate_retry_limit": self._cfg.max_retry_attempts,
+            },
             now_iso,
         )
         self._queue.enqueue(

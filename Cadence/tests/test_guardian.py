@@ -98,7 +98,7 @@ def test_illegal_intervention_for_root_cause_is_vetoed() -> None:
     assert decision == Decision(approved=False, reason="illegal_intervention")
 
 
-def test_retry_at_attempts_cap_is_vetoed_as_attempts_exhausted() -> None:
+def test_mandate_sequence_allows_third_retry_at_sequence_four() -> None:
     clock = _baseline_clock()
 
     decision = evaluate(
@@ -108,7 +108,20 @@ def test_retry_at_attempts_cap_is_vetoed_as_attempts_exhausted() -> None:
         clock=clock,
     )
 
-    assert decision == Decision(approved=False, reason="attempts_exhausted")
+    assert decision.approved is True
+
+
+def test_mandate_sequence_vetoes_fifth_execution() -> None:
+    clock = _baseline_clock()
+
+    decision = evaluate(
+        _proposal(RETRY_PAYDAY),
+        _context(attempts_used=4),
+        cfg=_policy_config(),
+        clock=clock,
+    )
+
+    assert decision == Decision(approved=False, reason="mandate_retry_limit_exhausted")
 
 
 def test_touch_cap_reached_vetoes_even_non_retry_interventions() -> None:

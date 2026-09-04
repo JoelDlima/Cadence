@@ -313,6 +313,49 @@ class KillSwitchIn(BaseModel):
     enabled: bool
 
 
+class PreDebitScheduleIn(BaseModel):
+    """Body for POST /api/predebit/schedule.
+
+    Triggers the preventive pre-debit nudge workflow: a proactive notice ahead
+    of an upcoming AutoPay debit (the RBI 24h pre-debit notification). This is a
+    Cadence-internal test-safe path — it appends audit events only and never
+    touches Razorpay.
+    """
+
+    subscription_id: str = Field(min_length=1, max_length=128)
+    customer_id: str = Field(min_length=1, max_length=128)
+    amount_minor: int = Field(ge=0, le=1_000_000_000_000)
+    debit_at: str = Field(min_length=1, max_length=64)  # ISO 8601 of the scheduled debit
+    currency: str = Field(default="INR", min_length=3, max_length=3)
+    channel: str = Field(default="whatsapp")
+
+
+class PreDebitScheduleOut(BaseModel):
+    subscription_id: str
+    notified: bool
+    reason: str            # "ok" | "kill_switch" | "quiet_hours"
+    channel: str
+    debit_at: str
+    scheduled_event: bool  # predebit.scheduled appended
+    notified_event: bool   # predebit.notified appended
+    ref: str | None = None
+
+
+class CheckoutIdleFindingOut(BaseModel):
+    payment_link_id: str
+    reference_id: str
+    journey_id: str | None = None
+    journey_state: str | None = None
+
+
+class CheckoutIdleScanOut(BaseModel):
+    threshold_minutes: int
+    scanned_created_links: int
+    detected: list[CheckoutIdleFindingOut] = Field(default_factory=list)
+    already_detected: int = 0
+    skipped_non_created: int = 0
+
+
 class PreferencesIn(BaseModel):
     allowed_channels: list[str] = Field(min_length=1)
     window_start: int = Field(ge=0, le=24)

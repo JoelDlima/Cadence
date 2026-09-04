@@ -37,6 +37,7 @@ from typing import Any
 from cadence.classify.taxonomy import (
     BANK_DOWN,
     CUSTOMER_ABORTED,
+    ABANDONED_CHECKOUT,
     EMAIL_NUDGE,
     GRACE_OFFER,
     HARD_DECLINE,
@@ -109,6 +110,9 @@ _INTERVENTION_PRIOR: dict[tuple[str, str], float] = {
     (CUSTOMER_ABORTED, WHATSAPP_NUDGE): 12.0,
     (CUSTOMER_ABORTED, EMAIL_NUDGE): 10.0,
     (CUSTOMER_ABORTED, PAYMENT_LINK): 8.0,
+    # ABANDONED_CHECKOUT: one local idle signal earns one low-friction message.
+    (ABANDONED_CHECKOUT, EMAIL_NUDGE): 14.0,
+    (ABANDONED_CHECKOUT, WHATSAPP_NUDGE): 12.0,
     # BAD_VPA / EXPIRED_INSTRUMENT: only SWITCH_METHOD is legal
     (BAD_VPA, SWITCH_METHOD): 20.0,
     (EXPIRED_INSTRUMENT, SWITCH_METHOD): 20.0,
@@ -160,6 +164,8 @@ _REASONS: dict[tuple[str, str], tuple[str, ...]] = {
     ("EXPIRED_INSTRUMENT", EMAIL_NUDGE): ("expired instrument -> email fix",),
     ("CUSTOMER_ABORTED", PAYMENT_LINK): ("cancelled -> one-tap pay-link",),
     ("CUSTOMER_ABORTED", WHATSAPP_NUDGE): ("cancelled -> gentle nudge",),
+    ("ABANDONED_CHECKOUT", EMAIL_NUDGE): ("idle payment link -> one email recovery message",),
+    ("ABANDONED_CHECKOUT", WHATSAPP_NUDGE): ("idle payment link -> one WhatsApp recovery message",),
 }
 
 # Pre-computed feature importances for the "why this scored this"

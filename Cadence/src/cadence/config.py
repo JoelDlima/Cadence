@@ -92,6 +92,7 @@ class PolicyConfig:
     auto_approve_below_minor: int = 500_000
     require_human_above_minor: int = 5_000_000
     min_recovery_worth_minor: int = 10_000
+    checkout_idle_minutes: int = 30
 
 
 @dataclass(frozen=True)
@@ -172,6 +173,7 @@ def load_config() -> AppConfig:
             auto_approve_below_minor=_env_int("AUTO_APPROVE_BELOW_MINOR", 500_000),
             require_human_above_minor=_env_int("REQUIRE_HUMAN_ABOVE_MINOR", 5_000_000),
             min_recovery_worth_minor=_env_int("MIN_RECOVERY_WORTH_MINOR", 10_000),
+            checkout_idle_minutes=_env_int("CHECKOUT_IDLE_MINUTES", 30),
         ),
         cloud=CloudConfig(
             supabase_url=os.environ.get("SUPABASE_URL", "").rstrip("/"),

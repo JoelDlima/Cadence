@@ -1,6 +1,7 @@
 """Taxonomy tests: error-code coverage, cause inventory, legality-matrix integrity."""
 
 from cadence.classify.taxonomy import (
+    ABANDONED_CHECKOUT,
     BAD_VPA,
     BANK_DOWN,
     CUSTOMER_ABORTED,
@@ -29,6 +30,7 @@ def test_every_documented_error_code_maps_to_its_root_cause() -> None:
         "payment_timed_out": TIMEOUT,
         "payment_cancelled": CUSTOMER_ABORTED,
         "payment_declined": CUSTOMER_ABORTED,
+        "checkout_idle": ABANDONED_CHECKOUT,
         "authentication_failed": HARD_DECLINE,
         "card_declined": HARD_DECLINE,
         "expired_card": EXPIRED_INSTRUMENT,
@@ -36,12 +38,13 @@ def test_every_documented_error_code_maps_to_its_root_cause() -> None:
     }
 
 
-def test_all_eight_root_causes_are_present_in_root_causes() -> None:
+def test_all_nine_root_causes_are_present_in_root_causes() -> None:
     all_causes = {
         NO_FUNDS,
         BANK_DOWN,
         TIMEOUT,
         CUSTOMER_ABORTED,
+        ABANDONED_CHECKOUT,
         HARD_DECLINE,
         BAD_VPA,
         EXPIRED_INSTRUMENT,

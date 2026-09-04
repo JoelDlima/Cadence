@@ -6,6 +6,7 @@ NO_FUNDS = "NO_FUNDS"
 BANK_DOWN = "BANK_DOWN"
 TIMEOUT = "TIMEOUT"
 CUSTOMER_ABORTED = "CUSTOMER_ABORTED"
+ABANDONED_CHECKOUT = "ABANDONED_CHECKOUT"
 HARD_DECLINE = "HARD_DECLINE"
 BAD_VPA = "BAD_VPA"
 EXPIRED_INSTRUMENT = "EXPIRED_INSTRUMENT"
@@ -17,6 +18,7 @@ ROOT_CAUSES: frozenset[str] = frozenset(
         BANK_DOWN,
         TIMEOUT,
         CUSTOMER_ABORTED,
+        ABANDONED_CHECKOUT,
         HARD_DECLINE,
         BAD_VPA,
         EXPIRED_INSTRUMENT,
@@ -59,6 +61,7 @@ ERROR_CODE_MAP: dict[str, str] = {
     "payment_timed_out": TIMEOUT,
     "payment_cancelled": CUSTOMER_ABORTED,
     "payment_declined": CUSTOMER_ABORTED,
+    "checkout_idle": ABANDONED_CHECKOUT,
     "authentication_failed": HARD_DECLINE,
     "card_declined": HARD_DECLINE,
     "expired_card": EXPIRED_INSTRUMENT,
@@ -86,6 +89,9 @@ LEGAL_MOVES: dict[str, frozenset[str]] = {
     BANK_DOWN: frozenset({RETRY_LATER, RETRY_NOW, WHATSAPP_NUDGE, EMAIL_NUDGE}),
     TIMEOUT: frozenset({RETRY_LATER, RETRY_NOW, PAYMENT_LINK, WHATSAPP_NUDGE, EMAIL_NUDGE}),
     CUSTOMER_ABORTED: frozenset({WHATSAPP_NUDGE, EMAIL_NUDGE, PAYMENT_LINK}),
+    # A self-managed idle Payment Link is not a failed mandate. Send exactly
+    # one recovery message; do not create another link or schedule a debit.
+    ABANDONED_CHECKOUT: frozenset({EMAIL_NUDGE, WHATSAPP_NUDGE}),
     HARD_DECLINE: frozenset(),  # strictly stop - no recovery moves
     BAD_VPA: frozenset({SWITCH_METHOD, EMAIL_NUDGE}),
     EXPIRED_INSTRUMENT: frozenset({SWITCH_METHOD, EMAIL_NUDGE}),

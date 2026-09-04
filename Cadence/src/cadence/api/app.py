@@ -45,6 +45,8 @@ from cadence.api.schemas import (
     AttentionOut,
     AuditVerifyOut,
     BanksOut,
+    CheckoutIdleFindingOut,
+    CheckoutIdleScanOut,
     ChaosResultOut,
     CircularDetailOut,
     CircularIngestResultOut,
@@ -66,6 +68,8 @@ from cadence.api.schemas import (
     PayLinkOut,
     PaySimulateIn,
     PaymentLinkRowOut,
+    PreDebitScheduleIn,
+    PreDebitScheduleOut,
     PreferencesIn,
     PreferencesOut,
     StatusOut,
@@ -82,7 +86,7 @@ from cadence.clock import Clock, SystemClock, utc_iso
 from cadence.cloud.poller import SupabaseInboxPoller
 from cadence.cloud.sync import CloudSync
 from cadence.config import AppConfig, load_config
-from cadence.events import AGG_JOURNEY, E_INTERVENTION_VETOED, E_PAYMENT_FAILED, Event
+from cadence.events import AGG_JOURNEY, E_CHECKOUT_IDLE_DETECTED, E_INTERVENTION_VETOED, E_PAYMENT_FAILED, Event
 from cadence.executors.channels import EmailChannel, MockWhatsApp
 from cadence.executors.contracts import (
     TASK_AWAIT_CUSTOMER_REPLY,
@@ -753,6 +757,100 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             rows = [r for r in rows if r["status"] == wanted]
         return [PaymentLinkRowOut(**r) for r in rows]
 
+    @app.post("/api/checkout-idle/scan", response_model=CheckoutIdleScanOut)
+    def scan_checkout_idle(idle_minutes: int | None = None) -> CheckoutIdleScanOut:
+        """Detect locally-idle, still-created Payment Links and send one bounded nudge.
+
+        Cadence owns this observation: it reads its audit-derived Payment Link
+        projection, not Razorpay Magic Checkout or a browser abandonment feed.
+        Only a ``created`` link older than the configured threshold qualifies;
+        paid, cancelled, and expired links are ignored. One ``checkout.idle_detected``
+        fact per ``plink_id`` is the durable idempotency boundary. Qualifying
+        links enter the standard classifier -> bandit -> Guardian -> dispatcher
+        pipeline with the dedicated ``ABANDONED_CHECKOUT`` root cause.
+        """
+        configured = int(runtime.config.policy.checkout_idle_minutes)
+        threshold = configured if idle_minutes is None else int(idle_minutes)
+        threshold = max(0, min(threshold, 7 * 24 * 60))
+        now = runtime.clock.now()
+        now_iso = utc_iso(now)
+        scanned_created = 0
+        skipped_non_created = 0
+        already_detected = 0
+        detected: list[CheckoutIdleFindingOut] = []
+
+        for row in _plink_rows(500):
+            if row["status"] != "created":
+                skipped_non_created += 1
+                continue
+            try:
+                created_at = datetime.fromisoformat(str(row["created_at"]).replace("Z", "+00:00"))
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=UTC)
+            except (TypeError, ValueError):
+                continue
+            scanned_created += 1
+            if (now - created_at).total_seconds() < threshold * 60:
+                continue
+
+            plink_id = str(row["plink_id"])
+            prior = db.conn.execute(
+                "SELECT 1 FROM events WHERE type = ? "
+                "AND json_extract(payload, '$.payment_link_id') = ? LIMIT 1",
+                (E_CHECKOUT_IDLE_DETECTED, plink_id),
+            ).fetchone()
+            if prior is not None:
+                already_detected += 1
+                continue
+
+            subscription_id = f"checkout_idle:{plink_id}"
+            runtime.store.append(
+                event_type=E_CHECKOUT_IDLE_DETECTED,
+                aggregate_type=AGG_JOURNEY,
+                aggregate_id=subscription_id,
+                payload={
+                    "payment_link_id": plink_id,
+                    "reference_id": row["reference_id"],
+                    "source": "local_payment_link_projection",
+                    "threshold_minutes": threshold,
+                    "link_created_at": row["created_at"],
+                    "link_status": row["status"],
+                },
+                occurred_at=now_iso,
+                recorded_at=now_iso,
+                event_id=f"checkout_idle_{uuid.uuid4().hex}",
+            )
+            runtime.engine.handle_payment_failed({
+                "subscription_id": subscription_id,
+                "customer_id": row.get("customer_id") or f"checkout_customer:{plink_id}",
+                "payment_id": f"checkout_idle:{plink_id}",
+                "failure_code": "checkout_idle",
+                "error_description": "Cadence local Payment Link idle threshold exceeded",
+                "amount_minor": int(row.get("amount_minor") or 0),
+                "currency": row.get("currency") or "INR",
+                "source_payment_link_id": plink_id,
+                "source_reference_id": row.get("reference_id") or "",
+                "occurred_at": now_iso,
+            })
+            # Run the ordinary intent handler; it dispatches the single allowed
+            # channel message only when Guardian has approved it.
+            runtime.worker.run_once(runtime.handlers, max_tasks=5)
+            journey = journeys.get_by_subscription(subscription_id)
+            detected.append(CheckoutIdleFindingOut(
+                payment_link_id=plink_id,
+                reference_id=str(row.get("reference_id") or ""),
+                journey_id=journey.journey_id if journey else None,
+                journey_state=journey.state if journey else None,
+            ))
+
+        return CheckoutIdleScanOut(
+            threshold_minutes=threshold,
+            scanned_created_links=scanned_created,
+            detected=detected,
+            already_detected=already_detected,
+            skipped_non_created=skipped_non_created,
+        )
+
     @app.get("/api/dashboard/stats", response_model=DashboardStatsOut)
     def dashboard_stats(since: str | None = None) -> DashboardStatsOut:
         """Money counters for the dashboard header.
@@ -1396,6 +1494,28 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         result = _run_drill(drill, workdir=workdir)
         return ChaosResultOut(**result)
 
+    @app.post("/api/predebit/schedule", response_model=PreDebitScheduleOut)
+    def predebit_schedule(body: PreDebitScheduleIn) -> PreDebitScheduleOut:
+        """Preventive pre-debit nudge: notify a customer BEFORE a scheduled debit.
+
+        This is the proactive workflow (RBI 24h pre-debit notice), distinct from
+        the reactive ``/api/test/inject`` failure path. It is test-safe: it only
+        appends ``predebit.scheduled`` and either ``predebit.notified`` or (when
+        the kill switch is on or it is quiet hours) ``intervention.vetoed`` to
+        the hash chain. No Razorpay call is made and no recovery journey opens.
+        The two events land on the journey timeline for ``subscription_id``
+        immediately, so the SPA can show them as proof.
+        """
+        result = runtime.engine.schedule_predebit_nudge(
+            subscription_id=body.subscription_id,
+            customer_id=body.customer_id,
+            amount_minor=body.amount_minor,
+            currency=body.currency,
+            debit_at=body.debit_at,
+            channel=body.channel,
+        )
+        return PreDebitScheduleOut(**result)
+
     @app.post("/api/test/inject", response_model=InjectOut)
     def test_inject(body: InjectIn) -> InjectOut:
         """Inject one signed ``payment.failed`` delivery, with optional exact
@@ -1718,8 +1838,12 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         }
         for ev in events:
             if ev.type == "intervention.approved":
+                sequence = ev.payload.get("mandate_execution_sequence", "?")
+                retry = ev.payload.get("mandate_retry_number", "?")
+                limit = ev.payload.get("mandate_retry_limit", "?")
                 acted["detail"] = (
                     f"`{ev.payload.get('intervention', '?')}` approved and dispatched. "
+                    f"Mandate sequence {sequence}; retry {retry} of {limit}. "
                     f"Reason: {ev.payload.get('reason', 'Guardian OK')}. "
                     f"Scheduled at {ev.payload.get('scheduled_at', '?')}."
                 )

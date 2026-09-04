@@ -40,6 +40,19 @@ E_LLM_THINKING = "agent.thinking"  # PHASE 6: LLM-in-loop traces
 # payment-link table, which needs the link's own status independently of the
 # journey FSM state.
 E_PLINK_LIFECYCLE = "plink.lifecycle"
+# Preventive pre-debit nudge (proactive, fires BEFORE a scheduled debit — the
+# RBI 24h pre-debit notification obligation). Distinct from the reactive
+# recovery events above: no journey FSM is opened. `predebit.scheduled` records
+# the intent to notify ahead of a debit; `predebit.notified` records that the
+# customer-facing notice actually went out (or is suppressed by a Guardian veto
+# recorded as intervention.vetoed).
+E_PREDEBIT_SCHEDULED = "predebit.scheduled"
+E_PREDEBIT_NOTIFIED = "predebit.notified"
+# Self-managed Payment Link idle detection. This is deliberately distinct from
+# Razorpay Magic Checkout: Cadence observes its own created Payment Link
+# projection, records the threshold crossing, then routes one bounded nudge
+# through the standard recovery pipeline.
+E_CHECKOUT_IDLE_DETECTED = "checkout.idle_detected"
 
 EVENT_TYPES: frozenset[str] = frozenset(
     {
@@ -61,6 +74,9 @@ EVENT_TYPES: frozenset[str] = frozenset(
         E_KILL_SWITCH_CHANGED,
         E_LLM_THINKING,
         E_PLINK_LIFECYCLE,
+        E_PREDEBIT_SCHEDULED,
+        E_PREDEBIT_NOTIFIED,
+        E_CHECKOUT_IDLE_DETECTED,
     }
 )
 

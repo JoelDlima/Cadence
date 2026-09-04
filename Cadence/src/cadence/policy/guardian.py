@@ -160,8 +160,11 @@ def _hard_veto(
         and ctx.attempts_used >= _COST_CEILING_MIN_ATTEMPTS
     ):
         return Decision(approved=False, reason=_COST_CEILING_REASON)
-    if _is_retry(proposal.intervention) and ctx.attempts_used >= cfg.max_retry_attempts:
-        return Decision(approved=False, reason="attempts_exhausted")
+    # Mandate execution sequence: the initial execution is sequence 1, followed
+    # by at most three retries (sequences 2-4). A fifth execution is an outright
+    # compliance veto, not a soft frequency-decay preference.
+    if _is_retry(proposal.intervention) and ctx.attempts_used >= cfg.max_retry_attempts + 1:
+        return Decision(approved=False, reason="mandate_retry_limit_exhausted")
     # PHASE 5: NPCI 18-hour cooling rule. UPI mandates cannot be retried
     # on the same VPA within 18 hours; this vetoes any retry whose last
     # attempt is within the window and defers it to the boundary. The
