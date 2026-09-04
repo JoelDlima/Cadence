@@ -20,6 +20,7 @@ import {
   CheckoutIdleScan,
   SimulateCustomerReplyResult,
   PromiseList,
+  PreDebitHistory,
   AgentReasoning,
   MerchantSummary,
   Anomaly,
@@ -317,6 +318,10 @@ export const api = {
 
   async getPromises(limit: number = 100): Promise<PromiseList> {
     return jsonFetch<PromiseList>(`/api/promises?limit=${limit}`);
+  },
+
+  async getPreDebitHistory(limit: number = 100): Promise<PreDebitHistory> {
+    return jsonFetch<PreDebitHistory>(`/api/predebit/history?limit=${limit}`);
   },
 
   async runChaosDrill(drill: string): Promise<ChaosResult> {

@@ -341,6 +341,23 @@ class PreDebitScheduleOut(BaseModel):
     ref: str | None = None
 
 
+class PreDebitHistoryRowOut(BaseModel):
+    subscription_id: str
+    channel: str
+    debit_at: str
+    amount_minor: int
+    notified: bool
+    reason: str
+    scheduled_at: str
+    ref: str | None = None
+
+
+class PreDebitHistoryOut(BaseModel):
+    notices: list[PreDebitHistoryRowOut] = Field(default_factory=list)
+    notified_count: int = 0
+    suppressed_count: int = 0
+
+
 class CheckoutIdleFindingOut(BaseModel):
     payment_link_id: str
     reference_id: str

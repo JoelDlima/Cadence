@@ -15,7 +15,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowUpRight, Clock, ExternalLink, IndianRupee, Link2, RefreshCw,
+  ArrowUpRight, BellRing, Clock, ExternalLink, IndianRupee, Link2, MessageSquareText, RefreshCw,
   ShieldCheck, TrendingDown, TrendingUp, Wallet, X,
 } from 'lucide-react';
 import {
@@ -24,7 +24,7 @@ import {
 } from '../components/primitives';
 import { api, inrFormatter } from '../services/api';
 import type {
-  AgentCompare, AgentReasoning, CheckoutIdleScan, CloudPlinks, DashboardStats, PaymentLinkRow, TimelineEvent,
+  AgentCompare, AgentReasoning, CheckoutIdleScan, CloudPlinks, DashboardStats, PaymentLinkRow, PreDebitHistory, PromiseList, TimelineEvent,
 } from '../types';
 
 const ROWS_POLL_MS = 5000;
@@ -351,6 +351,36 @@ export const DashboardView: React.FC = () => {
   const [idleScan, setIdleScan] = useState<CheckoutIdleScan | null>(null);
   const [idleScanLoading, setIdleScanLoading] = useState(false);
   const [idleScanError, setIdleScanError] = useState<string | null>(null);
+  const [promises, setPromises] = useState<PromiseList | null>(null);
+  const [promisesLoading, setPromisesLoading] = useState(false);
+  const [promisesError, setPromisesError] = useState<string | null>(null);
+  const [predebit, setPredebit] = useState<PreDebitHistory | null>(null);
+  const [predebitLoading, setPredebitLoading] = useState(false);
+  const [predebitError, setPredebitError] = useState<string | null>(null);
+
+  const loadPromises = useCallback(async () => {
+    setPromisesLoading(true);
+    setPromisesError(null);
+    try {
+      setPromises(await api.getPromises());
+    } catch (e: any) {
+      setPromisesError(e?.message ?? 'promise tracker unavailable');
+    } finally {
+      setPromisesLoading(false);
+    }
+  }, []);
+
+  const loadPredebit = useCallback(async () => {
+    setPredebitLoading(true);
+    setPredebitError(null);
+    try {
+      setPredebit(await api.getPreDebitHistory());
+    } catch (e: any) {
+      setPredebitError(e?.message ?? 'preventive notice history unavailable');
+    } finally {
+      setPredebitLoading(false);
+    }
+  }, []);
 
   const loadEvaluation = useCallback(async () => {
     setEvaluationLoading(true);
@@ -414,6 +444,11 @@ export const DashboardView: React.FC = () => {
   useEffect(() => {
     loadEvaluation();
   }, [loadEvaluation]);
+
+  useEffect(() => {
+    loadPromises();
+    loadPredebit();
+  }, [loadPromises, loadPredebit]);
 
   // Keep the open drawer in sync with the poll so a status flip is visible
   // without closing and reopening it.
@@ -558,6 +593,115 @@ export const DashboardView: React.FC = () => {
                   </p>
                 ))}
               </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Prevention and promise-to-pay evidence — same data the Test Lab
+          cards write, made visible here so it is not Test-Lab-only. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <Card>
+          <CardHeader
+            title="Preventive reminders"
+            subtitle="Pre-debit notices Cadence has scheduled ahead of a debit. Local audit workflow only — no Razorpay call, no bank-balance claim."
+            action={<Badge tone="info">Preventive</Badge>}
+          />
+          <div className="p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {predebit && (
+                <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
+                  <Badge tone="approved">{predebit.notified_count} notified</Badge>
+                  <Badge tone="pending">{predebit.suppressed_count} suppressed</Badge>
+                </div>
+              )}
+              <Button variant="secondary" size="sm" onClick={loadPredebit} loading={predebitLoading}>
+                <BellRing size={12} /> Refresh
+              </Button>
+            </div>
+            {predebitError && <p className="font-mono text-[12px] text-[var(--color-rejected)]">{predebitError}</p>}
+            {predebit && predebit.notices.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[12px]">
+                  <thead>
+                    <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
+                      <th className="py-1.5 pr-3">Subscription</th>
+                      <th className="py-1.5 pr-3">Channel</th>
+                      <th className="py-1.5 pr-3">Debit at</th>
+                      <th className="py-1.5 pr-3">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {predebit.notices.map((row) => (
+                      <tr key={`${row.subscription_id}-${row.scheduled_at}`} className="border-t border-[var(--color-line)]">
+                        <td className="py-1.5 pr-3 max-w-[160px] truncate font-mono" title={row.subscription_id}>{row.subscription_id}</td>
+                        <td className="py-1.5 pr-3 font-mono">{row.channel}</td>
+                        <td className="py-1.5 pr-3 font-mono">{row.debit_at ? new Date(row.debit_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}</td>
+                        <td className="py-1.5 pr-3">
+                          <Badge tone={row.notified ? 'approved' : row.reason === 'pending' ? 'neutral' : 'pending'}>
+                            {row.notified ? 'notified' : row.reason}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-[12px] text-[var(--color-ink-muted)]">No preventive notices scheduled yet — use Test Lab's Prevent before a debit card.</p>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Promise-to-pay tracker"
+            subtitle="Customer commitments parsed by the real ptp_parser/dispatcher path. No Resend inbound webhook is wired, so Test Lab types a reply to simulate one."
+            action={<Badge tone="neutral">Simulated inbound</Badge>}
+          />
+          <div className="p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {promises && (
+                <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
+                  <Badge tone="pending">{promises.open_count} open</Badge>
+                  <Badge tone="approved">{promises.kept_count} kept</Badge>
+                  <Badge tone="rejected">{promises.broken_count} broken</Badge>
+                </div>
+              )}
+              <Button variant="secondary" size="sm" onClick={loadPromises} loading={promisesLoading}>
+                <MessageSquareText size={12} /> Refresh
+              </Button>
+            </div>
+            {promisesError && <p className="font-mono text-[12px] text-[var(--color-rejected)]">{promisesError}</p>}
+            {promises && promises.promises.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[12px]">
+                  <thead>
+                    <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
+                      <th className="py-1.5 pr-3">Reply</th>
+                      <th className="py-1.5 pr-3">Kind</th>
+                      <th className="py-1.5 pr-3">Promised date</th>
+                      <th className="py-1.5 pr-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {promises.promises.map((row) => (
+                      <tr key={row.journey_id} className="border-t border-[var(--color-line)]">
+                        <td className="py-1.5 pr-3 max-w-[200px] truncate" title={row.reply_text}>{row.reply_text || '—'}</td>
+                        <td className="py-1.5 pr-3 font-mono">{row.kind}</td>
+                        <td className="py-1.5 pr-3 font-mono">{row.promised_date ?? '—'}</td>
+                        <td className="py-1.5 pr-3">
+                          <Badge tone={row.status === 'kept' ? 'approved' : row.status === 'broken' ? 'rejected' : 'pending'}>
+                            {row.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-[12px] text-[var(--color-ink-muted)]">No promises recorded yet — use Test Lab's promise-to-pay tracker card.</p>
             )}
           </div>
         </Card>

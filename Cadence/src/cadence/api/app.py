@@ -68,6 +68,8 @@ from cadence.api.schemas import (
     PayLinkOut,
     PaySimulateIn,
     PaymentLinkRowOut,
+    PreDebitHistoryOut,
+    PreDebitHistoryRowOut,
     PreDebitScheduleIn,
     PreDebitScheduleOut,
     PromiseListOut,
@@ -1630,6 +1632,49 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             channel=body.channel,
         )
         return PreDebitScheduleOut(**result)
+
+    @app.get("/api/predebit/history", response_model=PreDebitHistoryOut)
+    def predebit_history(limit: int = 100) -> PreDebitHistoryOut:
+        """Every preventive pre-debit notice Cadence has scheduled, newest first.
+
+        Projects ``predebit.scheduled`` (the intent) joined with whichever of
+        ``predebit.notified`` or ``intervention.vetoed`` followed it on the same
+        subscription aggregate — the same two-event proof the Test Lab card
+        shows, made visible on the Dashboard instead of Test-Lab-only.
+        """
+        scheduled = store.get_by_type("predebit.scheduled", limit=limit)
+        rows: list[PreDebitHistoryRowOut] = []
+        for ev in reversed(scheduled):
+            sub_id = ev.aggregate_id
+            notified = False
+            reason = "pending"
+            ref: str | None = None
+            for later in store.get_by_aggregate(AGG_JOURNEY, sub_id):
+                if later.seq <= ev.seq:
+                    continue
+                if later.type == "predebit.notified":
+                    notified = True
+                    reason = "ok"
+                    ref = later.payload.get("ref")
+                    break
+                if later.type == "intervention.vetoed" and later.payload.get("intervention") == "PREDEBIT_NUDGE":
+                    reason = str(later.payload.get("reason", "vetoed"))
+                    break
+            rows.append(PreDebitHistoryRowOut(
+                subscription_id=sub_id,
+                channel=str(ev.payload.get("channel", "whatsapp")),
+                debit_at=str(ev.payload.get("debit_at", "")),
+                amount_minor=int(ev.payload.get("amount_minor", 0)),
+                notified=notified,
+                reason=reason,
+                scheduled_at=ev.occurred_at,
+                ref=ref,
+            ))
+        return PreDebitHistoryOut(
+            notices=rows,
+            notified_count=sum(1 for r in rows if r.notified),
+            suppressed_count=sum(1 for r in rows if not r.notified and r.reason != "pending"),
+        )
 
     @app.post("/api/test/inject", response_model=InjectOut)
     def test_inject(body: InjectIn) -> InjectOut:

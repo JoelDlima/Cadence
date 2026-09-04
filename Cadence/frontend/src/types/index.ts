@@ -155,6 +155,23 @@ export interface AgentCompare {
   per_seed: AgentComparePerSeed[];
 }
 
+export interface PreDebitHistoryRow {
+  subscription_id: string;
+  channel: string;
+  debit_at: string;
+  amount_minor: number;
+  notified: boolean;
+  reason: string;
+  scheduled_at: string;
+  ref?: string | null;
+}
+
+export interface PreDebitHistory {
+  notices: PreDebitHistoryRow[];
+  notified_count: number;
+  suppressed_count: number;
+}
+
 export interface CheckoutIdleFinding {
   payment_link_id: string;
   reference_id: string;
