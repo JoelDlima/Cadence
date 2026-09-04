@@ -24,7 +24,6 @@ import {
   Clock4,
   CheckCheck,
   Sparkles,
-  ExternalLink,
   Mail,
   MessageSquareText,
 } from 'lucide-react';
@@ -170,39 +169,8 @@ const TestLabView: React.FC = () => {
     return found;
   }, [refId]);
 
-  // --- Live failure: real Razorpay customer + plink_* + dashboard link ---
-  const [liveFiring, setLiveFiring] = useState(false);
-  const [liveResult, setLiveResult] = useState<{
-    customer_id?: string;
-    payment_link_id?: string;
-    short_url?: string;
-    journey_id?: string;
-    simulated?: boolean;
-    detail?: string;
-  } | null>(null);
-
-  const fireLiveFailure = useCallback(async () => {
-    setLiveFiring(true);
-    setLiveResult(null);
-    try {
-      const c = await api.createLiveCustomer({ name: 'Demo (judge)', email: 'demo@x.local', contact: '+910000000000' });
-      const f = await api.createLiveFailure({ customer_id: c.id });
-      // Point the lifecycle drills at the link we just made, without waiting
-      // for the 5s poll.
-      if (f.payment_link?.reference_id) setRefAuto(f.payment_link.reference_id);
-      setLiveResult({
-        customer_id: c.id,
-        payment_link_id: f.payment_link?.id,
-        short_url: f.payment_link?.short_url,
-        journey_id: f.journey_id,
-        simulated: f.payment_link?.simulated,
-      });
-    } catch (e: any) {
-      setLiveResult({ detail: e?.message ?? 'live failure request failed' });
-    } finally {
-      setLiveFiring(false);
-    }
-  }, []);
+  // Reference auto-selection alone is enough: the drills below already pick
+  // up the newest payment link from Live Recovery via the 5s poll above.
 
   const [prevention, setPrevention] = useState<{ status: 'idle' | 'running' | 'passed' | 'failed'; detail?: string }>({ status: 'idle' });
   const runPrevention = useCallback(async () => {
@@ -372,62 +340,15 @@ const TestLabView: React.FC = () => {
         action={<Badge tone="approved">Live</Badge>}
       />
 
-      {/* --- Live failure: real Razorpay object on click --- */}
+      {/* --- No standalone "fire failure" here: it duplicated Live Recovery
+          steps 1-2 exactly. Every drill below acts on whichever payment link
+          you most recently created there. --- */}
       <Card>
         <CardHeader
-          title="Fire a live test failure"
-          subtitle="Creates a real Razorpay test-mode customer, a real payment link, and a signed payment.failed webhook. The plink_ id shows up in your Razorpay dashboard in about a second."
-          action={<Badge tone="info">Real Razorpay</Badge>}
+          title="Need a payment link to test against?"
+          subtitle="Open Live Recovery and run steps 1-2 (Create real customer, then Create payment link + post failure webhook). Every drill below auto-selects your newest link."
+          action={<Badge tone="neutral">Live Recovery</Badge>}
         />
-        <div className="p-5 space-y-3">
-          <Button onClick={fireLiveFailure} disabled={liveFiring} variant="primary" size="sm">
-            {liveFiring ? 'Firing…' : 'Fire live failure'}
-          </Button>
-          {liveResult && (
-            <div className="text-[12.5px] font-mono space-y-1 bg-[var(--color-surface-subtle)] border border-[var(--color-line)] rounded p-3">
-              {liveResult.detail && <div className="text-[var(--color-coral)]">{liveResult.detail}</div>}
-              {liveResult.customer_id && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--color-ink-muted)] shrink-0">customer id:</span>
-                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded break-all">{liveResult.customer_id}</code>
-                </div>
-              )}
-              {liveResult.payment_link_id && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--color-ink-muted)] shrink-0">payment link id:</span>
-                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded break-all">{liveResult.payment_link_id}</code>
-                </div>
-              )}
-              {liveResult.short_url && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--color-ink-muted)] shrink-0">short_url:</span>
-                  <a href={liveResult.short_url} target="_blank" rel="noreferrer" className="text-[var(--color-accent)] underline break-all">
-                    {liveResult.short_url}
-                  </a>
-                </div>
-              )}
-              {liveResult.journey_id && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--color-ink-muted)] shrink-0">journey id:</span>
-                  <code className="bg-[var(--color-paper)] px-1.5 py-0.5 rounded break-all">{liveResult.journey_id}</code>
-                </div>
-              )}
-              {liveResult.simulated !== undefined && (
-                <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-                  simulated: {String(liveResult.simulated)}
-                </div>
-              )}
-              <a
-                href="https://dashboard.razorpay.com/app/payment-links"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-accent)] underline hover:no-underline mt-2"
-              >
-                <ExternalLink size={11} /> Open in Razorpay Dashboard (Payment Links)
-              </a>
-            </div>
-          )}
-        </div>
       </Card>
 
       {/* --- Prevention proof --- */}
