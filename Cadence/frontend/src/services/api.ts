@@ -17,6 +17,7 @@ import {
   InjectRequest,
   InjectResponse,
   AgentCompare,
+  CheckoutIdleScan,
   AgentReasoning,
   MerchantSummary,
   Anomaly,
@@ -299,6 +300,12 @@ export const api = {
     return jsonFetch<AgentCompare>(`/api/eval/agent-compare?${params.toString()}`);
   },
 
+  /** Cadence's local created-link idle scan; this is not Magic Checkout data. */
+  async scanCheckoutIdle(idleMinutes?: number): Promise<CheckoutIdleScan> {
+    const qs = idleMinutes === undefined ? '' : `?idle_minutes=${encodeURIComponent(String(idleMinutes))}`;
+    return postJson<CheckoutIdleScan>(`/api/checkout-idle/scan${qs}`, {});
+  },
+
   async runChaosDrill(drill: string): Promise<ChaosResult> {
     return postJson<ChaosResult>(`/api/chaos/${encodeURIComponent(drill)}/run`, {});
   },
@@ -316,6 +323,29 @@ export const api = {
   /** Real injection. Backend signs the webhook with the configured secret. */
   async injectFailure(payload: InjectRequest): Promise<InjectResponse> {
     return postJson<InjectResponse>('/api/test/inject', payload);
+  },
+
+  /** Preventive pre-debit nudge: fire a proactive notice BEFORE a scheduled
+   *  debit (the RBI 24h pre-debit notice). Test-safe — appends audit events
+   *  only, never touches Razorpay. Distinct from injectFailure (reactive). */
+  async schedulePreDebitNudge(payload: {
+    subscription_id: string;
+    customer_id: string;
+    amount_minor: number;
+    debit_at: string;
+    currency?: string;
+    channel?: string;
+  }): Promise<{
+    subscription_id: string;
+    notified: boolean;
+    reason: string;
+    channel: string;
+    debit_at: string;
+    scheduled_event: boolean;
+    notified_event: boolean;
+    ref: string | null;
+  }> {
+    return postJson('/api/predebit/schedule', payload);
   },
 
   async createPayLink(journeyId: string): Promise<PayLink> {

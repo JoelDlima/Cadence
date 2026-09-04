@@ -24,7 +24,7 @@ import {
 } from '../components/primitives';
 import { api, inrFormatter } from '../services/api';
 import type {
-  AgentReasoning, CloudPlinks, DashboardStats, PaymentLinkRow, TimelineEvent,
+  AgentCompare, AgentReasoning, CheckoutIdleScan, CloudPlinks, DashboardStats, PaymentLinkRow, TimelineEvent,
 } from '../types';
 
 const ROWS_POLL_MS = 5000;
@@ -345,6 +345,37 @@ export const DashboardView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [evaluation, setEvaluation] = useState<AgentCompare | null>(null);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
+  const [idleScan, setIdleScan] = useState<CheckoutIdleScan | null>(null);
+  const [idleScanLoading, setIdleScanLoading] = useState(false);
+  const [idleScanError, setIdleScanError] = useState<string | null>(null);
+
+  const loadEvaluation = useCallback(async () => {
+    setEvaluationLoading(true);
+    setEvaluationError(null);
+    try {
+      setEvaluation(await api.getAgentCompare(50, 42, [42, 7, 99, 123, 2024]));
+    } catch (e: any) {
+      setEvaluationError(e?.message ?? 'calibrated evaluation unavailable');
+    } finally {
+      setEvaluationLoading(false);
+    }
+  }, []);
+
+  const scanIdleLinks = useCallback(async () => {
+    setIdleScanLoading(true);
+    setIdleScanError(null);
+    try {
+      const result = await api.scanCheckoutIdle();
+      setIdleScan(result);
+    } catch (e: any) {
+      setIdleScanError(e?.message ?? 'idle checkout scan failed');
+    } finally {
+      setIdleScanLoading(false);
+    }
+  }, []);
 
   const loadRows = useCallback(async () => {
     try {
@@ -379,6 +410,10 @@ export const DashboardView: React.FC = () => {
     const id = setInterval(loadStats, STATS_POLL_MS);
     return () => clearInterval(id);
   }, [loadStats]);
+
+  useEffect(() => {
+    loadEvaluation();
+  }, [loadEvaluation]);
 
   // Keep the open drawer in sync with the poll so a status flip is visible
   // without closing and reopening it.
@@ -451,6 +486,81 @@ export const DashboardView: React.FC = () => {
             <Card key={i} className="p-4"><Skeleton className="h-14 w-full" /></Card>
           ))
         )}
+      </div>
+
+      {/* Evidence is intentionally separate from live Payment Link totals. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <Card>
+          <CardHeader
+            title="Calibrated recovery evidence"
+            subtitle="Deterministic local policy evaluation; it never calls Razorpay, Resend, or Supabase."
+            action={<Badge tone="info">Simulation</Badge>}
+          />
+          <div className="p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[12px] text-[var(--color-ink-muted)]">
+                5 fixed seeds × 50 synthetic subscribers. Not a live cohort or production-performance claim.
+              </p>
+              <Button variant="secondary" size="sm" onClick={loadEvaluation} loading={evaluationLoading}>
+                <RefreshCw size={12} /> {evaluation ? 'Re-run' : 'Run evaluation'}
+              </Button>
+            </div>
+            {evaluationError && <p className="font-mono text-[12px] text-[var(--color-rejected)]">{evaluationError}</p>}
+            {evaluation && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Fixed retry</p>
+                    <p className="numeric mt-1 text-[20px] font-semibold">{evaluation.mean_naive_recovery_pct.toFixed(1)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Cadence</p>
+                    <p className="numeric mt-1 text-[20px] font-semibold text-[var(--color-approved)]">{evaluation.mean_cadence_recovery_pct.toFixed(1)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Relative lift</p>
+                    <p className="numeric mt-1 text-[20px] font-semibold text-[var(--color-accent)]">+{evaluation.mean_uplift_pct.toFixed(1)}%</p>
+                  </div>
+                </div>
+                <p className="font-mono text-[10.5px] text-[var(--color-ink-subtle)]">
+                  seeds: {evaluation.seeds.join(', ')} · {evaluation.n} per seed · source: {evaluation.source}
+                </p>
+              </>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Checkout-idle recovery"
+            subtitle="Self-managed idle detection over Cadence’s Payment Link projection — not Razorpay Magic Checkout data."
+            action={<Badge tone="neutral">Created links only</Badge>}
+          />
+          <div className="p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[12px] text-[var(--color-ink-muted)]">
+                A created link past its configured threshold gets one bounded message through classifier, bandit, Guardian, and dispatcher.
+              </p>
+              <Button variant="secondary" size="sm" onClick={scanIdleLinks} loading={idleScanLoading}>
+                <Clock size={12} /> Scan idle links
+              </Button>
+            </div>
+            {idleScanError && <p className="font-mono text-[12px] text-[var(--color-rejected)]">{idleScanError}</p>}
+            {idleScan && (
+              <div className="rounded border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-3 text-[12px] font-mono space-y-1">
+                <p>threshold: {idleScan.threshold_minutes} min · created scanned: {idleScan.scanned_created_links}</p>
+                <p className={idleScan.detected.length ? 'text-[var(--color-approved)]' : 'text-[var(--color-ink-muted)]'}>
+                  detected: {idleScan.detected.length} · already recorded: {idleScan.already_detected} · non-created skipped: {idleScan.skipped_non_created}
+                </p>
+                {idleScan.detected.map((finding) => (
+                  <p key={finding.payment_link_id} className="break-all text-[var(--color-ink-muted)]">
+                    {finding.payment_link_id} → {finding.journey_state ?? 'recorded'} · {finding.journey_id ?? 'journey pending'}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
 
       {/* Payment links table */}

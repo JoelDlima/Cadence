@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { AppShell } from './layouts/AppShell';
 import { LiveRecoveryView } from './views/LiveRecoveryView';
 import { PayPortalView } from './views/PayPortalView';
-import { AgentCompareView } from './views/AgentCompareView';
+import TestLabView from './views/TestLabView';
 import { DashboardView } from './views/DashboardView';
 import { CheckoutView } from './views/CheckoutView';
 import { B2BView } from './views/B2BView';
 import { MandateView } from './views/MandateView';
+import { PreDebitNudgeView } from './views/PreDebitNudgeView';
 import { Metrics, Status, CloudStatus } from './types';
 import { api } from './services/api';
 
@@ -18,6 +19,7 @@ const POLL_MS = 2500;
 // carries the reasoning panel and the audit chain).
 const TAB_IDS = [
   'live', 'dashboard', 'testlab', 'b2b', 'mandate', 'checkout', 'pay',
+  'predebit',
   'overview', 'merchant', 'agentcompare', 'testbench', 'journeys',
   'guardian', 'brain',
 ];
@@ -87,11 +89,13 @@ export const App: React.FC = () => {
 
       {isDashboard && <DashboardView />}
 
-      {isTestLab && <AgentCompareView />}
+      {isTestLab && <TestLabView />}
 
       {currentTab === 'b2b' && <B2BView />}
 
       {currentTab === 'mandate' && <MandateView />}
+
+      {currentTab === 'predebit' && <PreDebitNudgeView />}
 
       {currentTab === 'checkout' && <CheckoutView />}
 

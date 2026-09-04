@@ -203,6 +203,28 @@ const TestLabView: React.FC = () => {
     }
   }, []);
 
+  const [prevention, setPrevention] = useState<{ status: 'idle' | 'running' | 'passed' | 'failed'; detail?: string }>({ status: 'idle' });
+  const runPrevention = useCallback(async () => {
+    setPrevention({ status: 'running' });
+    try {
+      const debitAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const result = await api.schedulePreDebitNudge({
+        subscription_id: `${subId}_prevent`, customer_id: custId,
+        amount_minor: 49900, debit_at: debitAt, channel: 'email',
+      });
+      setPrevention({
+        status: 'passed',
+        detail: [
+          `scheduled debit: ${result.debit_at}`,
+          `preventive notice: ${result.notified ? 'sent' : 'blocked'} (${result.reason})`,
+          `audit: predebit.scheduled=${result.scheduled_event}, predebit.notified=${result.notified_event}`,
+        ].join('\n'),
+      });
+    } catch (e: any) {
+      setPrevention({ status: 'failed', detail: e?.message ?? 'prevention workflow failed' });
+    }
+  }, [subId, custId]);
+
   const runDrill = useCallback(async (id: DrillId) => {
     setActiveDrill(id);
     setDrillOutputs((prev) => ({ ...prev, [id]: { status: 'running' } }));
@@ -360,6 +382,53 @@ const TestLabView: React.FC = () => {
               >
                 <ExternalLink size={11} /> Open in Razorpay Dashboard (Payment Links)
               </a>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* --- Prevention proof --- */}
+      <Card>
+        <CardHeader
+          title="Prevent before a debit"
+          subtitle="Schedules a proactive pre-debit notice in the controlled local audit workflow. This is not a bank-balance claim and makes no Razorpay call."
+          action={<Badge tone="info">Preventive</Badge>}
+        />
+        <div className="p-5 space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={runPrevention} disabled={prevention.status === 'running'} variant="primary" size="sm">
+              <Mail size={12} />
+              {prevention.status === 'running' ? 'Sending…' : 'Schedule preventive notice'}
+            </Button>
+            <span className="text-[11.5px] text-[var(--color-ink-muted)]">
+              Uses <code>predebit.scheduled</code> and <code>predebit.notified</code>; Guardian can suppress it.
+            </span>
+          </div>
+          {prevention.status !== 'idle' && (
+            <div
+              className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
+              style={{
+                backgroundColor: prevention.status === 'running'
+                  ? 'var(--color-info-wash)'
+                  : prevention.status === 'passed'
+                    ? 'var(--color-approved-wash)'
+                    : 'var(--color-rejected-wash)',
+                borderColor: prevention.status === 'running'
+                  ? 'var(--color-info)'
+                  : prevention.status === 'passed'
+                    ? 'var(--color-approved)'
+                    : 'var(--color-rejected)',
+                color: prevention.status === 'running'
+                  ? 'var(--color-info)'
+                  : prevention.status === 'passed'
+                    ? 'var(--color-approved)'
+                    : 'var(--color-rejected)',
+              }}
+            >
+              <strong>
+                {prevention.status === 'running' ? 'SENDING…' : prevention.status === 'passed' ? 'RECORDED' : 'FAILED'}
+              </strong>
+              {prevention.detail ? ` · ${prevention.detail}` : ''}
             </div>
           )}
         </div>

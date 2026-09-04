@@ -12,6 +12,7 @@ export type RootCause =
   | "BANK_DOWN"
   | "TIMEOUT"
   | "CUSTOMER_ABORTED"
+  | "ABANDONED_CHECKOUT"
   | "HARD_DECLINE"
   | "BAD_VPA"
   | "EXPIRED_INSTRUMENT"
@@ -152,6 +153,21 @@ export interface AgentCompare {
   mean_uplift_pct: number;
   mean_recovered_delta_inr: number;
   per_seed: AgentComparePerSeed[];
+}
+
+export interface CheckoutIdleFinding {
+  payment_link_id: string;
+  reference_id: string;
+  journey_id?: string | null;
+  journey_state?: string | null;
+}
+
+export interface CheckoutIdleScan {
+  threshold_minutes: number;
+  scanned_created_links: number;
+  detected: CheckoutIdleFinding[];
+  already_detected: number;
+  skipped_non_created: number;
 }
 
 export interface ChaosResult {

@@ -514,8 +514,12 @@ const AudioCard: React.FC<{ nudgeBody: string; nudgeSubject: string }> = ({ nudg
 
   if (!nudgeBody) {
     return (
-      <div className="rounded-md border border-[var(--color-line)] p-3 text-[13px] text-[var(--color-ink-muted)]">
-        Voice message (Hinglish) — appears once the agent writes the text
+      <div className="rounded-md border border-[var(--color-line)] p-3">
+        <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">Hinglish audio</div>
+        <p className="text-[13px] text-[var(--color-ink-muted)] mb-2">
+          Voice preview unlocks after Cadence writes an approved recovery message. If Guardian blocks the action, there is no message to play.
+        </p>
+        <Button disabled size="sm">Play Hinglish</Button>
       </div>
     );
   }
