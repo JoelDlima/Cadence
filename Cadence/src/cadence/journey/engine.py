@@ -134,6 +134,18 @@ _KILL_SWITCH_REASON = "kill_switch"
 _HARD_DECLINE_REASON = "hard_decline"
 _NO_VIABLE_MOVE_REASON = "no_viable_move"
 _CAUSE_OUTAGE_REASON = "cause_outage_pause"
+# During a same-cause outage pause, only the cause's own deferred-retry move
+# may proceed (a batched retry once the outage clears). RETRY_LATER is not a
+# legal move for NO_FUNDS (a funds shortfall is not a bank/network outage in
+# the taxonomy), so pausing on RETRY_LATER alone made every NO_FUNDS journey
+# during a detected outage dead-end into HUMAN_REVIEW with no legal move ever
+# offered. Each cause's outage-safe retry mirrors its FAST_PATH_PREFERENCE
+# deferred-retry choice.
+_OUTAGE_SAFE_RETRY: dict[str, str] = {
+    NO_FUNDS: RETRY_PAYDAY,
+    BANK_DOWN: RETRY_LATER,
+    TIMEOUT: RETRY_LATER,
+}
 _PAYDAY_WEEKDAYS = (0, 4)  # Monday / Friday paydays
 _RUN_HOUR = 10  # 10:00 local for payday retries and quiet-hour exits
 _OUTAGE_WINDOW_MINUTES = 1440
@@ -756,14 +768,20 @@ class RecoveryEngine:
             if intervention not in legal_moves(cause):
                 continue
             if paused_for_outage:
-                if intervention != RETRY_LATER:
-                    continue  # outage pause: only a batched deferred retry may proceed
-                self._append(
-                    E_INTERVENTION_VETOED,
-                    sub_id,
-                    {"intervention": intervention, "reason": _CAUSE_OUTAGE_REASON},
-                    now_iso,
-                )
+                safe_retry = _OUTAGE_SAFE_RETRY.get(cause)
+                if intervention != safe_retry:
+                    # Every suppressed candidate is recorded so "no viable
+                    # move" is never reached with a silent audit gap.
+                    self._append(
+                        E_INTERVENTION_VETOED,
+                        sub_id,
+                        {"intervention": intervention, "reason": _CAUSE_OUTAGE_REASON},
+                        now_iso,
+                    )
+                    continue
+                # The cause's own deferred-retry move is allowed through once
+                # the pause is lifted for the rest of this dispatch; it still
+                # has to pass ordinary Guardian governance below.
                 paused_for_outage = False
             scheduled = _schedule(intervention, cause, attempt_no, sub_id, now, self._cfg)
             scheduled = self._apply_phantom_failure_guard(

@@ -112,7 +112,7 @@ def _seed_bank_failures(db: Database, count: int, at: datetime) -> None:
 
 
 @pytest.mark.integration
-def test_engine_degrades_to_retry_later_with_veto_event_during_cause_outage(
+def test_engine_degrades_to_retry_later_during_cause_outage(
     tmp_db: Database, fake_clock: FakeClock
 ) -> None:
     # Arrange: 5 prior BANK_DOWN failures across other journeys within the window.
@@ -142,7 +142,115 @@ def test_engine_degrades_to_retry_later_with_veto_event_during_cause_outage(
         2026, 8, 23, 4, 30, tzinfo=UTC
     )
 
-    # ...and the pause is on the record as a guardian-style veto event.
+    # ...and the journey was approved, not stranded in human review: the
+    # cause's own outage-safe retry is not logged as a veto against itself
+    # (that would misrepresent an approved action as blocked).
     events = EventStore(tmp_db).get_by_aggregate(AGG_JOURNEY, "sub_new")
     vetoes = [e for e in events if e.type == E_INTERVENTION_VETOED]
-    assert [v.payload["reason"] for v in vetoes] == ["cause_outage_pause"]
+    assert vetoes == []
+    approvals = [e for e in events if e.type == "intervention.approved"]
+    assert len(approvals) == 1
+    assert approvals[0].payload["intervention"] == RETRY_LATER
+
+
+@pytest.mark.integration
+def test_no_funds_outage_pause_still_approves_retry_payday_not_human_review(
+    tmp_db: Database, fake_clock: FakeClock
+) -> None:
+    """Regression: NO_FUNDS has no RETRY_LATER legal move, so pausing on
+    RETRY_LATER alone left every NO_FUNDS journey with zero legal moves during
+    a detected outage and it dead-ended in HUMAN_REVIEW with no audit trail
+    explaining why. The cause's own retry (RETRY_PAYDAY) must be offered
+    instead, and every other candidate the pause skips must still be
+    recorded as a veto."""
+    store = EventStore(tmp_db)
+    for i in range(5):
+        moment = utc_iso(fake_clock.now() - timedelta(minutes=30) + timedelta(seconds=i))
+        store.append(
+            event_type=E_PAYMENT_FAILED,
+            aggregate_type=AGG_JOURNEY,
+            aggregate_id=f"sub_seed_nf_{i}",
+            payload={"failure_code": "insufficient_funds"},
+            occurred_at=moment,
+            recorded_at=moment,
+            event_id=f"pf_seed_nf_{i}",
+        )
+    engine = _engine(tmp_db, fake_clock)
+    engine.handle_payment_failed({
+        "subscription_id": "sub_nf_target",
+        "customer_id": "cust_nf_target",
+        "failure_code": "insufficient_funds",
+        "error_description": "Insufficient funds",
+        "amount_minor": 49900,
+        "currency": "INR",
+    })
+
+    journey = JourneyRepo(tmp_db).get_by_subscription("sub_nf_target")
+    assert journey is not None
+    assert journey.state == "INTERVENING"
+
+    events = EventStore(tmp_db).get_by_aggregate(AGG_JOURNEY, "sub_nf_target")
+    approvals = [e for e in events if e.type == "intervention.approved"]
+    assert len(approvals) == 1
+    assert approvals[0].payload["intervention"] == "RETRY_PAYDAY"
+
+    # RETRY_PAYDAY is ranked #1 for NO_FUNDS, so the loop approves it on the
+    # first candidate and never evaluates (let alone vetoes) the rest.
+    vetoes = [e for e in events if e.type == E_INTERVENTION_VETOED]
+    assert vetoes == []
+
+
+@pytest.mark.integration
+def test_outage_pause_audits_a_candidate_ranked_ahead_of_the_safe_retry(
+    tmp_db: Database, fake_clock: FakeClock
+) -> None:
+    """When a higher-ranked candidate is not the cause's outage-safe retry,
+    the pause must record why it was skipped rather than silently continuing
+    past it — the original silent-skip is what let NO_FUNDS journeys dead-end
+    into HUMAN_REVIEW with zero audit trail."""
+    from cadence.agents.planner import DiagnosisProposal, PlannerProposal
+
+    class _StubPlanner:
+        def diagnose(self, *, failure_context, attempt_no):
+            return DiagnosisProposal(
+                root_cause=BANK_DOWN, confidence=0.9, rationale="stub diagnosis",
+            )
+
+        def propose(self, *, root_cause, legal_moves, failure_context, attempt_no):
+            return PlannerProposal(
+                intervention="RETRY_NOW", delay_hours=0.0, rationale="stub proposal",
+            )
+
+    _seed_bank_failures(tmp_db, 5, fake_clock.now() - timedelta(minutes=30))
+    engine = RecoveryEngine(
+        db=tmp_db,
+        event_store=EventStore(tmp_db),
+        journeys=JourneyRepo(tmp_db),
+        queue=QueueRepo(tmp_db),
+        cfg=_policy_config(),
+        clock=fake_clock,
+        planner=_StubPlanner(),
+    )
+    # An unrecognized failure code classifies UNKNOWN, which routes through
+    # the stub planner: diagnosed as BANK_DOWN, with RETRY_NOW proposed and
+    # prepended ahead of the bandit ranking. RETRY_NOW is a legal BANK_DOWN
+    # move but not the outage-safe retry, so it must be skipped-and-audited
+    # before RETRY_LATER is reached and approved.
+    engine.handle_payment_failed({
+        "subscription_id": "sub_planner_target",
+        "customer_id": "cust_planner_target",
+        "failure_code": "totally_unrecognized_code",
+        "error_description": "",
+        "amount_minor": 49900,
+        "currency": "INR",
+    })
+
+    events = EventStore(tmp_db).get_by_aggregate(AGG_JOURNEY, "sub_planner_target")
+    vetoes = [e for e in events if e.type == E_INTERVENTION_VETOED]
+    assert any(
+        v.payload["intervention"] == "RETRY_NOW" and v.payload["reason"] == "cause_outage_pause"
+        for v in vetoes
+    )
+    approvals = [e for e in events if e.type == "intervention.approved"]
+    assert len(approvals) == 1
+    assert approvals[0].payload["intervention"] == RETRY_LATER
