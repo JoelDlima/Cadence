@@ -195,28 +195,35 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
         raw = json.dumps(body_dict).encode("utf-8")
         secret = cfg.webhook_secret if cfg else ""
         signature = hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest() if secret else "no-secret"
-        # Persist the webhook.received event directly (skipping HMAC verify
-        # in test mode so the demo never blocks on a missing secret).
+        # 4) Record the known payment-link reference, then send the controlled
+        # failure through the same signed ingress and worker path as a Razorpay
+        # delivery. The pre-created journey keeps the link reference stable;
+        # the worker supplies classification, bandit, Guardian and writer events.
         try:
             es.append(
-                event_type="webhook.received", aggregate_type="webhook",
-                aggregate_id=f"evt:{event_id}",
-                payload={"event": "payment.failed", "headers": {"x-razorpay-signature": signature[:16] + "..."}},
-                occurred_at=now, recorded_at=now, event_id=event_id,
-            )
-            es.append(
-                event_type="payment.failed", aggregate_type="journey",
+                event_type="journey.opened", aggregate_type="journey",
                 aggregate_id=subscription_id,
-                payload={"subscription_id": subscription_id, "customer_id": body.customer_id,
-                          "amount_minor": amount_minor, "error_code": "insufficient_funds"},
+                payload={"journey_id": journey_id, "source": "live.failure"},
                 occurred_at=now, recorded_at=now,
-                event_id=f"pf_{uuid.uuid4().hex[:10]}",
+                event_id=f"open_live_{uuid.uuid4().hex[:12]}",
             )
-            # Phase 1b: record the payment link on the JOURNEY aggregate in
-            # exactly the shape the dispatcher emits. Without this event the
-            # link is invisible to (a) the outcome check's
-            # fetch_payment_link probe, (b) the lifecycle drills, and (c) the
-            # Dashboard's payment-link table -- all three read the chain.
+            from cadence.ingest.gateway import process_delivery
+            status, body_out = process_delivery(
+                db=db,
+                webhook_secret=secret,
+                clock=runtime.clock,
+                raw=raw,
+                signature=signature,
+                event_id=event_id,
+            )
+            if status != 200 or body_out.get("status") != "accepted":
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"controlled webhook was not accepted: {body_out}",
+                )
+            # Store the actual Razorpay link in the same action shape used by
+            # the dispatcher so Dashboard projections and lifecycle drills can
+            # resolve it without a demo-only side channel.
             es.append(
                 event_type="action.executed", aggregate_type="journey",
                 aggregate_id=journey_id,
@@ -238,14 +245,28 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                 occurred_at=now, recorded_at=now,
                 event_id=f"act_live_{uuid.uuid4().hex[:12]}",
             )
-            # Open the journey in the engine so the next SPA poll sees
-            # state INTERVENING.
-            jr.update_fields(journey_id,
-                              {"state": "INTERVENING"},
-                              updated_at=now)
+            # First tick handles the failure; a second drains the resulting
+            # approved intervention so the message and reasoning are visible
+            # immediately in the Live Recovery screen. Minimal route tests
+            # provide an engine but not the worker wrapper, so they invoke the
+            # same handler directly.
+            if hasattr(runtime, "worker") and hasattr(runtime, "handlers"):
+                runtime.worker.run_once(runtime.handlers, max_tasks=5)
+                runtime.worker.run_once(runtime.handlers, max_tasks=5)
+            elif hasattr(runtime, "engine"):
+                runtime.engine.handle_payment_failed({
+                    "subscription_id": subscription_id,
+                    "customer_id": body.customer_id,
+                    "amount_minor": amount_minor,
+                    "currency": "INR",
+                    "failure_code": "insufficient_funds",
+                    "error_description": "Insufficient funds in bank account",
+                })
+        except HTTPException:
+            raise
         except Exception as exc:  # noqa: BLE001
-            log.warning("live failure webhook persist failed: %r", exc)
-        # Mirror the new link to Supabase so the cloud table matches the
+            log.warning("live failure ingress/worker failed: %r", exc)
+            raise HTTPException(status_code=500, detail=f"recovery worker failed: {exc!r}")        # Mirror the new link to Supabase so the cloud table matches the
         # local chain from the moment the link exists. Best effort.
         try:
             from cadence.cloud.plink_mirror import get_plink_mirror

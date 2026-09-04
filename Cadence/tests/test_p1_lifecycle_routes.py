@@ -76,6 +76,15 @@ def _open_journey(client: TestClient) -> dict:
     return failure.json()
 
 
+def test_live_failure_runs_classifier_bandit_and_guardian(client: TestClient) -> None:
+    opened = _open_journey(client)
+    timeline = client.get(f"/api/journeys/{opened['journey_id']}/timeline").json()["events"]
+    event_types = {event["type"] for event in timeline}
+    assert "classification.completed" in event_types
+    assert "bandit.ranked" in event_types
+    assert event_types & {"intervention.approved", "intervention.vetoed"}
+
+
 # --------------------------------------------------------------------------
 # 5.1 force-paid
 # --------------------------------------------------------------------------
