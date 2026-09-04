@@ -132,6 +132,17 @@ curl "http://127.0.0.1:8000/api/eval/agent-compare?seeds=42,7,99,123,2024&n=50"
 
 This is a **calibrated simulation**, not a claim of production lift. The endpoint remains available for reproducibility and evaluation; it is not presented as a default product UI comparison.
 
+## Revamp capabilities and evidence boundary
+
+| Capability | Implemented behaviour | Evidence boundary |
+| --- | --- | --- |
+| **Mandate retry sequence** | Guardian permits sequence 1 plus retries 1–3 (sequences 2–4), then hard-vetoes sequence 5 with `mandate_retry_limit_exhausted`. Approved audit records expose sequence and retry number. | Cadence policy and hash-chained audit evidence; not a bank-side mandate-control claim. |
+| **Pre-debit prevention** | `POST /api/predebit/schedule` records `predebit.scheduled` and either `predebit.notified` or a Guardian veto. Test Lab displays the result. | Controlled local audit workflow; no Razorpay call and no claim of a known bank balance. |
+| **Checkout-idle recovery** | `POST /api/checkout-idle/scan` finds an old, still-`created` Payment Link, appends `checkout.idle_detected`, classifies `ABANDONED_CHECKOUT`, and permits only one Guardian-approved message. | Self-managed local Payment Link projection; not Razorpay Magic Checkout abandoned-cart data. Paid, cancelled, and expired links are skipped. |
+| **Calibrated evidence** | Dashboard runs five fixed seeds × 50 synthetic subscribers against the same fixed-retry baseline and Cadence policy. | Deterministic local simulation, clearly labelled **not production performance**; it is separate from live Payment Link totals. |
+
+The Dashboard keeps the two evidence classes separate: Razorpay Test Mode link/customer/cancellation facts remain live-provider evidence, while the calibrated card is reproducible local policy evidence.
+
 ## Quickstart
 
 From the repository root on Windows:
@@ -184,6 +195,8 @@ There are 61 route decorators across the FastAPI application and routers. The hi
 | `POST` | `/api/live/payment-paid` | Processes a close-the-loop payment event. |
 | `POST` | `/api/live/lifecycle/{force-paid,force-failed,force-expired,complete-journey}` | Deterministic lifecycle drills; expiry performs the real Razorpay cancel call. |
 | `POST` | `/api/live/lifecycle/smart` | Bounded autonomous lifecycle decision with deterministic fallback. |
+| `POST` | `/api/checkout-idle/scan` | Detects old locally-projected `created` Payment Links and routes one bounded `ABANDONED_CHECKOUT` message; not Magic Checkout data. |
+| `POST` | `/api/predebit/schedule` | Test-safe preventive pre-debit audit workflow; no Razorpay call. |
 | `GET` | `/api/dashboard/payment-links` | Dashboard payment-link projection. |
 | `GET` | `/api/dashboard/stats` | Dashboard recovery and risk statistics. |
 | `GET` | `/api/cloud/plinks` | Server-side Supabase payment-link mirror read. |
@@ -212,7 +225,7 @@ cd frontend
 npm run build
 ```
 
-The latest full verification recorded **472 tests with 0 failures and 0 errors**, and a clean frontend build. The `--live` lifecycle smoke option uses Razorpay test mode; use it sparingly to avoid creating unnecessary test records.
+Run the full backend suite and the frontend production build before recording or publishing. The `--live` lifecycle smoke option uses Razorpay test mode; use it sparingly to avoid creating unnecessary test records.
 
 ## Limitations
 
