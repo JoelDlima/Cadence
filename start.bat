@@ -58,23 +58,34 @@ echo       frontend ready.
 echo.
 
 REM --- 4. open browser --------------------------------------------
-echo [4/4] opening browser...
-start "" "http://127.0.0.1:3000/#/live"
-ping 127.0.0.1 -n 3 >nul
-start "" "https://vzrasadomyrycafbzdwg.supabase.co/project/default/editor"
+echo [4/4] opening demo tabs in browser...
+start "" "http://127.0.0.1:3000/#testlab"
+ping 127.0.0.1 -n 2 >nul
+start "" "https://dashboard.razorpay.com/app/payment-links"
+ping 127.0.0.1 -n 1 >nul
+start "" "https://web.whatsapp.com"
+ping 127.0.0.1 -n 1 >nul
+start "" "https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn"
+ping 127.0.0.1 -n 1 >nul
+start "" "https://supabase.com/dashboard/project/vzrasadomyrycafbzdwg/editor"
+ping 127.0.0.1 -n 1 >nul
+start "" "https://partners.shopify.com"
+ping 127.0.0.1 -n 1 >nul
+start "" "https://mail.google.com"
 
 echo.
 echo ============================================================
 echo   Cadence is live.
 echo.
-echo     SPA         http://127.0.0.1:3000
-echo     Backend API http://127.0.0.1:8000
-echo     Supabase    https://vzrasadomyrycafbzdwg.supabase.co
+echo     1. Cadence App      : http://127.0.0.1:3000/#testlab
+echo     2. Razorpay Live    : https://dashboard.razorpay.com/app/payment-links
+echo     3. WhatsApp Web     : https://web.whatsapp.com
+echo     4. Twilio Sandbox   : https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn
+echo     5. Supabase Studio  : https://supabase.com/dashboard/project/vzrasadomyrycafbzdwg/editor
+echo     6. Shopify Partners : https://partners.shopify.com
+echo     7. Gmail Invoices   : https://mail.google.com
 echo.
-echo   Live Recovery is page 1 - click the 3 steps + send the
-echo   Hinglish nudge to joelinternshipaitd@gmail.com to see
-echo   the real Resend + ElevenLabs path.
-echo.
+echo   Presentation Guide: Open script.pdf or script.md on your phone!
 echo   To stop everything, run exit.bat in the same folder.
 echo ============================================================
 echo.

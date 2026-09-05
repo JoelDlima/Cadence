@@ -12,8 +12,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard',    label: 'Dashboard',           icon: BarChart3,    group: 'primary' },
   { id: 'testlab',      label: 'Recovery & Test Lab', icon: FlaskConical, group: 'primary' },
+  { id: 'dashboard',    label: 'Dashboard',           icon: BarChart3,    group: 'primary' },
 ];
 
 // Routable customer payment portal:

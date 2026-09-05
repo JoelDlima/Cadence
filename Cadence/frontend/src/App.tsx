@@ -20,7 +20,7 @@ const TAB_IDS = [
 ];
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [currentTab, setCurrentTab] = useState('testlab');
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [cloud, setCloud] = useState<CloudStatus | null>(null);
@@ -32,6 +32,8 @@ export const App: React.FC = () => {
       const h = window.location.hash.replace('#', '').replace('/', '');
       if (h && TAB_IDS.includes(h)) {
         setCurrentTab(h);
+      } else {
+        setCurrentTab('testlab');
       }
     };
     readHash();
