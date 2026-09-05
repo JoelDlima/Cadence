@@ -411,9 +411,9 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
           )}
         >
           <ZapOff size={14} className={activeSection === 'chaos' ? "text-[var(--color-accent)]" : "text-[var(--color-ink-subtle)]"} />
-          <span>4. Chaos & Safety</span>
+          <span>4. Regulatory & Pre-Debit</span>
           <Badge tone={activeSection === 'chaos' ? 'approved' : 'neutral'} className="text-[10px]">
-            4 Drills
+            RBI Guardrails
           </Badge>
         </button>
       </div>
@@ -606,124 +606,6 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
                 >
                   View in Dashboard &rarr;
                 </button>
-              </div>
-            </div>
-          </Card>
-
-          {/* Drills */}
-          <Card>
-            <CardHeader
-              title="System Resilience &amp; Safety Drills"
-              subtitle="Run live drills to verify that Cadence handles bank outages, duplicates, and link expirations without human error."
-              action={<Badge tone="neutral">4 Safety Drills</Badge>}
-            />
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <label className="text-[13px] text-[var(--color-ink-muted)]">
-                  <div className="mb-1">Subscription ID — for bank alert &amp; outage drills</div>
-                  <Input
-                    value={subId}
-                    onChange={(e) => setSubId(e.target.value)}
-                    placeholder="sub_demo_live"
-                    className="numeric text-[14px]"
-                  />
-                </label>
-                <label className="text-[13px] text-[var(--color-ink-muted)]">
-                  <div className="mb-1">Reference ID — for payment link cancellation</div>
-                  <Input
-                    value={refId}
-                    onChange={(e) => setRefId(e.target.value)}
-                    placeholder={refAuto ?? 'filled in automatically'}
-                    className="numeric text-[14px]"
-                  />
-                </label>
-              </div>
-              <div className="text-[11px] text-[var(--color-ink-muted)] mb-3">
-                {refAuto ? (
-                  <>
-                    Acting on{' '}
-                    <span className="font-mono">{refId.trim() || refAuto}</span>
-                    {!refId.trim() && ' — your newest payment link, picked automatically. '
-                      + 'To use a different one, copy its Reference ID from the Dashboard.'}
-                  </>
-                ) : (
-                  <>
-                    No payment link yet. Click <span className="font-medium">1. Live Payment Recovery</span>{' '}
-                    above to create a link and these drills will point at it.
-                  </>
-                )}
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {(
-                  ['duplicate_webhook', 'inject_no_funds', 'reorder', 'force_expired'] as DrillId[]
-                ).map((id) => {
-                  const meta = DRILL_META[id];
-                  const Icon = meta.icon;
-                  const drillState = drillOutputs[id];
-                  return (
-                    <div
-                      key={id}
-                      className="p-3.5 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-subtle)] space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-start gap-2 min-w-0">
-                          <Icon size={14} className="text-[var(--color-ink-muted)] mt-0.5 shrink-0" />
-                          <div className="min-w-0">
-                            <h4 className="text-[13px] font-semibold text-[var(--color-ink)]">
-                              {meta.title}
-                            </h4>
-                            <p className="text-[13px] text-[var(--color-ink-muted)]">
-                              {meta.subtitle}
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          loading={activeDrill === id}
-                          onClick={() => runDrill(id)}
-                        >
-                          <Play size={12} />
-                          Run
-                        </Button>
-                      </div>
-                      {drillState && drillState.status !== 'idle' && (
-                        <div
-                          className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
-                          style={{
-                            backgroundColor:
-                              drillState.status === 'running'
-                                ? 'var(--color-info-wash)'
-                                : drillState.status === 'passed'
-                                  ? 'var(--color-approved-wash)'
-                                  : 'var(--color-rejected-wash)',
-                            borderColor:
-                              drillState.status === 'running'
-                                ? 'var(--color-info)'
-                                : drillState.status === 'passed'
-                                  ? 'var(--color-approved)'
-                                  : 'var(--color-rejected)',
-                            color:
-                              drillState.status === 'running'
-                                ? 'var(--color-info)'
-                                : drillState.status === 'passed'
-                                  ? 'var(--color-approved)'
-                                  : 'var(--color-rejected)',
-                          }}
-                        >
-                          <strong>
-                            {drillState.status === 'running'
-                              ? 'RUNNING…'
-                              : drillState.status === 'passed'
-                                ? 'PASS'
-                                : 'FAIL'}
-                          </strong>
-                          {drillState.detail ? ` · ${drillState.detail}` : ''}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </Card>
