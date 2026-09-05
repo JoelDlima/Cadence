@@ -10,7 +10,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, Badge, Button, PageHeader, EmptyState } from '../components/primitives';
 import { api } from '../services/api';
-import { ShoppingCart, Play, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Play, RefreshCw, Sparkles } from 'lucide-react';
 import { DemoSeedBadge } from '../components/DemoSeedBadge';
 
 interface CheckoutSession {
@@ -70,7 +70,7 @@ export const CheckoutView: React.FC = () => {
     setBusy(true);
     try {
       const amount = 19900 + Math.floor(Math.random() * 50000);
-      const customer = `cust_demo_${Date.now()}`;
+      const customer = `cust_demo_${Date.now().toString().slice(-4)}`;
       await api.abandonCheckout({
         customer_id: customer,
         amount_minor: amount,
@@ -79,6 +79,25 @@ export const CheckoutView: React.FC = () => {
       await fetch();
     } catch (e: any) {
       setError(e?.message ?? 'failed to simulate abandon');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const simulateShopifyAbandon = async () => {
+    setBusy(true);
+    try {
+      // Real Burton Blossom Snowboard from verified Shopify UCP Global Catalog ($559.95 -> 46,400 INR)
+      const amount = 4640000;
+      const customer = `shopify_burton_snowboard_${Date.now().toString().slice(-4)}`;
+      await api.abandonCheckout({
+        customer_id: customer,
+        amount_minor: amount,
+        currency: 'INR',
+      });
+      await fetch();
+    } catch (e: any) {
+      setError(e?.message ?? 'failed to simulate Shopify abandon');
     } finally {
       setBusy(false);
     }
@@ -111,8 +130,8 @@ export const CheckoutView: React.FC = () => {
   if (loading && sessions.length === 0) {
     return (
       <EmptyState
-        title="Waiting for the checkout chaser to fire..."
-        description="Click 'Simulate abandon' to drop a fresh session into the queue, then 'Run chaser tick' to nudge."
+        title="No active checkout drop-offs"
+        description="Click 'Shopify UCP Abandon' or 'Generic Abandon' to trigger an abandoned cart, then click 'Run Recovery Agent' to evaluate the recovery nudge."
       />
     );
   }
@@ -124,17 +143,21 @@ export const CheckoutView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Checkout Drop-off Recovery"
-        description="Razorpay payment_link started but not paid within 30 min. The chaser sends a soft reminder (T+0, T+24h, T+7d) that respects NPCI's 18-hour quiet-hours rule and the touch cap. The 3rd follow-up carries a 5% discount signal. Same AI agent + rule engine as the consumer path."
+        description="Recovers shoppers who abandon their cart before finishing payment. When a buyer leaves their checkout, Cadence detects the drop-off, checks compliance rules (TRAI quiet hours & message caps), and sends automated follow-up recovery links with smart discount incentives."
         action={
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             <DemoSeedBadge />
+            <Button onClick={simulateShopifyAbandon} disabled={busy} variant="secondary">
+              <Sparkles size={14} className="inline-block mr-1 text-[var(--color-accent)]" />
+              Shopify UCP Cart (₹46,400)
+            </Button>
             <Button onClick={simulateAbandon} disabled={busy} variant="secondary">
               <ShoppingCart size={14} className="inline-block mr-1" />
-              Simulate abandon
+              Generic Abandon
             </Button>
             <Button onClick={runTick} disabled={busy} variant="primary">
               <Play size={14} className="inline-block mr-1" />
-              Run chaser tick
+              Run Recovery Agent
             </Button>
           </div>
         }

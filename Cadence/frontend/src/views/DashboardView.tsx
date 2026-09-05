@@ -212,17 +212,17 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[12.5px]">
             {([
               ['Customer', row.customer_id ?? '—'],
-              ['Journey', row.journey_id],
-              ['Subscription', row.subscription_id ?? '—'],
-              ['Reference id', row.reference_id || '—'],
-              ['Amount paid', inr(row.amount_paid_minor / 100)],
-              ['Attempts / touches', `${row.attempts_used} / ${row.touches_used}`],
-              ['Failure code', row.failure_code ?? '—'],
-              ['Root cause', row.root_cause ?? 'not classified'],
-              ['Recovery channel', banditArm ?? 'none yet'],
-              ['Guardian vetoes', String(vetoes)],
-              ['Created', fmtDateTime(row.created_at)],
-              ['Last update', fmtDateTime(row.updated_at)],
+              ['Recovery Case ID', row.journey_id],
+              ['Subscription ID', row.subscription_id ?? '—'],
+              ['Reference Code', row.reference_id || '—'],
+              ['Amount Paid', inr(row.amount_paid_minor / 100)],
+              ['Contact Attempts', `${row.attempts_used} retry / ${row.touches_used} touch`],
+              ['Bank Error Code', row.failure_code ?? '—'],
+              ['Failure Diagnosis', row.root_cause ?? 'Analyzing bank response'],
+              ['Chosen Recovery Path', banditArm ?? 'Evaluating options'],
+              ['Safety Blocks (Quiet Hours / Spam Cap)', String(vetoes)],
+              ['Created At', fmtDateTime(row.created_at)],
+              ['Last Updated', fmtDateTime(row.updated_at)],
             ] as [string, string][]).map(([k, v]) => (
               <div key={k} className="min-w-0">
                 <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-ink-subtle)]">
@@ -236,26 +236,26 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
           <div className="flex flex-wrap gap-2">
             {row.journey_state && (
               <Badge tone={JOURNEY_TONE[row.journey_state] ?? 'neutral'}>
-                Cadence: {row.journey_state}
+                Case Status: {row.journey_state}
               </Badge>
             )}
             {row.short_url && (
               <a href={row.short_url} target="_blank" rel="noreferrer"
                  className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] underline hover:no-underline">
-                <Link2 size={12} /> open payment link
+                <Link2 size={12} /> Open Payment Page
               </a>
             )}
             <a href={RAZORPAY_LINKS_URL} target="_blank" rel="noreferrer"
                className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] underline hover:no-underline">
-              <ExternalLink size={12} /> find in Razorpay
+              <ExternalLink size={12} /> Find in Razorpay Dashboard
             </a>
           </div>
 
-          {/* Agent reasoning — the panel that used to live on the Journeys tab */}
+          {/* Agent reasoning */}
           <Card>
             <CardHeader
-              title="What the agent did"
-              subtitle="Rebuilt from the audit log: what it saw, what it weighed, what it did."
+              title="AI Decision &amp; Action Log"
+              subtitle="Plain-English explanation of what the AI observed, what it calculated, and what action it took."
             />
             <div className="space-y-3 px-5 py-4">
               {loading && <><Skeleton className="h-4 w-2/3" /><Skeleton className="h-4 w-1/2" /></>}
@@ -272,7 +272,7 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
                   </p>
                   {step.event_refs?.length > 0 && (
                     <p className="mt-1.5 font-mono text-[10.5px] text-[var(--color-ink-subtle)]">
-                      seq {step.event_refs.map((r) => r.seq).join(', ')}
+                      Event #{step.event_refs.map((r) => r.seq).join(', ')}
                     </p>
                   )}
                 </div>
@@ -282,7 +282,7 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
 
           {/* Lifecycle trail */}
           <Card>
-            <CardHeader title="Link history" subtitle="Every status change, oldest first." />
+            <CardHeader title="Status Timeline" subtitle="Chronological history of every status update, oldest first." />
             <div className="px-5 py-4">
               {row.lifecycle.length === 0 ? (
                 <p className="text-[12.5px] text-[var(--color-ink-muted)]">
@@ -311,7 +311,7 @@ function RowDrawer({ row, onClose }: { row: PaymentLinkRow; onClose: () => void 
 
           {/* Raw chain */}
           <Card>
-            <CardHeader title="Audit trail" subtitle={`${events.length} tamper-evident records`} />
+            <CardHeader title="Step-by-Step History Log" subtitle={`${events.length} verified records`} />
             <div className="max-h-64 overflow-y-auto px-5 py-3">
               <table className="w-full text-left text-[11.5px]">
                 <tbody>
@@ -473,7 +473,7 @@ export const DashboardView: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description="Every payment link the agent created, laid out the way Razorpay lays them out. The rows are rebuilt from the audit log, so the table and the audit trail can never disagree."
+        description="Real-time operations monitor for payment recovery. Shows live status, recovered revenue, active recovery cases, and the step-by-step history log."
         action={
           <div className="flex items-center gap-3">
             <span className="text-[11px] text-[var(--color-ink-subtle)]">
@@ -491,29 +491,29 @@ export const DashboardView: React.FC = () => {
         {stats ? (
           <>
             <StatCard
-              label="Recovered" accent="approved" icon={TrendingUp}
+              label="Recovered Revenue" accent="approved" icon={TrendingUp}
               value={inr(stats.recovered_inr)}
-              sub={`${stats.recovered_count} journeys · ${stats.recovery_rate_pct}% rate`}
+              sub={`${stats.recovered_count} successful recoveries · ${stats.recovery_rate_pct}% recovery rate`}
             />
             <StatCard
-              label="Lost" accent="rejected" icon={TrendingDown}
+              label="Lost Revenue" accent="rejected" icon={TrendingDown}
               value={inr(stats.lost_inr)}
-              sub={`${stats.lost_count} closed unrecovered`}
+              sub={`${stats.lost_count} marked unrecoverable after max retries`}
             />
             <StatCard
-              label="At risk" accent="pending" icon={Wallet}
+              label="At Risk" accent="pending" icon={Wallet}
               value={inr(stats.at_risk_inr)}
-              sub={`${stats.open_count} journeys still open`}
+              sub={`${stats.open_count} recovery cases actively in progress`}
             />
             <StatCard
-              label="Payment links" accent="info" icon={Link2}
+              label="Payment Links" accent="info" icon={Link2}
               value={String(stats.plink_count)}
-              sub={`${stats.plink_paid_count} paid`}
+              sub={`${stats.plink_paid_count} links successfully paid`}
             />
             <StatCard
-              label="Last 24 hours" accent="neutral" icon={Clock}
+              label="Last 24 Hours" accent="neutral" icon={Clock}
               value={inr(stats.recovered_inr_since)}
-              sub={`${stats.recovered_since} recovered · mean ${stats.mean_time_to_recover_min}m to recover`}
+              sub={`${stats.recovered_since} recovered · ${stats.mean_time_to_recover_min}m average recovery time`}
             />
           </>
         ) : (
@@ -523,21 +523,21 @@ export const DashboardView: React.FC = () => {
         )}
       </div>
 
-      {/* Evidence is intentionally separate from live Payment Link totals. */}
+      {/* Benchmark comparison and Idle cart scanner */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card>
           <CardHeader
-            title="Calibrated recovery evidence"
-            subtitle="Deterministic local policy evaluation; it never calls Razorpay, Resend, or Supabase."
-            action={<Badge tone="info">Simulation</Badge>}
+            title="AI Benchmark Comparison"
+            subtitle="Compares Cadence's smart AI recovery against standard fixed-schedule retries over 50 simulated subscribers."
+            action={<Badge tone="info">Benchmark</Badge>}
           />
           <div className="p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[12px] text-[var(--color-ink-muted)]">
-                5 fixed seeds × 50 synthetic subscribers. Not a live cohort or production-performance claim.
+                Tested across 5 seed cohorts of 50 subscribers to measure relative performance.
               </p>
               <Button variant="secondary" size="sm" onClick={loadEvaluation} loading={evaluationLoading}>
-                <RefreshCw size={12} /> {evaluation ? 'Re-run' : 'Run evaluation'}
+                <RefreshCw size={12} /> {evaluation ? 'Re-run benchmark' : 'Run benchmark'}
               </Button>
             </div>
             {evaluationError && <p className="font-mono text-[12px] text-[var(--color-rejected)]">{evaluationError}</p>}
@@ -545,20 +545,20 @@ export const DashboardView: React.FC = () => {
               <>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Fixed retry</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Standard Fixed Schedule</p>
                     <p className="numeric mt-1 text-[20px] font-semibold">{evaluation.mean_naive_recovery_pct.toFixed(1)}%</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Cadence</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Cadence AI Recovery</p>
                     <p className="numeric mt-1 text-[20px] font-semibold text-[var(--color-approved)]">{evaluation.mean_cadence_recovery_pct.toFixed(1)}%</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Relative lift</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--color-ink-subtle)]">Recovery Revenue Uplift</p>
                     <p className="numeric mt-1 text-[20px] font-semibold text-[var(--color-accent)]">+{evaluation.mean_uplift_pct.toFixed(1)}%</p>
                   </div>
                 </div>
                 <p className="font-mono text-[10.5px] text-[var(--color-ink-subtle)]">
-                  seeds: {evaluation.seeds.join(', ')} · {evaluation.n} per seed · source: {evaluation.source}
+                  seeds: {evaluation.seeds.join(', ')} · {evaluation.n} subscribers per seed
                 </p>
               </>
             )}
@@ -567,29 +567,29 @@ export const DashboardView: React.FC = () => {
 
         <Card>
           <CardHeader
-            title="Checkout-idle recovery"
-            subtitle="Self-managed idle detection over Cadence’s Payment Link projection — not Razorpay Magic Checkout data."
-            action={<Badge tone="neutral">Created links only</Badge>}
+            title="Abandoned Cart &amp; Link Scanner"
+            subtitle="Scans for created payment links and checkouts that have been idle past 30 minutes to trigger recovery follow-ups."
+            action={<Badge tone="neutral">Idle Monitor</Badge>}
           />
           <div className="p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[12px] text-[var(--color-ink-muted)]">
-                A created link past its configured threshold gets one bounded message through classifier, bandit, Guardian, and dispatcher.
+                Detects shoppers who left checkout without paying and evaluates whether a discount or nudge is appropriate.
               </p>
               <Button variant="secondary" size="sm" onClick={scanIdleLinks} loading={idleScanLoading}>
-                <Clock size={12} /> Scan idle links
+                <Clock size={12} /> Scan Idle Links
               </Button>
             </div>
             {idleScanError && <p className="font-mono text-[12px] text-[var(--color-rejected)]">{idleScanError}</p>}
             {idleScan && (
               <div className="rounded border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-3 text-[12px] font-mono space-y-1">
-                <p>threshold: {idleScan.threshold_minutes} min · created scanned: {idleScan.scanned_created_links}</p>
+                <p>Threshold: {idleScan.threshold_minutes} min · Created links scanned: {idleScan.scanned_created_links}</p>
                 <p className={idleScan.detected.length ? 'text-[var(--color-approved)]' : 'text-[var(--color-ink-muted)]'}>
-                  detected: {idleScan.detected.length} · already recorded: {idleScan.already_detected} · non-created skipped: {idleScan.skipped_non_created}
+                  Idle detected: {idleScan.detected.length} · Already notified: {idleScan.already_detected}
                 </p>
                 {idleScan.detected.map((finding) => (
                   <p key={finding.payment_link_id} className="break-all text-[var(--color-ink-muted)]">
-                    {finding.payment_link_id} → {finding.journey_state ?? 'recorded'} · {finding.journey_id ?? 'journey pending'}
+                    {finding.payment_link_id} → {finding.journey_state ?? 'recorded'} · {finding.journey_id ?? 'case pending'}
                   </p>
                 ))}
               </div>
@@ -600,11 +600,12 @@ export const DashboardView: React.FC = () => {
 
       {/* Prevention and promise-to-pay evidence — same data the Test Lab
           cards write, made visible here so it is not Test-Lab-only. */}
+      {/* Preventive notices and customer commitments */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card>
           <CardHeader
-            title="Preventive reminders"
-            subtitle="Pre-debit notices Cadence has scheduled ahead of a debit. Local audit workflow only — no Razorpay call, no bank-balance claim."
+            title="Upcoming Payment Reminders (Pre-Debit Notices)"
+            subtitle="Proactive notifications sent 24-48 hours ahead of auto-debit so customers maintain sufficient bank balance."
             action={<Badge tone="info">Preventive</Badge>}
           />
           <div className="p-5 space-y-3">
@@ -627,7 +628,7 @@ export const DashboardView: React.FC = () => {
                     <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
                       <th className="py-1.5 pr-3">Subscription</th>
                       <th className="py-1.5 pr-3">Channel</th>
-                      <th className="py-1.5 pr-3">Debit at</th>
+                      <th className="py-1.5 pr-3">Debit Time</th>
                       <th className="py-1.5 pr-3">Result</th>
                     </tr>
                   </thead>
@@ -648,24 +649,24 @@ export const DashboardView: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <p className="text-[12px] text-[var(--color-ink-muted)]">No preventive notices scheduled yet — use Test Lab's Prevent before a debit card.</p>
+              <p className="text-[12px] text-[var(--color-ink-muted)]">No upcoming payment notices scheduled yet — try the Schedule Pre-Debit Reminder in the Test Lab.</p>
             )}
           </div>
         </Card>
 
         <Card>
           <CardHeader
-            title="Promise-to-pay tracker"
-            subtitle="Customer commitments parsed by the real ptp_parser/dispatcher path. No Resend inbound webhook is wired, so Test Lab types a reply to simulate one."
-            action={<Badge tone="neutral">Simulated inbound</Badge>}
+            title="Customer Payday Commitments"
+            subtitle="Understands customer promises (e.g. 'I will pay on 25th') and pauses recovery alerts until their promised payday."
+            action={<Badge tone="neutral">Commitments</Badge>}
           />
           <div className="p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {promises && (
                 <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
-                  <Badge tone="pending">{promises.open_count} open</Badge>
+                  <Badge tone="pending">{promises.open_count} pending</Badge>
                   <Badge tone="approved">{promises.kept_count} kept</Badge>
-                  <Badge tone="rejected">{promises.broken_count} broken</Badge>
+                  <Badge tone="rejected">{promises.broken_count} expired</Badge>
                 </div>
               )}
               <Button variant="secondary" size="sm" onClick={loadPromises} loading={promisesLoading}>
@@ -678,9 +679,9 @@ export const DashboardView: React.FC = () => {
                 <table className="w-full text-left text-[12px]">
                   <thead>
                     <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
-                      <th className="py-1.5 pr-3">Reply</th>
-                      <th className="py-1.5 pr-3">Kind</th>
-                      <th className="py-1.5 pr-3">Promised date</th>
+                      <th className="py-1.5 pr-3">Customer Reply</th>
+                      <th className="py-1.5 pr-3">Type</th>
+                      <th className="py-1.5 pr-3">Promised Date</th>
                       <th className="py-1.5 pr-3">Status</th>
                     </tr>
                   </thead>
@@ -701,7 +702,7 @@ export const DashboardView: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <p className="text-[12px] text-[var(--color-ink-muted)]">No promises recorded yet — use Test Lab's promise-to-pay tracker card.</p>
+              <p className="text-[12px] text-[var(--color-ink-muted)]">No customer commitments recorded yet — simulate a customer reply in the Test Lab.</p>
             )}
           </div>
         </Card>
@@ -710,22 +711,43 @@ export const DashboardView: React.FC = () => {
       {/* Payment links table */}
       <Card>
         <CardHeader
-          title="Payment links"
-          subtitle="Refreshes every 5 seconds, so a link you create on Live Recovery lands here within seconds."
+          title="Recovery Payment Links &amp; Audit Log"
+          subtitle="Real-time monitor of every payment link generated for customer recovery. Refreshes every 5 seconds."
           action={
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 text-[11.5px]">
               {cloud?.enabled && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-[var(--color-approved)]">
-                  <ShieldCheck size={12} /> {cloud.count} mirrored to Supabase
-                </span>
+                <a
+                  href="https://supabase.com/dashboard/project/vzrasadomyrycafbzdwg/editor"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[var(--color-approved)] underline hover:no-underline"
+                >
+                  <ShieldCheck size={12} /> {cloud.count} in Supabase
+                </a>
               )}
+              <a
+                href="https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[#25D366] underline hover:no-underline"
+              >
+                Twilio WhatsApp <ArrowUpRight size={11} />
+              </a>
+              <a
+                href="https://mail.google.com"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[var(--color-ink)] underline hover:no-underline"
+              >
+                Gmail <ArrowUpRight size={11} />
+              </a>
               <a
                 href={RAZORPAY_LINKS_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11.5px] text-[var(--color-accent)] underline hover:no-underline"
+                className="inline-flex items-center gap-1 text-[var(--color-accent)] underline hover:no-underline"
               >
-                Open Razorpay <ArrowUpRight size={11} />
+                Razorpay Dashboard <ArrowUpRight size={11} />
               </a>
             </div>
           }

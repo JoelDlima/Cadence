@@ -7,9 +7,11 @@
 // live API; failures are surfaced honestly in the UI.
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Card, CardHeader, Badge, Button, PageHeader, EmptyState, Input } from '../components/primitives';
+import { Card, CardHeader, Badge, Button, PageHeader, EmptyState, Input, cn } from '../components/primitives';
 import { api } from '../services/api';
 import type { AgentCompare, PromiseRow } from '../types';
+import { LiveRecoveryView } from './LiveRecoveryView';
+import { CheckoutView } from './CheckoutView';
 import {
   BarChart3,
   RefreshCw,
@@ -26,6 +28,8 @@ import {
   Sparkles,
   Mail,
   MessageSquareText,
+  ShoppingCart,
+  Sliders,
 } from 'lucide-react';
 
 const DEFAULT_SEEDS = [42, 7, 99, 123, 2024] as const;
@@ -54,58 +58,76 @@ interface DrillMeta {
 
 const DRILL_META: Record<DrillId, DrillMeta> = {
   duplicate_webhook: {
-    title: 'Send the same webhook twice',
-    subtitle: 'Razorpay retries webhooks. The engine must count the payment once, not twice.',
+    title: 'Test Duplicate Bank Alert Protection',
+    subtitle: 'Payment gateways often send duplicate alerts. Cadence ignores duplicates so customers are never double-charged or spammed.',
     icon: Copy,
   },
   inject_no_funds: {
-    title: 'Three failures at once',
-    subtitle: 'Fires 3 NO_FUNDS failures in a row. This is what a bank outage looks like, and it should trip the anomaly alert.',
+    title: 'Test Bank Outage Spike Alert',
+    subtitle: 'Simulates 3 rapid bank failures. When a bank server is down, Cadence pauses retries to avoid annoying customers.',
     icon: ZapOff,
   },
   reorder: {
-    title: 'Send webhooks out of order',
-    subtitle: 'The internet does not deliver in order. A late event must not overwrite a newer one.',
+    title: 'Test Delayed Network Alert Delivery',
+    subtitle: 'Internet lag can deliver old alerts after new ones. Cadence orders events by bank timestamp so old alerts never undo real payments.',
     icon: Shuffle,
   },
   kill_switch: {
-    title: 'Pull the kill switch',
-    subtitle: 'Flips the stop flag on and off. While it is on, no message and no retry may leave the building.',
+    title: 'Emergency Master Pause (Kill Switch)',
+    subtitle: 'Instantly stops all outgoing WhatsApp messages, emails, and payment retries during maintenance.',
     icon: AlertOctagon,
   },
   force_paid: {
-    title: 'The customer pays',
-    subtitle: 'Marks the link paid and closes the journey as RECOVERED. Razorpay has no API to mark a link paid, so this side is ours.',
+    title: 'Simulate Customer Completing Payment',
+    subtitle: 'Marks the recovery case as paid and updates revenue metrics in the live audit log.',
     icon: CheckCircle2,
   },
   force_failed: {
-    title: 'The payment fails again',
-    subtitle: 'Sends another payment.failed. Cadence reopens recovery (INTERVENING) and the link stays payable, exactly as Razorpay leaves it.',
+    title: 'Simulate Second Payment Failure',
+    subtitle: 'Simulates another failure so you can observe Cadence smart-rescheduling to another channel or time.',
     icon: XCircle,
   },
   force_expired: {
-    title: 'The 24-hour window closes',
-    subtitle: 'Really calls Razorpay to cancel the link, then closes the journey unrecovered. This one changes the real Razorpay status.',
+    title: 'Cancel Payment Link (Live Razorpay API)',
+    subtitle: 'Sends a real cancellation call to Razorpay to expire the payment link after the recovery window ends.',
     icon: Clock4,
   },
   complete_journey: {
-    title: 'Close the loop in one click',
-    subtitle: 'Same as "The customer pays", bundled as a single button for a demo.',
+    title: 'One-Click Full Recovery Demo',
+    subtitle: 'Simulates instant payment confirmation and closes the recovery case.',
     icon: CheckCheck,
   },
   smart: {
-    title: 'Let the agent decide',
-    subtitle: 'The LLM reads the link, the audit trail and your hint, picks paid / failed / expired, and explains why. No key? It falls back to a fixed choice.',
+    title: 'Let AI Agent Decide Next Step',
+    subtitle: 'The AI reads the payment history, customer hint, and safety rules to pick the optimal next action.',
     icon: Sparkles,
   },
 };
 
-const TestLabView: React.FC = () => {
+interface TestLabProps {
+  initialSection?: string;
+}
+
+export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
+  const [activeSection, setActiveSection] = useState<'payment' | 'checkout' | 'benchmark' | 'chaos'>(() => {
+    if (initialSection === 'checkout') return 'checkout';
+    if (initialSection === 'agentcompare' || initialSection === 'benchmark') return 'benchmark';
+    if (initialSection === 'testbench' || initialSection === 'chaos') return 'chaos';
+    return 'payment';
+  });
+
+  useEffect(() => {
+    if (initialSection === 'checkout') setActiveSection('checkout');
+    else if (initialSection === 'agentcompare' || initialSection === 'benchmark') setActiveSection('benchmark');
+    else if (initialSection === 'testbench' || initialSection === 'chaos') setActiveSection('chaos');
+    else if (initialSection === 'live' || initialSection === 'payment') setActiveSection('payment');
+  }, [initialSection]);
+
   // --- Comparison (top) ---
   const [result, setResult] = useState<AgentCompare | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [n, setN] = useState<number>(50);
+  const [n, setN] = useState<number>(100);
   const [seed, setSeed] = useState<number>(42);
   const [useMultiSeed, setUseMultiSeed] = useState<boolean>(true);
 
@@ -332,289 +354,423 @@ const TestLabView: React.FC = () => {
     }
   }, [subId, custId, custHint, latestReference]);
 
+  useEffect(() => {
+    if (activeSection === 'benchmark' && !result && !loading) {
+      run();
+    }
+  }, [activeSection, result, loading, run]);
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Test Lab"
-        description="Test delivery and safety behaviour. The expiry drill is the only lifecycle action shown because it makes a real Razorpay cancel request."
-        action={<Badge tone="approved">Live</Badge>}
+        title="Recovery & Test Lab"
+        description="The unified operations and testing center for Cadence. Execute live Razorpay payment failure recoveries, test Shopify cart drop-offs, benchmark AI agent uplift over 100 subscribers, or trigger resilience drills."
+        action={<Badge tone="approved">Operational</Badge>}
       />
 
-      {/* --- No standalone "fire failure" here: it duplicated Live Recovery
-          steps 1-2 exactly. Every drill below acts on whichever payment link
-          you most recently created there. --- */}
-      <Card>
-        <CardHeader
-          title="Need a payment link to test against?"
-          subtitle="Open Live Recovery and run steps 1-2 (Create real customer, then Create payment link + post failure webhook). Every drill below auto-selects your newest link."
-          action={<Badge tone="neutral">Live Recovery</Badge>}
-        />
-      </Card>
+      {/* Navigation Pill Bar */}
+      <div className="flex items-center gap-2 border-b border-[var(--color-line)] pb-3 overflow-x-auto">
+        <button
+          onClick={() => setActiveSection('payment')}
+          className={cn(
+            "flex items-center gap-2 px-3.5 py-2 rounded-md text-[13px] font-medium transition-colors cursor-pointer",
+            activeSection === 'payment'
+              ? "bg-[var(--color-surface)] text-[var(--color-ink)] font-semibold border border-[var(--color-line)] shadow-xs"
+              : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
+          )}
+        >
+          <Play size={14} className={activeSection === 'payment' ? "text-[var(--color-accent)]" : "text-[var(--color-ink-subtle)]"} />
+          <span>1. Live Payment Recovery</span>
+          <Badge tone={activeSection === 'payment' ? 'approved' : 'neutral'} className="text-[10px]">
+            Razorpay Flow
+          </Badge>
+        </button>
 
-      {/* --- Prevention proof --- */}
-      <Card>
-        <CardHeader
-          title="Prevent before a debit"
-          subtitle="Schedules a proactive pre-debit notice in the controlled local audit workflow. This is not a bank-balance claim and makes no Razorpay call."
-          action={<Badge tone="info">Preventive</Badge>}
-        />
-        <div className="p-5 space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={runPrevention} disabled={prevention.status === 'running'} variant="primary" size="sm">
-              <Mail size={12} />
-              {prevention.status === 'running' ? 'Sending…' : 'Schedule preventive notice'}
-            </Button>
-            <span className="text-[11.5px] text-[var(--color-ink-muted)]">
-              Uses <code>predebit.scheduled</code> and <code>predebit.notified</code>; Guardian can suppress it.
-            </span>
-          </div>
-          {prevention.status !== 'idle' && (
-            <div
-              className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
-              style={{
-                backgroundColor: prevention.status === 'running'
-                  ? 'var(--color-info-wash)'
-                  : prevention.status === 'passed'
-                    ? 'var(--color-approved-wash)'
-                    : 'var(--color-rejected-wash)',
-                borderColor: prevention.status === 'running'
-                  ? 'var(--color-info)'
-                  : prevention.status === 'passed'
-                    ? 'var(--color-approved)'
-                    : 'var(--color-rejected)',
-                color: prevention.status === 'running'
-                  ? 'var(--color-info)'
-                  : prevention.status === 'passed'
-                    ? 'var(--color-approved)'
-                    : 'var(--color-rejected)',
-              }}
-            >
-              <strong>
-                {prevention.status === 'running' ? 'SENDING…' : prevention.status === 'passed' ? 'RECORDED' : 'FAILED'}
-              </strong>
-              {prevention.detail ? ` · ${prevention.detail}` : ''}
+        <button
+          onClick={() => setActiveSection('checkout')}
+          className={cn(
+            "flex items-center gap-2 px-3.5 py-2 rounded-md text-[13px] font-medium transition-colors cursor-pointer",
+            activeSection === 'checkout'
+              ? "bg-[var(--color-surface)] text-[var(--color-ink)] font-semibold border border-[var(--color-line)] shadow-xs"
+              : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
+          )}
+        >
+          <ShoppingCart size={14} className={activeSection === 'checkout' ? "text-[var(--color-accent)]" : "text-[var(--color-ink-subtle)]"} />
+          <span>2. Checkout Drop-offs</span>
+          <Badge tone={activeSection === 'checkout' ? 'approved' : 'neutral'} className="text-[10px]">
+            Shopify UCP
+          </Badge>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('benchmark')}
+          className={cn(
+            "flex items-center gap-2 px-3.5 py-2 rounded-md text-[13px] font-medium transition-colors cursor-pointer",
+            activeSection === 'benchmark'
+              ? "bg-[var(--color-surface)] text-[var(--color-ink)] font-semibold border border-[var(--color-line)] shadow-xs"
+              : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
+          )}
+        >
+          <BarChart3 size={14} className={activeSection === 'benchmark' ? "text-[var(--color-accent)]" : "text-[var(--color-ink-subtle)]"} />
+          <span>3. Batch Simulation</span>
+          <Badge tone={activeSection === 'benchmark' ? 'approved' : 'neutral'} className="text-[10px]">
+            100-User Lift
+          </Badge>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('chaos')}
+          className={cn(
+            "flex items-center gap-2 px-3.5 py-2 rounded-md text-[13px] font-medium transition-colors cursor-pointer",
+            activeSection === 'chaos'
+              ? "bg-[var(--color-surface)] text-[var(--color-ink)] font-semibold border border-[var(--color-line)] shadow-xs"
+              : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
+          )}
+        >
+          <ZapOff size={14} className={activeSection === 'chaos' ? "text-[var(--color-accent)]" : "text-[var(--color-ink-subtle)]"} />
+          <span>4. Chaos & Safety</span>
+          <Badge tone={activeSection === 'chaos' ? 'approved' : 'neutral'} className="text-[10px]">
+            5 Drills
+          </Badge>
+        </button>
+      </div>
+
+      {/* Section 1: Live Payment Failure Recovery */}
+      {activeSection === 'payment' && (
+        <div className="space-y-4">
+          <LiveRecoveryView />
+        </div>
+      )}
+
+      {/* Section 2: Checkout Drop-offs (Shopify UCP) */}
+      {activeSection === 'checkout' && (
+        <div className="space-y-4">
+          <CheckoutView />
+        </div>
+      )}
+
+      {/* Section 3: Batch Benchmark Simulation */}
+      {activeSection === 'benchmark' && (
+        <div className="space-y-5">
+          <Card className="p-5">
+            <CardHeader
+              title="Batch Recovery Benchmark (Track 03)"
+              subtitle="Run a calibrated Monte Carlo simulation across 100 Indian subscribers to compare Cadence's cause-aware recovery agent against Razorpay's static retry schedule."
+              action={
+                <Button onClick={run} loading={loading} variant="primary">
+                  <Play size={14} className="inline-block mr-1" />
+                  Run 100-Subscriber Simulation
+                </Button>
+              }
+            />
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-[13px] text-[var(--color-ink-muted)]">
+              <label className="flex items-center gap-2">
+                <span>Subscribers per batch:</span>
+                <select
+                  value={n}
+                  onChange={(e) => setN(Number(e.target.value))}
+                  className="bg-[var(--color-paper)] border border-[var(--color-line)] rounded px-2 py-1 text-[13px]"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100 (Official)</option>
+                  <option value={200}>200</option>
+                </select>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useMultiSeed}
+                  onChange={(e) => setUseMultiSeed(e.target.checked)}
+                  className="rounded"
+                />
+                <span>5-Seed Mean (Seeds: 42, 7, 99, 123, 2024 for statistical rigor)</span>
+              </label>
             </div>
+            {error && <p className="mt-3 text-[13px] text-[var(--color-rejected)]">{error}</p>}
+          </Card>
+
+          {result ? (
+            <CompareResultView result={result} />
+          ) : (
+            <EmptyState
+              title="Running benchmark simulation..."
+              description="Calculating Monte Carlo uplift comparing Cadence against default retry schedules."
+            />
           )}
         </div>
-      </Card>
+      )}
 
-      {/* --- Promise-to-pay tracker --- */}
-      <Card>
-        <CardHeader
-          title="Promise-to-pay tracker"
-          subtitle="Reuses the real ptp_parser and dispatcher path. No Resend inbound webhook is wired yet, so this types a reply instead of receiving a live inbound email."
-          action={<Badge tone="neutral">Simulated inbound</Badge>}
-        />
-        <div className="p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Input
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="e.g. 25 tarikh ko paisa bhej dunga"
-              className="flex-1 text-[14px]"
+      {/* Section 4: Chaos & Safety Drills */}
+      {activeSection === 'chaos' && (
+        <div className="space-y-6">
+          {/* Prevention proof */}
+          <Card>
+            <CardHeader
+              title="Upcoming Payment Reminder (Pre-Debit Notice)"
+              subtitle="Sends a proactive reminder 24 hours before a recurring debit so the customer keeps sufficient bank balance."
+              action={<Badge tone="info">Preventive</Badge>}
             />
-            <Button onClick={runSimulateReply} disabled={replyResult.status === 'running'} variant="primary" size="sm">
-              <MessageSquareText size={12} />
-              {replyResult.status === 'running' ? 'Sending…' : 'Simulate customer reply'}
-            </Button>
-          </div>
-          <p className="text-[11.5px] text-[var(--color-ink-muted)]">
-            Applies to your newest payment link (same reference as the drills below). Try Hinglish phrasing:
-            date-of-month (<code>25 tarikh ko</code>), a duration (<code>3 din me</code>), a refusal (<code>cancel kar do</code>), or vague (<code>jaldi karunga</code>).
-          </p>
-          {replyResult.status !== 'idle' && (
-            <div
-              className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
-              style={{
-                backgroundColor: replyResult.status === 'running'
-                  ? 'var(--color-info-wash)'
-                  : replyResult.status === 'passed'
-                    ? 'var(--color-approved-wash)'
-                    : 'var(--color-rejected-wash)',
-                borderColor: replyResult.status === 'running'
-                  ? 'var(--color-info)'
-                  : replyResult.status === 'passed'
-                    ? 'var(--color-approved)'
-                    : 'var(--color-rejected)',
-                color: replyResult.status === 'running'
-                  ? 'var(--color-info)'
-                  : replyResult.status === 'passed'
-                    ? 'var(--color-approved)'
-                    : 'var(--color-rejected)',
-              }}
-            >
-              <strong>
-                {replyResult.status === 'running' ? 'SENDING…' : replyResult.status === 'passed' ? 'RECORDED' : 'FAILED'}
-              </strong>
-              {replyResult.detail ? ` · ${replyResult.detail}` : ''}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between pt-2 border-t border-[var(--color-line)]">
-            <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
-              {promiseCounts && (
-                <>
-                  <Badge tone="pending">{promiseCounts.open} open</Badge>
-                  <Badge tone="approved">{promiseCounts.kept} kept</Badge>
-                  <Badge tone="rejected">{promiseCounts.broken} broken</Badge>
-                </>
+            <div className="p-5 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button onClick={runPrevention} disabled={prevention.status === 'running'} variant="primary" size="sm">
+                  <Mail size={12} />
+                  {prevention.status === 'running' ? 'Sending…' : 'Schedule Pre-Debit Reminder'}
+                </Button>
+                <span className="text-[11.5px] text-[var(--color-ink-muted)]">
+                  Sends friendly notice ahead of billing; safety guard prevents duplicate alerts.
+                </span>
+              </div>
+              {prevention.status !== 'idle' && (
+                <div
+                  className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: prevention.status === 'running'
+                      ? 'var(--color-info-wash)'
+                      : prevention.status === 'passed'
+                        ? 'var(--color-approved-wash)'
+                        : 'var(--color-rejected-wash)',
+                    borderColor: prevention.status === 'running'
+                      ? 'var(--color-info)'
+                      : prevention.status === 'passed'
+                        ? 'var(--color-approved)'
+                        : 'var(--color-rejected)',
+                    color: prevention.status === 'running'
+                      ? 'var(--color-info)'
+                      : prevention.status === 'passed'
+                        ? 'var(--color-approved)'
+                        : 'var(--color-rejected)',
+                  }}
+                >
+                  <strong>
+                    {prevention.status === 'running' ? 'SENDING…' : prevention.status === 'passed' ? 'RECORDED' : 'FAILED'}
+                  </strong>
+                  {prevention.detail ? ` · ${prevention.detail}` : ''}
+                </div>
               )}
             </div>
-            <Button variant="secondary" size="sm" onClick={loadPromises} loading={promisesLoading}>
-              <RefreshCw size={12} /> Refresh
-            </Button>
-          </div>
+          </Card>
 
-          {promises && promises.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[12px]">
-                <thead>
-                  <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
-                    <th className="py-1.5 pr-3">Reply</th>
-                    <th className="py-1.5 pr-3">Kind</th>
-                    <th className="py-1.5 pr-3">Promised date</th>
-                    <th className="py-1.5 pr-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {promises.map((row) => (
-                    <tr key={row.journey_id} className="border-t border-[var(--color-line)]">
-                      <td className="py-1.5 pr-3 max-w-[220px] truncate" title={row.reply_text}>{row.reply_text || '—'}</td>
-                      <td className="py-1.5 pr-3 font-mono">{row.kind}</td>
-                      <td className="py-1.5 pr-3 font-mono">{row.promised_date ?? '—'}</td>
-                      <td className="py-1.5 pr-3">
-                        <Badge tone={row.status === 'kept' ? 'approved' : row.status === 'broken' ? 'rejected' : 'pending'}>
-                          {row.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-[12px] text-[var(--color-ink-muted)]">No promises recorded yet — simulate a reply above.</p>
-          )}
-        </div>
-      </Card>
-
-      {/* --- Chaos drills section --- */}
-      <Card>
-        <CardHeader
-          title="Drills"
-          subtitle="Reliability and safety drills for Cadence. The expiry drill also makes a real Razorpay cancellation request."
-          action={<Badge tone="neutral">5 drills</Badge>}
-        />
-        <div className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Subscription ID — for the first four drills</div>
-              <Input
-                value={subId}
-                onChange={(e) => setSubId(e.target.value)}
-                placeholder="sub_demo_live"
-                className="numeric text-[14px]"
-              />
-            </label>
-            <label className="text-[13px] text-[var(--color-ink-muted)]">
-              <div className="mb-1">Reference ID — which payment link to act on</div>
-              <Input
-                value={refId}
-                onChange={(e) => setRefId(e.target.value)}
-                placeholder={refAuto ?? 'filled in automatically'}
-                className="numeric text-[14px]"
-              />
-            </label>
-          </div>
-          <div className="text-[11px] text-[var(--color-ink-muted)] mb-3">
-            {refAuto ? (
-              <>
-                Acting on{' '}
-                <span className="font-mono">{refId.trim() || refAuto}</span>
-                {!refId.trim() && ' — your newest payment link, picked automatically. '
-                  + 'To use a different one, copy its Reference ID from the Dashboard.'}
-              </>
-            ) : (
-              <>
-                No payment link yet. Click <span className="font-medium">Fire live failure</span>{' '}
-                above and these drills will point at it.
-              </>
-            )}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {(
-              ['duplicate_webhook', 'inject_no_funds', 'reorder', 'kill_switch', 'force_expired'] as DrillId[]
-            ).map((id) => {
-              const meta = DRILL_META[id];
-              const Icon = meta.icon;
-              const drillState = drillOutputs[id];
-              return (
+          {/* Promise-to-pay tracker */}
+          <Card>
+            <CardHeader
+              title="Customer Payday Commitment Tracker"
+              subtitle="Parses natural Hindi and English replies like '25 tarikh ko bhej dunga' and pauses reminders until their promised payday."
+              action={<Badge tone="neutral">Interactive Demo</Badge>}
+            />
+            <div className="p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Input
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="e.g. 25 tarikh ko paisa bhej dunga"
+                  className="flex-1 text-[14px]"
+                />
+                <Button onClick={runSimulateReply} disabled={replyResult.status === 'running'} variant="primary" size="sm">
+                  <MessageSquareText size={12} />
+                  {replyResult.status === 'running' ? 'Processing…' : 'Simulate Customer Reply'}
+                </Button>
+              </div>
+              <p className="text-[11.5px] text-[var(--color-ink-muted)]">
+                Applies to your newest recovery payment link. Try Hinglish phrasing:
+                date-of-month (<code>25 tarikh ko</code>), a duration (<code>3 din me</code>), or a cancellation request (<code>cancel kar do</code>).
+              </p>
+              {replyResult.status !== 'idle' && (
                 <div
-                  key={id}
-                  className="p-3.5 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-subtle)] space-y-2"
+                  className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: replyResult.status === 'running'
+                      ? 'var(--color-info-wash)'
+                      : replyResult.status === 'passed'
+                        ? 'var(--color-approved-wash)'
+                        : 'var(--color-rejected-wash)',
+                    borderColor: replyResult.status === 'running'
+                      ? 'var(--color-info)'
+                      : replyResult.status === 'passed'
+                        ? 'var(--color-approved)'
+                        : 'var(--color-rejected)',
+                    color: replyResult.status === 'running'
+                      ? 'var(--color-info)'
+                      : replyResult.status === 'passed'
+                        ? 'var(--color-approved)'
+                        : 'var(--color-rejected)',
+                  }}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-start gap-2 min-w-0">
-                      <Icon size={14} className="text-[var(--color-ink-muted)] mt-0.5 shrink-0" />
-                      <div className="min-w-0">
-                        <h4 className="text-[13px] font-semibold text-[var(--color-ink)]">
-                          {meta.title}
-                        </h4>
-                        <p className="text-[13px] text-[var(--color-ink-muted)]">
-                          {meta.subtitle}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={activeDrill === id}
-                      onClick={() => runDrill(id)}
-                    >
-                      <Play size={12} />
-                      Run
-                    </Button>
-                  </div>
-                  {drillState && drillState.status !== 'idle' && (
-                    <div
-                      className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
-                      style={{
-                        backgroundColor:
-                          drillState.status === 'running'
-                            ? 'var(--color-info-wash)'
-                            : drillState.status === 'passed'
-                              ? 'var(--color-approved-wash)'
-                              : 'var(--color-rejected-wash)',
-                        borderColor:
-                          drillState.status === 'running'
-                            ? 'var(--color-info)'
-                            : drillState.status === 'passed'
-                              ? 'var(--color-approved)'
-                              : 'var(--color-rejected)',
-                        color:
-                          drillState.status === 'running'
-                            ? 'var(--color-info)'
-                            : drillState.status === 'passed'
-                              ? 'var(--color-approved)'
-                              : 'var(--color-rejected)',
-                      }}
-                    >
-                      <strong>
-                        {drillState.status === 'running'
-                          ? 'RUNNING…'
-                          : drillState.status === 'passed'
-                            ? 'PASS'
-                            : 'FAIL'}
-                      </strong>
-                      {drillState.detail ? ` · ${drillState.detail}` : ''}
-                    </div>
+                  <strong>
+                    {replyResult.status === 'running' ? 'PROCESSING…' : replyResult.status === 'passed' ? 'RECORDED' : 'FAILED'}
+                  </strong>
+                  {replyResult.detail ? ` · ${replyResult.detail}` : ''}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--color-line)]">
+                <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
+                  {promiseCounts && (
+                    <>
+                      <Badge tone="pending">{promiseCounts.open} pending</Badge>
+                      <Badge tone="approved">{promiseCounts.kept} kept</Badge>
+                      <Badge tone="rejected">{promiseCounts.broken} expired</Badge>
+                    </>
                   )}
                 </div>
-              );
-            })}
-          </div>
+                <Button variant="secondary" size="sm" onClick={loadPromises} loading={promisesLoading}>
+                  <RefreshCw size={12} /> Refresh
+                </Button>
+              </div>
+
+              {promises && promises.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-[12px]">
+                    <thead>
+                      <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
+                        <th className="py-1.5 pr-3">Customer Reply</th>
+                        <th className="py-1.5 pr-3">Type</th>
+                        <th className="py-1.5 pr-3">Promised Date</th>
+                        <th className="py-1.5 pr-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {promises.map((row) => (
+                        <tr key={row.journey_id} className="border-t border-[var(--color-line)]">
+                          <td className="py-1.5 pr-3 max-w-[220px] truncate" title={row.reply_text}>{row.reply_text || '—'}</td>
+                          <td className="py-1.5 pr-3 font-mono">{row.kind}</td>
+                          <td className="py-1.5 pr-3 font-mono">{row.promised_date ?? '—'}</td>
+                          <td className="py-1.5 pr-3">
+                            <Badge tone={row.status === 'kept' ? 'approved' : row.status === 'broken' ? 'rejected' : 'pending'}>
+                              {row.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-[12px] text-[var(--color-ink-muted)]">No customer commitments recorded yet — simulate a reply above.</p>
+              )}
+            </div>
+          </Card>
+
+          {/* Drills */}
+          <Card>
+            <CardHeader
+              title="System Resilience &amp; Safety Drills"
+              subtitle="Run live drills to verify that Cadence handles bank outages, duplicates, and emergency stops without human error."
+              action={<Badge tone="neutral">5 Safety Drills</Badge>}
+            />
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <label className="text-[13px] text-[var(--color-ink-muted)]">
+                  <div className="mb-1">Subscription ID — for the first four drills</div>
+                  <Input
+                    value={subId}
+                    onChange={(e) => setSubId(e.target.value)}
+                    placeholder="sub_demo_live"
+                    className="numeric text-[14px]"
+                  />
+                </label>
+                <label className="text-[13px] text-[var(--color-ink-muted)]">
+                  <div className="mb-1">Reference ID — which payment link to act on</div>
+                  <Input
+                    value={refId}
+                    onChange={(e) => setRefId(e.target.value)}
+                    placeholder={refAuto ?? 'filled in automatically'}
+                    className="numeric text-[14px]"
+                  />
+                </label>
+              </div>
+              <div className="text-[11px] text-[var(--color-ink-muted)] mb-3">
+                {refAuto ? (
+                  <>
+                    Acting on{' '}
+                    <span className="font-mono">{refId.trim() || refAuto}</span>
+                    {!refId.trim() && ' — your newest payment link, picked automatically. '
+                      + 'To use a different one, copy its Reference ID from the Dashboard.'}
+                  </>
+                ) : (
+                  <>
+                    No payment link yet. Click <span className="font-medium">1. Live Payment Recovery</span>{' '}
+                    above to create a link and these drills will point at it.
+                  </>
+                )}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {(
+                  ['duplicate_webhook', 'inject_no_funds', 'reorder', 'kill_switch', 'force_expired'] as DrillId[]
+                ).map((id) => {
+                  const meta = DRILL_META[id];
+                  const Icon = meta.icon;
+                  const drillState = drillOutputs[id];
+                  return (
+                    <div
+                      key={id}
+                      className="p-3.5 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-subtle)] space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <Icon size={14} className="text-[var(--color-ink-muted)] mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <h4 className="text-[13px] font-semibold text-[var(--color-ink)]">
+                              {meta.title}
+                            </h4>
+                            <p className="text-[13px] text-[var(--color-ink-muted)]">
+                              {meta.subtitle}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          loading={activeDrill === id}
+                          onClick={() => runDrill(id)}
+                        >
+                          <Play size={12} />
+                          Run
+                        </Button>
+                      </div>
+                      {drillState && drillState.status !== 'idle' && (
+                        <div
+                          className="p-2.5 rounded border text-[12px] font-mono whitespace-pre-wrap"
+                          style={{
+                            backgroundColor:
+                              drillState.status === 'running'
+                                ? 'var(--color-info-wash)'
+                                : drillState.status === 'passed'
+                                  ? 'var(--color-approved-wash)'
+                                  : 'var(--color-rejected-wash)',
+                            borderColor:
+                              drillState.status === 'running'
+                                ? 'var(--color-info)'
+                                : drillState.status === 'passed'
+                                  ? 'var(--color-approved)'
+                                  : 'var(--color-rejected)',
+                            color:
+                              drillState.status === 'running'
+                                ? 'var(--color-info)'
+                                : drillState.status === 'passed'
+                                  ? 'var(--color-approved)'
+                                  : 'var(--color-rejected)',
+                          }}
+                        >
+                          <strong>
+                            {drillState.status === 'running'
+                              ? 'RUNNING…'
+                              : drillState.status === 'passed'
+                                ? 'PASS'
+                                : 'FAIL'}
+                          </strong>
+                          {drillState.detail ? ` · ${drillState.detail}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
         </div>
-      </Card>
+      )}
     </div>
   );
 };

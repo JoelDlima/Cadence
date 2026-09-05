@@ -75,10 +75,20 @@ class ChannelConfig:
     resend_api_key: str
     email_from: str
     page_base_url: str = "http://localhost:8000"
+    twilio_account_sid: str = ""
+    twilio_api_key: str = ""
+    twilio_api_secret: str = ""
+    twilio_whatsapp_from: str = "whatsapp:+17372508034"
+    twilio_content_sid: str = "HXfe5ab5f00277942d4d4200328b4d403c"
+    user_phone: str = "+919876543210"
 
     @property
     def email_is_live(self) -> bool:
         return bool(self.resend_api_key)
+
+    @property
+    def whatsapp_is_live(self) -> bool:
+        return bool(self.twilio_account_sid and self.twilio_api_key and self.twilio_api_secret)
 
 
 @dataclass(frozen=True)
@@ -162,6 +172,12 @@ def load_config() -> AppConfig:
             resend_api_key=os.environ.get("RESEND_API_KEY", ""),
             email_from=os.environ.get("EMAIL_FROM", "cadence@example.com"),
             page_base_url=os.environ.get("PAGE_BASE_URL", "http://localhost:8000").rstrip("/"),
+            twilio_account_sid=os.environ.get("TWILIO_ACCOUNT_SID", ""),
+            twilio_api_key=os.environ.get("TWILIO_API_KEY", ""),
+            twilio_api_secret=os.environ.get("TWILIO_API_SECRET", ""),
+            twilio_whatsapp_from=os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034"),
+            twilio_content_sid=os.environ.get("TWILIO_CONTENT_SID", "HXfe5ab5f00277942d4d4200328b4d403c"),
+            user_phone=os.environ.get("USER_WHATSAPP_TO", "+919876543210"),
         ),
         policy=PolicyConfig(
             touch_cap_per_window=_env_int("TOUCH_CAP_PER_WINDOW", 3),

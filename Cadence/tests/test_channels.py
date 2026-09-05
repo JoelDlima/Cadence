@@ -21,6 +21,7 @@ from cadence.config import (
 from cadence.executors.channels import (
     EmailChannel,
     MockWhatsApp,
+    TwilioWhatsAppChannel,
     build_channels,
     email_nudge_text,
     select_channel,
@@ -200,3 +201,71 @@ def test_select_channel_falls_back_to_score_triage_without_preferences() -> None
     # Act / Assert
     assert select_channel(score=60, prefs=None) == "whatsapp"
     assert select_channel(score=59, prefs=None) == "email"
+
+
+def test_twilio_whatsapp_channel_simulated_when_keys_absent() -> None:
+    cfg = ChannelConfig(resend_api_key="", email_from="test@example.com")
+    channel = TwilioWhatsAppChannel(cfg=cfg)
+    res = channel.send(to_customer_id="cust-1", message="hello", ref="j-1:1:whatsapp")
+    assert res["status"] == "sent"
+    assert res["simulated"] is True
+
+
+def test_twilio_whatsapp_channel_posts_twilio_shape() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["body"] = request.read().decode("utf-8")
+        return httpx.Response(201, json={"sid": "MM_test_123", "status": "queued"})
+
+    cfg = ChannelConfig(
+        resend_api_key="",
+        email_from="test@example.com",
+        twilio_account_sid="AC_test",
+        twilio_api_key="SK_test",
+        twilio_api_secret="secret_test",
+        twilio_whatsapp_from="whatsapp:+17372508034",
+    )
+    channel = TwilioWhatsAppChannel(
+        cfg=cfg,
+        transport=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    res = channel.send(to_customer_id="+919876543210", message="Payment reminder", ref="j-1:1:whatsapp")
+    assert res["status"] == "sent"
+    assert res["ref"] == "MM_test_123"
+    assert "AC_test/Messages.json" in captured["url"]
+    assert "From=whatsapp%3A%2B17372508034" in captured["body"] or "From=whatsapp:+17372508034" in captured["body"]
+
+
+def test_twilio_whatsapp_channel_falls_back_to_template_on_21654() -> None:
+    attempts: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = request.read().decode("utf-8")
+        attempts.append({"body": body})
+        if len(attempts) == 1:
+            return httpx.Response(400, json={"code": 21654, "message": "ContentSid Required"})
+        return httpx.Response(201, json={"sid": "MM_fallback_template", "status": "queued"})
+
+    cfg = ChannelConfig(
+        resend_api_key="",
+        email_from="test@example.com",
+        twilio_account_sid="AC_test",
+        twilio_api_key="SK_test",
+        twilio_api_secret="secret_test",
+        twilio_whatsapp_from="whatsapp:+17372508034",
+        twilio_content_sid="HX_approved",
+    )
+    channel = TwilioWhatsAppChannel(
+        cfg=cfg,
+        transport=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    res = channel.send(to_customer_id="+919876543210", message="Payment reminder", ref="j-1:1:whatsapp")
+    assert res["status"] == "sent"
+    assert res["ref"] == "MM_fallback_template"
+    assert res["method"] == "template"
+    assert len(attempts) == 2
+    assert "ContentSid=HX_approved" in attempts[1]["body"]

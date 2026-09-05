@@ -170,6 +170,12 @@ export const api = {
     return postJson('/api/live/send-email', body);
   },
 
+  async sendLiveWhatsApp(body: { reference_id: string; to?: string; text?: string }): Promise<{
+    status: string; http: number; sid?: string; to?: string; method?: string; detail?: string; text?: string;
+  }> {
+    return postJson('/api/live/send-whatsapp', body);
+  },
+
   async playLiveVoice(text: string, language: string = 'hinglish'): Promise<{ reason: string; is_stub: boolean; audio_data_url: string }> {
     const params = new URLSearchParams({ text, language });
     return jsonFetch<{ reason: string; is_stub: boolean; audio_data_url: string }>(`/api/voice/preview?${params.toString()}`);

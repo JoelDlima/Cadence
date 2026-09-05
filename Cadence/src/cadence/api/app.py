@@ -2223,19 +2223,19 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
         language: str = "hinglish",
         amount_minor: int = 49900,
         link_url: str | None = None,
+        text: str | None = None,
     ) -> dict[str, Any]:
-        """Render the Hinglish / Indic nudge and its TTS WAV payload.
+        """Render the Hinglish / Indic nudge and its TTS audio payload.
 
-        The TTS path is keyed off `SARVAM_API_KEY`; without it,
-        the deterministic silent-WAV stub is returned. The SPA
-        shows a play button that points at the data URL of the
-        returned base64-encoded WAV.
+        Supports ElevenLabs (multilingual / Hinglish) and Sarvam AI, with
+        deterministic fallback if neither key is configured. Returns both
+        pcm_payload_b64 and a ready-to-play audio_data_url.
         """
         from cadence.policy.nudge_templates import nudge_for_language as _nudge
         from cadence.policy.voice_tts import synthesize as _synth
-        text = _nudge(language, amount_minor, link_url)
-        # ElevenLabs: prefer if ELEVENLABS_API_KEY is in the env. Sarvam is the fallback.
-        # The env is loaded at module import (load_dotenv above) and again defensively here.
+        if not text:
+            text = _nudge(language, amount_minor, link_url)
+
         import os as _os
         from dotenv import load_dotenv as _ld
         from pathlib import Path as _Pp
@@ -2247,6 +2247,8 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             sarvam_api_key=sarvam_key or None,
             elevenlabs_api_key=eleven or None,
         )
+        mime = "audio/mpeg" if "elevenlabs" in tts.reason else "audio/wav"
+        data_url = f"data:{mime};base64,{tts.pcm_payload_b64}"
         return {
             "language": tts.language,
             "text": tts.text,
@@ -2255,9 +2257,20 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             "sample_rate": tts.sample_rate,
             "duration_seconds": tts.duration_seconds,
             "pcm_payload_b64": tts.pcm_payload_b64,
+            "audio_data_url": data_url,
             "is_stub": tts.is_stub,
             "reason": tts.reason,
         }
+
+    from fastapi import Body
+    @app.post("/api/voice/preview")
+    def post_voice_preview(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        return get_voice_preview(
+            language=body.get("language", "hinglish"),
+            amount_minor=body.get("amount_minor", 49900),
+            link_url=body.get("link_url"),
+            text=body.get("text"),
+        )
 
     return app
 

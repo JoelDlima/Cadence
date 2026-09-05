@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppShell } from './layouts/AppShell';
-import { LiveRecoveryView } from './views/LiveRecoveryView';
 import { PayPortalView } from './views/PayPortalView';
 import TestLabView from './views/TestLabView';
 import { DashboardView } from './views/DashboardView';
-import { CheckoutView } from './views/CheckoutView';
-import { B2BView } from './views/B2BView';
-import { MandateView } from './views/MandateView';
-import { PreDebitNudgeView } from './views/PreDebitNudgeView';
 import { Metrics, Status, CloudStatus } from './types';
 import { api } from './services/api';
 
@@ -25,7 +20,7 @@ const TAB_IDS = [
 ];
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState('live');
+  const [currentTab, setCurrentTab] = useState('dashboard');
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [cloud, setCloud] = useState<CloudStatus | null>(null);
@@ -34,7 +29,7 @@ export const App: React.FC = () => {
   // Sync with URL hash
   useEffect(() => {
     const readHash = () => {
-      const h = window.location.hash.replace('#', '');
+      const h = window.location.hash.replace('#', '').replace('/', '');
       if (h && TAB_IDS.includes(h)) {
         setCurrentTab(h);
       }
@@ -49,8 +44,7 @@ export const App: React.FC = () => {
     window.location.hash = tab;
   };
 
-  // Background poller: status + metrics + cloud mirror. Journey rows are no
-  // longer fetched here — the Dashboard owns its own polling now.
+  // Background poller: status + metrics + cloud mirror
   useEffect(() => {
     const fetchAll = async () => {
       try {
@@ -72,32 +66,22 @@ export const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Retired tab ids all resolve to the Dashboard.
   const isDashboard = ['dashboard', 'overview', 'merchant', 'journeys', 'guardian', 'brain']
     .includes(currentTab);
-  const isTestLab = ['testlab', 'agentcompare', 'testbench'].includes(currentTab);
+  const isTestLab = ['testlab', 'live', 'checkout', 'b2b', 'mandate', 'predebit', 'agentcompare', 'testbench']
+    .includes(currentTab);
 
   return (
     <AppShell
-      currentTab={currentTab}
+      currentTab={isDashboard ? 'dashboard' : isTestLab ? 'testlab' : currentTab}
       onTabChange={handleTabChange}
       online={online}
       mode={status?.mode ?? null}
       cloud={cloud}
     >
-      {currentTab === 'live' && <LiveRecoveryView />}
-
       {isDashboard && <DashboardView />}
 
-      {isTestLab && <TestLabView />}
-
-      {currentTab === 'b2b' && <B2BView />}
-
-      {currentTab === 'mandate' && <MandateView />}
-
-      {currentTab === 'predebit' && <PreDebitNudgeView />}
-
-      {currentTab === 'checkout' && <CheckoutView />}
+      {isTestLab && <TestLabView initialSection={currentTab} />}
 
       {currentTab === 'pay' && <PayPortalView />}
     </AppShell>

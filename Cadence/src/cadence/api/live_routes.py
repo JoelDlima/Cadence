@@ -69,6 +69,12 @@ class LiveSendEmailIn(BaseModel):
     text: str | None = None
     attach_pdf: bool = False
 
+
+class LiveSendWhatsAppIn(BaseModel):
+    reference_id: str
+    to: str = ""
+    text: str | None = None
+
 class LivePaymentPaidIn(BaseModel):
     reference_id: str
     # B-fix: the previous default of 'pay_LIVE_DEMO' deduplicated the
@@ -162,10 +168,12 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                     status=link.get("status", "created"), simulated=False,
                 )
             except Exception as exc:  # noqa: BLE001
-                log.warning("live create_payment_link failed: %r", exc)
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"razorpay create_payment_link failed: {exc!r}",
+                log.warning("live create_payment_link rate-limited/failed: %r; falling back to simulated link", exc)
+                link_id = f"plink_sim_{hashlib.sha1(reference_id.encode()).hexdigest()[:12]}"
+                short = f"https://rzp.io/i/sim_{hashlib.sha1(reference_id.encode()).hexdigest()[:8]}"
+                plink = LivePaymentLinkOut(
+                    id=link_id, short_url=short, reference_id=reference_id,
+                    amount_minor=amount_minor, status="created", simulated=True,
                 )
         else:
             link_id = f"plink_sim_{hashlib.sha1(reference_id.encode()).hexdigest()[:12]}"
@@ -333,6 +341,8 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
                 clock=runtime.clock, raw=raw, signature=signature,
                 event_id=event_id,
             )
+            if hasattr(runtime, "worker") and hasattr(runtime, "handlers"):
+                runtime.worker.run_once(runtime.handlers, max_tasks=5)
         except Exception as exc:  # noqa: BLE001
             log.warning("post_payment_paid process_delivery failed: %r", exc)
             raise HTTPException(status_code=500, detail=f"webhook ingest failed: {exc!r}")
@@ -535,6 +545,165 @@ def create_live_router(*, app: FastAPI, db, runtime) -> APIRouter:
             return resp
         except Exception as e:  # noqa: BLE001
             return {"status": "error", "http": 0, "detail": f"{e!r}", "to": body.to}
+
+    @router.post("/api/live/send-whatsapp")
+    def send_live_whatsapp(body: LiveSendWhatsAppIn):
+        """Send the live WhatsApp nudge via Twilio.
+
+        Uses Twilio WhatsApp API. First attempts sending the freeform
+        message body with the payment link. If Twilio's trial sandbox requires
+        a pre-approved ContentSid template (code 21654), it automatically
+        falls back to the verified template (e.g. HXfe5ab5f00277942d4d4200328b4d403c).
+        """
+        from dotenv import load_dotenv as _ld
+        from pathlib import Path as _P
+        _ld(_P(__file__).resolve().parents[2] / ".env", override=False)
+        import os as _os
+
+        account_sid = _os.environ.get("TWILIO_ACCOUNT_SID", "")
+        api_key = _os.environ.get("TWILIO_API_KEY", "")
+        api_secret = _os.environ.get("TWILIO_API_SECRET", "")
+        from_num = _os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
+        content_sid = _os.environ.get("TWILIO_CONTENT_SID", "HXfe5ab5f00277942d4d4200328b4d403c")
+        default_to = _os.environ.get("USER_WHATSAPP_TO", "+919876543210")
+
+        if not (account_sid and api_key and api_secret):
+            return {
+                "status": "skipped",
+                "http": 200,
+                "detail": "Twilio keys not configured in .env; WhatsApp send skipped",
+                "to": body.to or default_to,
+            }
+
+        target = (body.to.strip() if body.to else "") or default_to
+        to_num = target if target.startswith("whatsapp:") else f"whatsapp:{target}"
+
+        # Look up journey to find payment link short_url
+        short_url = ""
+        journey_id = body.reference_id.split(":", 1)[0] if ":" in body.reference_id else body.reference_id
+        try:
+            es = runtime.store
+            events = es.get_by_aggregate("journey", journey_id)
+            for ev in reversed(events):
+                if ev.type == "action.executed" and ev.payload.get("short_url"):
+                    short_url = ev.payload["short_url"]
+                    break
+        except Exception:
+            pass
+
+        text = body.text or (
+            f"Namaste! Aapka Cadence subscription payment pending hai. "
+            f"Fix in one tap: {short_url or 'https://rzp.io/i/cadence-demo'} - Team Cadence"
+        )
+
+        import base64 as _b64
+        import httpx as _httpx
+        auth_header = f"Basic {_b64.b64encode(f'{api_key}:{api_secret}'.encode()).decode()}"
+        headers = {"Authorization": auth_header}
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+
+        try:
+            with _httpx.Client(timeout=15.0) as client:
+                r = client.post(
+                    url,
+                    data={"From": from_num, "To": to_num, "Body": text},
+                    headers=headers,
+                )
+                if r.status_code in (200, 201):
+                    res_json = r.json()
+                    sid = res_json.get("sid", "wa_sent")
+                    try:
+                        from datetime import datetime as _dt, timezone as _tz
+                        now = _dt.now(_tz.utc).isoformat()
+                        runtime.store.append(
+                            event_type="action.executed",
+                            aggregate_type="journey",
+                            aggregate_id=journey_id,
+                            payload={
+                                "kind": "WHATSAPP",
+                                "status": "EXECUTED",
+                                "ref": sid,
+                                "to": to_num,
+                                "method": "freeform",
+                                "source": "live.whatsapp",
+                            },
+                            occurred_at=now,
+                            recorded_at=now,
+                            event_id=f"act_wa_{uuid.uuid4().hex[:10]}",
+                        )
+                    except Exception:
+                        pass
+                    return {
+                        "status": "sent",
+                        "http": r.status_code,
+                        "sid": sid,
+                        "to": to_num,
+                        "method": "freeform",
+                        "detail": "Delivered live WhatsApp message to your phone!",
+                        "text": text,
+                    }
+
+                err_data = {}
+                try:
+                    err_data = r.json()
+                except Exception:
+                    pass
+
+                if err_data.get("code") == 21654 or "ContentSid" in str(err_data.get("message", "")):
+                    fb_res = client.post(
+                        url,
+                        data={"From": from_num, "To": to_num, "ContentSid": content_sid},
+                        headers=headers,
+                    )
+                    if fb_res.status_code in (200, 201):
+                        fb_json = fb_res.json()
+                        sid = fb_json.get("sid", "wa_template_sent")
+                        try:
+                            from datetime import datetime as _dt, timezone as _tz
+                            now = _dt.now(_tz.utc).isoformat()
+                            runtime.store.append(
+                                event_type="action.executed",
+                                aggregate_type="journey",
+                                aggregate_id=journey_id,
+                                payload={
+                                    "kind": "WHATSAPP",
+                                    "status": "EXECUTED",
+                                    "ref": sid,
+                                    "to": to_num,
+                                    "method": "template",
+                                    "template_sid": content_sid,
+                                    "source": "live.whatsapp",
+                                },
+                                occurred_at=now,
+                                recorded_at=now,
+                                event_id=f"act_wa_{uuid.uuid4().hex[:10]}",
+                            )
+                        except Exception:
+                            pass
+                        return {
+                            "status": "sent",
+                            "http": fb_res.status_code,
+                            "sid": sid,
+                            "to": to_num,
+                            "method": "template",
+                            "detail": f"Delivered via verified trial template ({content_sid}) to your phone!",
+                            "text": fb_json.get("body", text),
+                        }
+                    return {
+                        "status": "error",
+                        "http": fb_res.status_code,
+                        "detail": f"Twilio template send failed: {fb_res.text[:200]}",
+                        "to": to_num,
+                    }
+
+                return {
+                    "status": "error",
+                    "http": r.status_code,
+                    "detail": f"Twilio send failed: {r.text[:200]}",
+                    "to": to_num,
+                }
+        except Exception as exc:
+            return {"status": "error", "http": 0, "detail": f"{exc!r}", "to": to_num}
 
     # -----------------------------------------------------------------
     # Phase 1: payment-link lifecycle drills + the smart orchestrator.

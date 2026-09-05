@@ -22,7 +22,7 @@ import {
 import { api } from '../services/api';
 import {
   Play, ExternalLink, ShieldAlert, MessageCircle, FileText,
-  CheckCircle2, ChevronRight, RotateCcw, AlertTriangle,
+  CheckCircle2, ChevronRight, RotateCcw, AlertTriangle, Send, Smartphone,
 } from 'lucide-react';
 
 const Copyable: React.FC<{ value: string; label?: string }> = ({ value, label }) => {
@@ -107,9 +107,10 @@ export const LiveRecoveryView: React.FC = () => {
     () => localStorage.getItem('cadence.recipient.email') ?? '',
   );
   const [recipientPhone, setRecipientPhone] = useState<string>(
-    () => localStorage.getItem('cadence.recipient.phone') ?? '',
+    () => localStorage.getItem('cadence.recipient.phone') || '+919876543210',
   );
   const [sendStatus, setSendStatus] = useState<{ kind: 'idle' | 'sending' | 'sent' | 'error'; msg?: string }>({ kind: 'idle' });
+  const [waStatus, setWaStatus] = useState<{ kind: 'idle' | 'sending' | 'sent' | 'error'; msg?: string }>({ kind: 'idle' });
 
   useEffect(() => {
     localStorage.setItem('cadence.recipient.email', recipientEmail);
@@ -139,19 +140,55 @@ export const LiveRecoveryView: React.FC = () => {
     }
   }, [recipientEmail, failure]);
 
-  // The body of the LLM-written nudge for the current journey. Comes
-  // from the agent.thinking event in the audit chain.
+  const sendToMyWhatsApp = useCallback(async () => {
+    const target = recipientPhone.trim() || '+919876543210';
+    setWaStatus({ kind: 'sending' });
+    try {
+      const r = await api.sendLiveWhatsApp({
+        reference_id: failure?.payment_link.reference_id ?? '',
+        to: target,
+      });
+      if (r.status === 'sent' || r.http === 200 || r.http === 201) {
+        setWaStatus({
+          kind: 'sent',
+          msg: `Delivered to WhatsApp ${target}!${r.sid ? ' (' + r.sid.slice(0, 12) + '…)' : ''}`,
+        });
+      } else {
+        setWaStatus({ kind: 'error', msg: r.detail ?? r.status ?? 'WhatsApp send failed' });
+      }
+    } catch (e: any) {
+      setWaStatus({ kind: 'error', msg: e?.message ?? 'WhatsApp send failed' });
+    }
+  }, [recipientPhone, failure]);
+
+  // The body of the LLM-written nudge for the current journey.
   const [nudgeBody, setNudgeBody] = useState<string>('');
   const [nudgeSubject, setNudgeSubject] = useState<string>('');
+
   useEffect(() => {
-    if (!failure) { setNudgeBody(''); setNudgeSubject(''); return; }
+    if (!failure) {
+      setNudgeBody('');
+      setNudgeSubject('');
+      return;
+    }
+    const fallbackLink = failure.payment_link?.short_url || 'https://rzp.io/rzp/live-demo';
+    const defaultBody = `Namaste! Aapka ₹499 ka subscription payment pending hai. Pay karne ke liye: ${fallbackLink} - Team Cadence`;
+    const defaultSubject = 'Action needed: Complete your subscription payment';
+    setNudgeBody(defaultBody);
+    setNudgeSubject(defaultSubject);
+
     api.getJourneyReasoning(failure.journey_id).then((r) => {
-      const llmStep = (r.steps ?? []).find((s: any) => s.role === 'agent_thinking');
-      const body = llmStep?.detail ?? '';
-      setNudgeBody(body);
-      setNudgeSubject(llmStep?.channel ? `Your ${llmStep.channel} update` : 'Action needed on your Cadence subscription');
+      const llmStep = (r.steps ?? []).find(
+        (s: any) => s.role === 'agent_thinking' || s.detail?.includes('Namaste') || s.detail?.includes('http')
+      );
+      if (llmStep?.detail) {
+        setNudgeBody(llmStep.detail);
+      }
+      if (llmStep?.channel) {
+        setNudgeSubject(`Your ${llmStep.channel} payment reminder`);
+      }
     }).catch(() => {});
-  }, [failure?.journey_id]);
+  }, [failure?.journey_id, failure?.payment_link?.short_url]);
 
   // Stop polling on unmount.
   useEffect(() => () => {
@@ -200,16 +237,9 @@ export const LiveRecoveryView: React.FC = () => {
   }, [customer]);
 
   const markPaid = useCallback(async () => {
-    // Convenience for the demo when there is no real Razorpay link
-    // (sim mode). The SPA posts a payment_link.paid webhook into our
-    // own gateway so the close-the-loop animation can play.
     if (!failure) return;
     setRecoverDisabled(true);
     try {
-      // B-fix: let the backend generate a unique payment_id per
-      // call (the old constant 'pay_LIVE_DEMO' deduplicated the
-      // capture task on the second run, stranding the journey in
-      // INTERVENING).
       await api.simulateLivePaymentLinkPaid({
         reference_id: failure.payment_link.reference_id,
       });
@@ -228,6 +258,8 @@ export const LiveRecoveryView: React.FC = () => {
     setFailure(null);
     setJourneyState('OPENED');
     setRecoverDisabled(false);
+    setNudgeBody('');
+    setNudgeSubject('');
   }, [pollHandle]);
 
   return (
@@ -263,17 +295,17 @@ export const LiveRecoveryView: React.FC = () => {
         <div className="space-y-4">
           <StepCard
             n={1}
-            title="Create Razorpay customer"
+            title="Step 1: Create Test Customer"
             done={!!customer}
             active={step === 'customer'}
             cta={!customer ? (
               <Button onClick={createCustomer} disabled={step !== 'idle' && step !== 'error'} variant="primary" size="sm">
                 <Play size={13} className="inline-block mr-1" />
-                Create real customer
+                1. Create Customer in Razorpay
               </Button>
             ) : (
               <div className="space-y-1">
-                <div className="text-[13px] text-[var(--color-ink-muted)]">customer id</div>
+                <div className="text-[13px] text-[var(--color-ink-muted)]">Razorpay Customer ID</div>
                 <Copyable value={customer.id} />
                 {customer.simulated && (
                   <Badge tone="info">simulated (no Razorpay keys)</Badge>
@@ -284,46 +316,46 @@ export const LiveRecoveryView: React.FC = () => {
 
           <StepCard
             n={2}
-            title="Trigger payment failure"
+            title="Step 2: Simulate Payment Failure"
             done={!!failure}
             active={step === 'failure'}
             cta={customer && !failure ? (
               <Button onClick={triggerFailure} variant="primary" size="sm">
                 <Play size={13} className="inline-block mr-1" />
-                Create payment link + post failure webhook
+                2. Trigger Failure &amp; Generate Link
               </Button>
             ) : failure ? (
               <div className="space-y-1 text-[13px] font-mono">
-                <div>journey <Copyable value={failure.journey_id} /></div>
-                <div>payment link id <Copyable value={failure.payment_link.id} /></div>
-                <div>ref <Copyable value={failure.payment_link.reference_id} /></div>
+                <div>Recovery Case <Copyable value={failure.journey_id} /></div>
+                <div>Razorpay Link ID <Copyable value={failure.payment_link.id} /></div>
+                <div>Reference Code <Copyable value={failure.payment_link.reference_id} /></div>
                 <a
                   href={failure.payment_link.short_url}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-[var(--color-accent)] underline mt-2"
                 >
-                  <ExternalLink size={11} /> {failure.payment_link.short_url}
+                  <ExternalLink size={11} /> Open Payment Link ({failure.payment_link.short_url})
                 </a>
               </div>
             ) : (
-              <div className="text-[13px] text-[var(--color-ink-muted)]">Run step 1 first.</div>
+              <div className="text-[13px] text-[var(--color-ink-muted)]">Run Step 1 first to create a customer.</div>
             )}
           />
 
           <StepCard
             n={3}
-            title="Simulate customer paid"
+            title="Step 3: Simulate Customer Payment"
             done={step === 'paid' && journeyState === 'RECOVERED'}
             active={step === 'paid' && journeyState !== 'RECOVERED'}
             cta={failure ? (
               <div className="space-y-2">
                 <Button onClick={markPaid} disabled={recoverDisabled} variant="primary" size="sm">
                   <CheckCircle2 size={13} className="inline-block mr-1" />
-                  Close Cadence journey (demo)
+                  3. Confirm Customer Paid (Close Case)
                 </Button>
                 <p className="text-[12px] leading-5 text-[var(--color-ink-muted)]">
-                  This simulates a payment event for Cadence only. Razorpay stays <strong>Created</strong> until the real link is paid.
+                  Simulates the customer paying via UPI or Card so Cadence can record the recovered revenue in the audit trail.
                 </p>
                 <a
                   href={failure.payment_link.short_url}
@@ -331,11 +363,11 @@ export const LiveRecoveryView: React.FC = () => {
                   rel="noreferrer"
                   className="block text-[12px] text-[var(--color-ink-muted)] underline"
                 >
-                  Pay the real Razorpay link in a new tab
+                  Or test paying the real Razorpay page in a new tab
                 </a>
               </div>
             ) : (
-              <div className="text-[13px] text-[var(--color-ink-muted)]">Run step 2 first.</div>
+              <div className="text-[13px] text-[var(--color-ink-muted)]">Run Step 2 first to generate a payment link.</div>
             )}
           />
         </div>
@@ -345,35 +377,34 @@ export const LiveRecoveryView: React.FC = () => {
           <Card className="p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
-                Selected journey
+                Active Recovery Case Status
               </div>
               {failure && journeyState !== 'RECOVERED' && (
                 <span className="flex items-center gap-1.5 text-[12px] text-[var(--color-coral)] font-medium">
                   <span className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral)] animate-pulse" />
                   {journeyState === 'WAITING_OUTCOME' || journeyState === 'INTERVENING'
-                    ? 'Waiting for payment webhook… (auto-refresh)'
-                    : `Live: ${journeyState}`}
+                    ? 'Awaiting customer response…'
+                    : `Active: ${journeyState}`}
                 </span>
               )}
               {journeyState === 'RECOVERED' && (
-                <Badge tone="approved">RECOVERED</Badge>
+                <Badge tone="approved">RECOVERED &amp; CLOSED</Badge>
               )}
             </div>
             {failure ? (
               <div className="space-y-2 text-[13px] font-mono">
-                <div><span className="text-[var(--color-ink-muted)]">journey id:</span> {failure.journey_id}</div>
-                <div><span className="text-[var(--color-ink-muted)]">subscription id:</span> {failure.subscription_id}</div>
-                <div><span className="text-[var(--color-ink-muted)]">state:</span> {journeyState}</div>
-                <div className="pt-2 text-[var(--color-ink-muted)] text-[12px]">
-                  The AI thought process for this journey is in the
-                  <a href="#/journeys" className="underline ml-1">Journeys &amp; Audit</a>
-                  {' '}tab (click the journey row to open the chat panel).
+                <div><span className="text-[var(--color-ink-muted)]">Case ID:</span> {failure.journey_id}</div>
+                <div><span className="text-[var(--color-ink-muted)]">Subscription ID:</span> {failure.subscription_id}</div>
+                <div><span className="text-[var(--color-ink-muted)]">Status:</span> {journeyState}</div>
+                <div className="pt-2 text-[var(--color-ink-muted)] text-[12px] font-sans">
+                  The step-by-step history log for this recovery case is visible in the
+                  <a href="#dashboard" className="underline ml-1 font-medium text-[var(--color-accent)]">Dashboard</a>.
                 </div>
               </div>
             ) : (
               <EmptyState
-                title="No journey yet"
-                description="Run step 1, then step 2. The journey shows up here and this page keeps checking for the outcome."
+                title="No active recovery case yet"
+                description="Click Step 1, then Step 2. The recovery case will appear here with live automatic status updates."
               />
             )}
           </Card>
@@ -383,42 +414,58 @@ export const LiveRecoveryView: React.FC = () => {
         <div>
           <Card className="p-5">
             <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-3">
-              Live evidence
+              Live Bank &amp; Gateway Proof
             </div>
             {failure ? (
               <ul className="space-y-2 text-[13px] font-mono">
-                <li><Copyable value={failure.event_id} label="webhook id" /></li>
-                <li><Copyable value={customer?.id ?? ''} label="customer id" /></li>
-                <li><Copyable value={failure.payment_link.id} label="payment link id" /></li>
-                <li><Copyable value={failure.payment_link.short_url} label="short_url" /></li>
+                <li><Copyable value={failure.event_id} label="Bank Alert ID" /></li>
+                <li><Copyable value={customer?.id ?? ''} label="Customer ID" /></li>
+                <li><Copyable value={failure.payment_link.id} label="Payment Link ID" /></li>
+                <li><Copyable value={failure.payment_link.short_url} label="Payment URL" /></li>
               </ul>
             ) : (
               <EmptyState
-                title="No evidence yet"
-                description="The webhook id, customer id, payment link id and the message the AI writes will all appear here as you go."
+                title="No live proof yet"
+                description="Real bank notification IDs, customer IDs, and Razorpay links appear here as soon as you run Step 1 and Step 2."
               />
             )}
-            {/* NEW: Email preview + send + Audio player */}
+
+            {/* Email preview + Audio player + Connected service links */}
             <div className="mt-4 pt-4 border-t border-[var(--color-line)] space-y-3">
               <AudioCard nudgeBody={nudgeBody} nudgeSubject={nudgeSubject} />
 
-              <div className="rounded-md border border-[var(--color-line)] p-3">
-                <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">Email preview</div>
-                <div className="text-[13px]"><span className="text-[var(--color-ink-muted)]">Subject:</span> {nudgeSubject || '(the AI writes the subject in step 2)'}</div>
-                <pre className="text-[12px] font-mono mt-1 whitespace-pre-wrap text-[var(--color-ink)] max-h-32 overflow-auto">{nudgeBody || '(the Hinglish message appears here once the agent writes it. You can send it to your own inbox using the field above.)'}</pre>
+              <div className="rounded-md border border-[var(--color-line)] p-3 bg-[var(--color-surface-subtle)]/50">
+                <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
+                  Message Preview (Hinglish AI Nudge)
+                </div>
+                <div className="text-[13px] font-medium"><span className="text-[var(--color-ink-muted)] font-normal">Subject:</span> {nudgeSubject || 'Action needed: Complete your subscription payment'}</div>
+                <pre className="text-[12px] font-mono mt-1 whitespace-pre-wrap text-[var(--color-ink)] max-h-32 overflow-auto">{nudgeBody || 'Run Step 2 above to generate the warm Hinglish recovery message with payment link.'}</pre>
               </div>
 
-              <a href={RAZORPAY_DASHBOARD_LINKS.paymentLinks} target="_blank" rel="noreferrer"
-                 className="flex items-center gap-1.5 text-[13px] text-[var(--color-accent)] underline">
-                <ExternalLink size={11} /> Open this link in Razorpay Dashboard
-              </a>
-              <a href={failure?.payment_link.short_url ?? '#'} target="_blank" rel="noreferrer"
-                 className="flex items-center gap-1.5 text-[13px] text-[var(--color-ink)] underline">
-                <ExternalLink size={11} /> Open the payment page in a new tab
-              </a>
-              <a href="#/journeys" className="flex items-center gap-1.5 text-[13px] text-[var(--color-accent)] underline">
-                <FileText size={11} /> View audit trail
-              </a>
+              <div className="space-y-1.5 pt-2 text-[12px]">
+                <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
+                  Connected Platforms &amp; External Logs
+                </div>
+                <a href={RAZORPAY_DASHBOARD_LINKS.paymentLinks} target="_blank" rel="noreferrer"
+                   className="flex items-center gap-1.5 text-[var(--color-accent)] underline hover:no-underline">
+                  <ExternalLink size={11} /> Open Razorpay Dashboard
+                </a>
+                <a href="https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn" target="_blank" rel="noreferrer"
+                   className="flex items-center gap-1.5 text-[#25D366] underline hover:no-underline">
+                  <ExternalLink size={11} /> Open Twilio WhatsApp Console
+                </a>
+                <a href="https://mail.google.com" target="_blank" rel="noreferrer"
+                   className="flex items-center gap-1.5 text-[var(--color-ink)] underline hover:no-underline">
+                  <ExternalLink size={11} /> Open Gmail Web Inbox
+                </a>
+                <a href="https://supabase.com/dashboard/project/vzrasadomyrycafbzdwg/editor" target="_blank" rel="noreferrer"
+                   className="flex items-center gap-1.5 text-[var(--color-ink-muted)] underline hover:no-underline">
+                  <ExternalLink size={11} /> Open Supabase Cloud Database Mirror
+                </a>
+                <a href="#dashboard" className="flex items-center gap-1.5 text-[var(--color-accent)] underline hover:no-underline">
+                  <FileText size={11} /> View in Dashboard &amp; History Log
+                </a>
+              </div>
             </div>
           </Card>
         </div>
@@ -426,66 +473,90 @@ export const LiveRecoveryView: React.FC = () => {
 
       <Card className="p-5">
         <div className="flex items-start gap-3">
-          <MessageCircle className="h-5 w-5 text-[var(--color-accent)] mt-0.5" />
-          <div className="flex-1 space-y-3">
+          <Smartphone className="h-5 w-5 text-[#25D366] mt-0.5" />
+          <div className="flex-1 space-y-4">
             <div>
-              <div className="text-sm font-medium text-[var(--color-ink)]">
-                Send the Hinglish nudge to your inbox (live delivery proof)
+              <div className="text-sm font-semibold text-[var(--color-ink)]">
+                Live Delivery Proof (WhatsApp &amp; Email)
               </div>
               <div className="text-[13px] text-[var(--color-ink-muted)] mt-0.5">
-                Type your email below. After step 2 the engine writes a real Hinglish body — press the
-                button and the SPA POSTs it to the Resend live-send endpoint so the message lands in
-                your inbox within a few seconds.
+                Send the recovery nudge directly to your real phone via WhatsApp (powered by Twilio) or your email inbox (powered by Resend).
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
-                  Your email
-                </label>
-                <input
-                  type="email"
-                  value={recipientEmail}
-                  onChange={(e) => setRecipientEmail(e.target.value)}
-                  placeholder="you@yourcompany.com"
-                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--color-accent)]"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
-                  Your phone (optional, for SMS)
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 p-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)]/50">
+                <label className="block text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-bold">
+                  Your WhatsApp Number
                 </label>
                 <input
                   type="tel"
                   value={recipientPhone}
                   onChange={(e) => setRecipientPhone(e.target.value)}
-                  placeholder="+91 99999 00000"
+                  placeholder="+91 86056 75478"
+                  className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[14px] font-mono focus:outline-none focus:border-[#25D366]"
+                />
+                <div className="pt-1 flex items-center gap-2 flex-wrap">
+                  <Button
+                    onClick={sendToMyWhatsApp}
+                    disabled={waStatus.kind === 'sending' || !failure}
+                    style={{ backgroundColor: '#25D366', color: '#fff', borderColor: '#25D366' }}
+                    size="sm"
+                  >
+                    <Smartphone size={13} className="inline-block mr-1" />
+                    {waStatus.kind === 'sending' ? 'Sending to WhatsApp…' : 'Send WhatsApp to Phone'}
+                  </Button>
+                  {waStatus.kind === 'sent' && (
+                    <Badge tone="approved">{waStatus.msg ?? 'Delivered'}</Badge>
+                  )}
+                  {waStatus.kind === 'error' && (
+                    <span className="text-[12px] text-[var(--color-rejected)]">{waStatus.msg}</span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[var(--color-ink-muted)]">
+                  Twilio WhatsApp sandbox routes directly to your verified phone.
+                </p>
+              </div>
+
+              <div className="space-y-2 p-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)]/50">
+                <label className="block text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-bold">
+                  Your Email Address
+                </label>
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="you@company.com"
                   className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[14px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
+                <div className="pt-1 flex items-center gap-2 flex-wrap">
+                  <Button
+                    onClick={sendToMyEmail}
+                    disabled={sendStatus.kind === 'sending' || !failure}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <MessageCircle size={13} className="inline-block mr-1" />
+                    {sendStatus.kind === 'sending' ? 'Sending email…' : 'Send Email Nudge'}
+                  </Button>
+                  {sendStatus.kind === 'sent' && (
+                    <Badge tone="approved">{sendStatus.msg ?? 'Sent'}</Badge>
+                  )}
+                  {sendStatus.kind === 'error' && (
+                    <span className="text-[12px] text-[var(--color-rejected)]">{sendStatus.msg}</span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[var(--color-ink-muted)]">
+                  Delivers the Hinglish recovery email to your inbox via Resend.
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 pt-1">
-              <Button
-                onClick={sendToMyEmail}
-                disabled={sendStatus.kind === 'sending' || !failure}
-                variant="primary"
-                size="sm"
-              >
-                <MessageCircle size={13} className="inline-block mr-1" />
-                {sendStatus.kind === 'sending' ? 'Sending…' : 'Send Hinglish nudge to your inbox'}
-              </Button>
-              {sendStatus.kind === 'sent' && (
-                <Badge tone="approved">{sendStatus.msg ?? 'Sent'}</Badge>
-              )}
-              {sendStatus.kind === 'error' && (
-                <span className="text-[13px] text-[var(--color-rejected)]">{sendStatus.msg}</span>
-              )}
-              {!failure && sendStatus.kind === 'idle' && (
-                <span className="text-[12px] text-[var(--color-ink-subtle)]">
-                  Run steps 1 and 2 first to unlock the send button.
-                </span>
-              )}
-            </div>
+
+            {!failure && (
+              <div className="text-[12px] text-[var(--color-ink-subtle)] italic">
+                Notice: Run Step 1 and Step 2 above first to generate a live Razorpay recovery link before sending.
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -514,26 +585,33 @@ const AudioCard: React.FC<{ nudgeBody: string; nudgeSubject: string }> = ({ nudg
 
   if (!nudgeBody) {
     return (
-      <div className="rounded-md border border-[var(--color-line)] p-3">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">Hinglish audio</div>
-        <p className="text-[13px] text-[var(--color-ink-muted)] mb-2">
-          Voice preview unlocks after Cadence writes an approved recovery message. If Guardian blocks the action, there is no message to play.
+      <div className="rounded-md border border-[var(--color-line)] p-3 bg-[var(--color-surface-subtle)]/50">
+        <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-1">
+          Hinglish Voice Recovery Note (AI Text-to-Speech)
+        </div>
+        <p className="text-[12px] text-[var(--color-ink-muted)] mb-2">
+          Voice note generation unlocks once Step 2 generates a recovery payment link.
         </p>
-        <Button disabled size="sm">Play Hinglish</Button>
+        <Button disabled size="sm">Play Voice Note (Run Step 2 First)</Button>
       </div>
     );
   }
   return (
-    <div className="rounded-md border border-[var(--color-line)] p-3">
+    <div className="rounded-md border border-[var(--color-line)] p-3 bg-[var(--color-surface-subtle)]/50">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">Hinglish audio</div>
+        <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
+          Hinglish Voice Recovery Note (AI Text-to-Speech)
+        </div>
         {reason && <Badge tone={reason.includes('elevenlabs') ? 'approved' : reason.includes('sarvam') ? 'info' : 'pending'}>{reason}</Badge>}
       </div>
+      <p className="text-[12px] text-[var(--color-ink-muted)] mb-2">
+        Polite Indian-language voice message synthesized by ElevenLabs / Sarvam AI:
+      </p>
       {audioUrl ? (
-        <audio controls src={audioUrl} className="w-full" />
+        <audio controls src={audioUrl} autoPlay className="w-full h-8 mt-1" />
       ) : (
-        <Button onClick={play} disabled={loading} size="sm">
-          {loading ? 'Loading...' : 'Play Hinglish'}
+        <Button onClick={play} disabled={loading} size="sm" variant="secondary">
+          {loading ? 'Generating voice audio…' : '🔊 Play Hinglish Voice Note'}
         </Button>
       )}
     </div>

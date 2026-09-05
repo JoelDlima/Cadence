@@ -12,20 +12,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  // Three surfaces, one job each: run the recovery, read the results, break it
-  // on purpose. Journeys & Audit and Recovery Brain folded into the Dashboard
-  // row drawer (reasoning panel + audit chain), which sits one click from the
-  // payment link that caused them.
-  { id: 'live',         label: 'Live Recovery',       icon: Play,         group: 'primary' },
   { id: 'dashboard',    label: 'Dashboard',           icon: BarChart3,    group: 'primary' },
-  { id: 'testlab',      label: 'Test Lab',            icon: FlaskConical, group: 'primary' },
+  { id: 'testlab',      label: 'Recovery & Test Lab', icon: FlaskConical, group: 'primary' },
 ];
 
-// Hidden from the nav, still routable by hash so nothing is lost:
-//   #b2b       B2B Receivables      #mandate   Mandate Sequencer
-//   #checkout  Checkout Recovery    #pay       Payment Portal
-// Move an entry back into navItems above with group: 'more' to restore it.
-const HIDDEN_TABS = ['b2b', 'mandate', 'checkout', 'pay'] as const;
+// Routable customer payment portal:
+const HIDDEN_TABS = ['pay'] as const;
 
 export function AppShell({
   currentTab,
@@ -343,7 +335,7 @@ export function AppShell({
             <span className="text-[var(--color-line-strong)]">|</span>
             <span className="flex items-center gap-1 text-[var(--color-approved)]">
               <ShieldCheck size={14} />
-              <span>Deterministic Spine</span>
+              <span>Safety Guard Active</span>
             </span>
           </div>
         </header>
@@ -360,17 +352,15 @@ export function AppShell({
               <div className="flex items-center gap-2">
                 <ShieldAlert size={15} />
                 <span>
-                  <strong>Compliance stop engaged</strong> &mdash; no outreach, no
-                  retries, no payment links. All Guardian vetoes now include
-                  <code className="bg-white/20 px-1.5 py-0.5 rounded text-[11px] mx-1">kill_switch</code>
-                  in the reason.
+                  <strong>Emergency Pause Engaged</strong> &mdash; All automated customer messages,
+                  retries, and payment links are temporarily paused.
                 </span>
               </div>
               <button
                 onClick={() => setShowKillModal(true)}
-                className="text-white/90 hover:text-white text-[12px] underline"
+                className="text-white/90 hover:text-white text-[12px] underline cursor-pointer"
               >
-                disarm
+                Resume Engine
               </button>
             </div>
           </div>
@@ -389,14 +379,14 @@ export function AppShell({
             <div className="flex items-center gap-3 text-[var(--color-rejected)]">
               <ShieldAlert size={24} />
               <h3 className="text-base font-semibold">
-                {killArmed ? "Disarm Emergency Kill Switch?" : "Arm Emergency Kill Switch?"}
+                {killArmed ? "Resume Automated Recovery?" : "Engage Emergency Stop?"}
               </h3>
             </div>
 
             <p className="text-[13.5px] text-[var(--color-ink-muted)] leading-relaxed">
               {killArmed
-                ? "Disarming the kill switch will allow the recovery worker thread to resume executing customer contacts and payment links."
-                : "Engaging the kill switch immediately suspends all automated customer outreaches, retries, and Payment Link generation across all active journeys."}
+                ? "Resuming will allow Cadence to continue sending customer recovery messages and creating payment links."
+                : "Engaging the emergency stop immediately pauses all automated customer messages, retries, and payment link creation across all active recovery cases."}
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
