@@ -303,8 +303,6 @@ Cadence/
 │   │   ├── src/views/                # DashboardView, TestLabView, LiveRecoveryView
 │   │   └── src/services/             # API client, polling hooks, and state management
 │   └── tests/                        # Full test suite (494 passing tests)
-├── script.md                         # Demonstration pitch guide (spoken dialogue & action steps)
-├── script.pdf                        # Presentation pitch document (formatted PDF)
 ├── start.bat                         # Automated local development orchestrator
 ├── exit.bat                          # Graceful shutdown utility
 └── README.md                         # Platform architecture and technical documentation

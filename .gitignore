@@ -62,3 +62,12 @@ user_reference.png
 *.png
 
 .git_backup/
+
+# Local presentation, speaker notes, and demo scripts
+script.md
+script.pdf
+scripts/
+References.md
+Cadence/docs/demo-script.md
+Cadence/docs/demo-script.pdf
+Cadence/scripts/make_demo_script.py
