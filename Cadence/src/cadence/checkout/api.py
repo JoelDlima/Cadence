@@ -126,8 +126,6 @@ def register_routes(
             amount_minor=req.amount_minor,
             currency=req.currency,
             started_at_iso=started_iso,
-            status="ABANDONED",
-            abandoned_at_iso=started_iso,
         )
         _emit_checkout_event(
             events, sid, "checkout.abandoned",

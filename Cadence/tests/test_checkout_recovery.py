@@ -217,8 +217,8 @@ def test_tick_does_nothing_when_all_open_within_window(tmp_path: Path) -> None:
 def test_tick_transitions_to_abandoned_when_past_window(tmp_path: Path) -> None:
     app = create_app(cfg=_config(tmp_path / "t.db"))
     client = TestClient(app)
-    # Started 2 hours ago -> well past ABANDON_AFTER
-    long_ago = "2026-08-22T08:00:00+00:00"
+    # Started 2 hours ago -> well past ABANDON_AFTER (30m) but within EXPIRE_AFTER (14d)
+    long_ago = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
     r = client.post("/api/checkout/abandon", json={
         "customer_id": "cust_long_ago", "amount_minor": 49900,
         "started_at": long_ago,

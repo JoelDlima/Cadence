@@ -209,7 +209,8 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
           `scheduled debit: ${result.debit_at}`,
           `preventive notice: ${result.notified ? 'sent' : 'blocked'} (${result.reason})`,
           `audit: predebit.scheduled=${result.scheduled_event}, predebit.notified=${result.notified_event}`,
-        ].join('\n'),
+          result.ref ? `delivery: ${result.ref}` : '',
+        ].filter(Boolean).join('\n'),
       });
     } catch (e: any) {
       setPrevention({ status: 'failed', detail: e?.message ?? 'prevention workflow failed' });

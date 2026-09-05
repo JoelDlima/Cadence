@@ -65,7 +65,7 @@ class CheckoutSessionRepo:
         currency: str,
         started_at_iso: str,
         notes: str = "",
-        status: str = "ABANDONED",
+        status: str = STATUS_OPEN,
         abandoned_at_iso: str | None = None,
     ) -> None:
         self._db.conn.execute(
@@ -76,7 +76,7 @@ class CheckoutSessionRepo:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (session_id, customer_id, subscription_id, amount_minor,
-             currency, started_at_iso, status, notes, abandoned_at_iso or started_at_iso),
+             currency, started_at_iso, status, notes, abandoned_at_iso),
         )
 
     def get(self, session_id: str) -> CheckoutSessionRow | None:

@@ -15,11 +15,14 @@ script needs to tick anything.
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import hashlib
 import hmac
 import html
+import httpx
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -525,6 +528,75 @@ def _resolved_page_html() -> HTMLResponse:
     return HTMLResponse(_RESOLVED_PAGE.format(css=_PAY_CSS))
 
 
+def _dispatch_real_proof_touch(
+    *,
+    subject: str,
+    text: str,
+    to_email: str | None = None,
+    to_phone: str | None = None,
+) -> dict[str, Any]:
+    """Sends authentic out-of-band notifications via Resend (Email) and Twilio (WhatsApp)
+    so judges and users can verify notifications on their physical phone and email."""
+    results: dict[str, Any] = {"email": None, "whatsapp": None}
+
+    # 1. Resend Email
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    target_email = to_email or os.environ.get("USER_EMAIL", "joelinternshipaitd@gmail.com")
+    from_email = os.environ.get("EMAIL_FROM", "onboarding@resend.dev")
+    if resend_key and target_email:
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                    json={
+                        "from": from_email,
+                        "to": [target_email],
+                        "subject": subject,
+                        "text": text,
+                    },
+                )
+                if res.status_code in (200, 201):
+                    results["email"] = {"status": "sent", "id": res.json().get("id")}
+                else:
+                    results["email"] = {"status": "error", "code": res.status_code, "body": res.text[:200]}
+        except Exception as e:
+            results["email"] = {"status": "exception", "detail": str(e)}
+
+    # 2. Twilio WhatsApp
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    api_key = os.environ.get("TWILIO_API_KEY", "")
+    api_secret = os.environ.get("TWILIO_API_SECRET", "")
+    from_num = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
+    content_sid = os.environ.get("TWILIO_CONTENT_SID", "HXfe5ab5f00277942d4d4200328b4d403c")
+    target_phone = to_phone or os.environ.get("USER_WHATSAPP_TO", "+919876543210")
+    if not target_phone.startswith("whatsapp:"):
+        target_phone = f"whatsapp:{target_phone}"
+
+    if account_sid and api_key and api_secret:
+        try:
+            auth_header = f"Basic {base64.b64encode(f'{api_key}:{api_secret}'.encode()).decode()}"
+            headers = {"Authorization": auth_header}
+            with httpx.Client(timeout=10.0) as client:
+                tw_res = client.post(
+                    f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+                    headers=headers,
+                    data={
+                        "From": from_num,
+                        "To": target_phone,
+                        "ContentSid": content_sid,
+                    },
+                )
+                if tw_res.status_code in (200, 201):
+                    results["whatsapp"] = {"status": "sent", "sid": tw_res.json().get("sid")}
+                else:
+                    results["whatsapp"] = {"status": "error", "code": tw_res.status_code, "body": tw_res.text[:200]}
+        except Exception as e:
+            results["whatsapp"] = {"status": "exception", "detail": str(e)}
+
+    return results
+
+
 def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
     config = cfg if cfg is not None else load_config()
     runtime = _build_runtime(config)
@@ -907,13 +979,36 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
                 journey_id=journey.journey_id, accepted=False,
                 detail="no promise-to-pay event was recorded for this reply",
             )
+        due_str = committed.payload.get("date") or "your requested date"
+        proof_items: list[str] = []
+        try:
+            proof = _dispatch_real_proof_touch(
+                subject=f"Cadence: Customer Payday Promise Recorded (Reminders Paused until {due_str})",
+                text=(
+                    f"Namaste!\n\n"
+                    f"We received your message: \"{body.text}\".\n\n"
+                    f"Cadence AI has classified this as a Payday Commitment and paused all automated recovery reminders until {due_str}.\n\n"
+                    f"Status: Reminders paused until {due_str}.\n"
+                    f"Compliance: RBI e-Mandate Fair Dunning & DPDP Act 2023.\n\n"
+                    f"— Team Cadence"
+                ),
+            )
+            if proof.get("whatsapp", {}).get("status") == "sent":
+                proof_items.append(f"WhatsApp sent to {os.environ.get('USER_WHATSAPP_TO', '+919876543210')}")
+            if proof.get("email", {}).get("status") == "sent":
+                proof_items.append(f"Email sent to {os.environ.get('USER_EMAIL', 'joelinternshipaitd@gmail.com')}")
+        except Exception:
+            pass
+
+        proof_suffix = f" · ({' · '.join(proof_items)})" if proof_items else ""
         return SimulateCustomerReplyOut(
             journey_id=journey.journey_id, accepted=True,
             kind=committed.payload.get("kind"),
             commit_date=committed.payload.get("date"),
             confidence=committed.payload.get("confidence"),
             detail=f"promise recorded: {committed.payload.get('kind')}"
-                   + (f" due {committed.payload.get('date')}" if committed.payload.get("date") else ""),
+                   + (f" due {committed.payload.get('date')}" if committed.payload.get("date") else "")
+                   + proof_suffix,
         )
 
     @app.get("/api/promises", response_model=PromiseListOut)
@@ -1632,6 +1727,31 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             debit_at=body.debit_at,
             channel=body.channel,
         )
+        if result.get("notified"):
+            amt_str = f"₹{body.amount_minor / 100:,.2f}"
+            proof_items: list[str] = []
+            try:
+                proof = _dispatch_real_proof_touch(
+                    subject=f"Cadence: Upcoming Payment Notice ({amt_str} scheduled)",
+                    text=(
+                        f"Namaste!\n\n"
+                        f"This is an official 24-hour pre-debit reminder for subscription {body.subscription_id}.\n\n"
+                        f"Scheduled Debit: {body.debit_at}\n"
+                        f"Amount: {amt_str}\n"
+                        f"Channel: {body.channel}\n\n"
+                        f"Please ensure sufficient bank balance in your linked account to prevent AutoPay debit failure.\n"
+                        f"Regulatory Basis: RBI Pre-Debit Notification Circular RBI/2020-21/74.\n\n"
+                        f"— Team Cadence"
+                    ),
+                )
+                if proof.get("whatsapp", {}).get("status") == "sent":
+                    proof_items.append(f"WhatsApp sent to {os.environ.get('USER_WHATSAPP_TO', '+919876543210')}")
+                if proof.get("email", {}).get("status") == "sent":
+                    proof_items.append(f"Email sent to {os.environ.get('USER_EMAIL', 'joelinternshipaitd@gmail.com')}")
+            except Exception:
+                pass
+            if proof_items:
+                result["ref"] = " · ".join(proof_items)
         return PreDebitScheduleOut(**result)
 
     @app.get("/api/predebit/history", response_model=PreDebitHistoryOut)
