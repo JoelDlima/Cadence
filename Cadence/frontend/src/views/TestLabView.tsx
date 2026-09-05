@@ -333,8 +333,11 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
     }
   }, [subId, custId, custHint, latestReference]);
 
+  const hasAutoRunRef = React.useRef(false);
+
   useEffect(() => {
-    if (activeSection === 'benchmark' && !result && !loading) {
+    if (activeSection === 'benchmark' && !result && !loading && !hasAutoRunRef.current) {
+      hasAutoRunRef.current = true;
       run();
     }
   }, [activeSection, result, loading, run]);
@@ -474,8 +477,8 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
             <CompareResultView result={result} />
           ) : (
             <EmptyState
-              title="Running benchmark simulation..."
-              description="Calculating recovery uplift comparing Cadence against default retry schedules."
+              title={loading ? "Running benchmark simulation..." : "Ready to run benchmark"}
+              description={loading ? "Calculating recovery uplift comparing Cadence against default retry schedules across 5 randomized test groups..." : "Click 'Run 100-Subscriber Simulation' above to benchmark Cadence AI recovery against standard schedules."}
             />
           )}
         </div>
