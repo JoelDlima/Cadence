@@ -241,7 +241,7 @@ export const api = {
   async getCheckoutFunnel(): Promise<{ counts: Record<string, number> }> {
     return jsonFetch('/api/checkout/funnel');
   },
-  async abandonCheckout(body: { customer_id: string; amount_minor: number; currency?: string }): Promise<any> {
+  async abandonCheckout(body: { customer_id: string; amount_minor: number; currency?: string; started_at?: string }): Promise<any> {
     return postJson('/api/checkout/abandon', body);
   },
   async recoverCheckout(id: string, body: { payment_id: string }): Promise<any> {

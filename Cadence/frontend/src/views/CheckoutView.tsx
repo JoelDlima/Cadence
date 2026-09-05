@@ -10,7 +10,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, Badge, Button, PageHeader, EmptyState } from '../components/primitives';
 import { api } from '../services/api';
-import { ShoppingCart, Play, RefreshCw, Sparkles } from 'lucide-react';
+import { ShoppingCart, Play, RefreshCw, Sparkles, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { DemoSeedBadge } from '../components/DemoSeedBadge';
 
 interface CheckoutSession {
@@ -42,6 +42,7 @@ export const CheckoutView: React.FC = () => {
   const [funnel, setFunnel] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const fetch = useCallback(async () => {
@@ -68,15 +69,21 @@ export const CheckoutView: React.FC = () => {
 
   const simulateAbandon = async () => {
     setBusy(true);
+    setError(null);
+    setSuccessMsg(null);
     try {
       const amount = 19900 + Math.floor(Math.random() * 50000);
       const customer = `cust_demo_${Date.now().toString().slice(-4)}`;
+      // Set started_at to 35 mins ago so the state machine detects it as abandoned (> 30 min)
+      const startedAt = new Date(Date.now() - 35 * 60 * 1000).toISOString();
       await api.abandonCheckout({
         customer_id: customer,
         amount_minor: amount,
         currency: 'INR',
+        started_at: startedAt,
       });
       await fetch();
+      setSuccessMsg(`Ingested abandoned cart (₹${(amount / 100).toFixed(0)}). Click 'Run Recovery Agent' to evaluate the recovery nudge!`);
     } catch (e: any) {
       setError(e?.message ?? 'failed to simulate abandon');
     } finally {
@@ -86,16 +93,22 @@ export const CheckoutView: React.FC = () => {
 
   const simulateShopifyAbandon = async () => {
     setBusy(true);
+    setError(null);
+    setSuccessMsg(null);
     try {
       // Real Burton Blossom Snowboard from verified Shopify UCP Global Catalog ($559.95 -> 46,400 INR)
       const amount = 4640000;
       const customer = `shopify_burton_snowboard_${Date.now().toString().slice(-4)}`;
+      // Set started_at to 35 mins ago so the state machine detects it as abandoned (> 30 min)
+      const startedAt = new Date(Date.now() - 35 * 60 * 1000).toISOString();
       await api.abandonCheckout({
         customer_id: customer,
         amount_minor: amount,
         currency: 'INR',
+        started_at: startedAt,
       });
       await fetch();
+      setSuccessMsg(`Ingested Shopify UCP abandoned cart: Burton Blossom Snowboard (₹46,400). Click 'Run Recovery Agent' to evaluate!`);
     } catch (e: any) {
       setError(e?.message ?? 'failed to simulate Shopify abandon');
     } finally {
@@ -105,9 +118,18 @@ export const CheckoutView: React.FC = () => {
 
   const runTick = async () => {
     setBusy(true);
+    setError(null);
+    setSuccessMsg(null);
     try {
-      await api.tickCheckout();
+      const res = await api.tickCheckout();
       await fetch();
+      if (res?.nudged > 0) {
+        setSuccessMsg(`Recovery agent evaluated drop-offs: dispatched ${res.nudged} recovery nudge(s) and minted live Razorpay payment link(s)!`);
+      } else if (res?.abandoned > 0) {
+        setSuccessMsg(`Recovery agent evaluated drop-offs: identified ${res.abandoned} new abandoned cart(s).`);
+      } else {
+        setSuccessMsg('Recovery agent evaluated all drop-offs: all sessions up to date.');
+      }
     } catch (e: any) {
       setError(e?.message ?? 'failed to run chaser');
     } finally {
@@ -117,9 +139,12 @@ export const CheckoutView: React.FC = () => {
 
   const recoverOne = async (id: string) => {
     setBusy(true);
+    setError(null);
+    setSuccessMsg(null);
     try {
       await api.recoverCheckout(id, { payment_id: `pay_demo_${Date.now()}` });
       await fetch();
+      setSuccessMsg(`Checkout session ${id} marked as RECOVERED! Revenue saved.`);
     } catch (e: any) {
       setError(e?.message ?? 'failed to recover');
     } finally {
@@ -162,6 +187,13 @@ export const CheckoutView: React.FC = () => {
           </div>
         }
       />
+
+      {successMsg && (
+        <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-md text-[13px] font-medium">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {(['OPEN', 'ABANDONED', 'NUDGED', 'RECOVERED', 'EXPIRED'] as const).map((status) => (
@@ -210,15 +242,28 @@ export const CheckoutView: React.FC = () => {
                   <td className="py-2 px-3 text-right font-mono">{s.nudges_sent}</td>
                   <td className="py-2 px-3 text-[var(--color-ink-muted)] font-mono">{s.started_at}</td>
                   <td className="py-2 px-3 text-right">
-                    {s.status !== 'RECOVERED' && s.status !== 'EXPIRED' && (
-                      <button
-                        onClick={() => recoverOne(s.id)}
-                        disabled={busy}
-                        className="text-[12px] text-[var(--color-accent)] font-semibold hover:underline disabled:opacity-50"
-                      >
-                        Mark recovered
-                      </button>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {s.payment_link_short_url && (
+                        <a
+                          href={s.payment_link_short_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-accent)] hover:underline bg-[var(--color-surface-subtle)] px-2 py-0.5 rounded border border-[var(--color-line)]"
+                        >
+                          <ExternalLink size={11} />
+                          Razorpay Link
+                        </a>
+                      )}
+                      {s.status !== 'RECOVERED' && s.status !== 'EXPIRED' && (
+                        <button
+                          onClick={() => recoverOne(s.id)}
+                          disabled={busy}
+                          className="text-[12px] text-[var(--color-accent)] font-semibold hover:underline disabled:opacity-50"
+                        >
+                          Mark recovered
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

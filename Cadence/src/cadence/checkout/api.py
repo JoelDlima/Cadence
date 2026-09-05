@@ -110,6 +110,7 @@ def register_routes(
     *,
     db: Database,
     clock: Clock,
+    config: Any | None = None,
 ) -> None:
     repo = CheckoutSessionRepo(db)
     events = _ensure_event_store(db)
@@ -125,6 +126,8 @@ def register_routes(
             amount_minor=req.amount_minor,
             currency=req.currency,
             started_at_iso=started_iso,
+            status="ABANDONED",
+            abandoned_at_iso=started_iso,
         )
         _emit_checkout_event(
             events, sid, "checkout.abandoned",
@@ -189,6 +192,25 @@ def register_routes(
             if d.should_nudge:
                 new_nudges = sm.nudges_sent + 1
                 last_nudge_iso = now.isoformat()
+                if config and hasattr(config, "razorpay") and config.razorpay.is_live:
+                    try:
+                        from cadence.executors.razorpay_client import build_client
+                        rzp_client = build_client(config.razorpay)
+                        link = rzp_client.create_payment_link(
+                            amount_minor=row.amount_minor,
+                            currency=row.currency,
+                            customer_id=row.customer_id,
+                            description=f"Shopify drop-off recovery for {row.customer_id}",
+                            reference_id=f"chk_{row.id}:{new_nudges}",
+                        )
+                        if link and "id" in link:
+                            repo.record_payment_link(
+                                session_id=row.id,
+                                payment_link_id=link["id"],
+                                short_url=link.get("short_url", ""),
+                            )
+                    except Exception:  # noqa: BLE001
+                        pass
             repo.update_state(
                 session_id=row.id,
                 new_status=d.next_status,

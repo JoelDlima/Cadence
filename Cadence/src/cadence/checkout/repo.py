@@ -65,16 +65,18 @@ class CheckoutSessionRepo:
         currency: str,
         started_at_iso: str,
         notes: str = "",
+        status: str = "ABANDONED",
+        abandoned_at_iso: str | None = None,
     ) -> None:
         self._db.conn.execute(
             """
             INSERT INTO checkout_sessions
                 (id, customer_id, subscription_id, amount_minor, currency,
-                 started_at, status, notes)
-            VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?)
+                 started_at, status, notes, abandoned_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (session_id, customer_id, subscription_id, amount_minor,
-             currency, started_at_iso, notes),
+             currency, started_at_iso, status, notes, abandoned_at_iso or started_at_iso),
         )
 
     def get(self, session_id: str) -> CheckoutSessionRow | None:

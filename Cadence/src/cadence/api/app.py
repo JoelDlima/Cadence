@@ -2215,7 +2215,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
 
     # Phase checkout: drop-off recovery routes
     from cadence.checkout.api import register_routes as _register_checkout
-    _register_checkout(app, db=db, clock=clock)
+    _register_checkout(app, db=db, clock=clock, config=config)
 
     # Phase B2B: B2B receivables chaser routes
     from cadence.b2b.api import register_routes as _register_b2b
