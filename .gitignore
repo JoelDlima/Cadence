@@ -60,3 +60,5 @@ Cadence/docs/private/
 
 user_reference.png
 *.png
+
+.git_backup/

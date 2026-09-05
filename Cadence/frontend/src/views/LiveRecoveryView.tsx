@@ -107,7 +107,7 @@ export const LiveRecoveryView: React.FC = () => {
     () => localStorage.getItem('cadence.recipient.email') ?? '',
   );
   const [recipientPhone, setRecipientPhone] = useState<string>(
-    () => localStorage.getItem('cadence.recipient.phone') || '+919876543210',
+    () => localStorage.getItem('cadence.recipient.phone') || '',
   );
   const [sendStatus, setSendStatus] = useState<{ kind: 'idle' | 'sending' | 'sent' | 'error'; msg?: string }>({ kind: 'idle' });
   const [waStatus, setWaStatus] = useState<{ kind: 'idle' | 'sending' | 'sent' | 'error'; msg?: string }>({ kind: 'idle' });
@@ -141,7 +141,7 @@ export const LiveRecoveryView: React.FC = () => {
   }, [recipientEmail, failure]);
 
   const sendToMyWhatsApp = useCallback(async () => {
-    const target = recipientPhone.trim() || '+919876543210';
+    const target = recipientPhone.trim();
     setWaStatus({ kind: 'sending' });
     try {
       const r = await api.sendLiveWhatsApp({
@@ -493,7 +493,7 @@ export const LiveRecoveryView: React.FC = () => {
                   type="tel"
                   value={recipientPhone}
                   onChange={(e) => setRecipientPhone(e.target.value)}
-                  placeholder="+91 86056 75478"
+                  placeholder="+91 98765 43210"
                   className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[14px] font-mono focus:outline-none focus:border-[#25D366]"
                 />
                 <div className="pt-1 flex items-center gap-2 flex-wrap">

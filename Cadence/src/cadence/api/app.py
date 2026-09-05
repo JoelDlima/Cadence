@@ -541,7 +541,7 @@ def _dispatch_real_proof_touch(
 
     # 1. Resend Email
     resend_key = os.environ.get("RESEND_API_KEY", "")
-    target_email = to_email or os.environ.get("USER_EMAIL", "joelinternshipaitd@gmail.com")
+    target_email = to_email or os.environ.get("USER_EMAIL", "customer@example.com")
     from_email = os.environ.get("EMAIL_FROM", "onboarding@resend.dev")
     if resend_key and target_email:
         try:
@@ -1010,7 +1010,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
             if proof.get("whatsapp", {}).get("status") == "sent":
                 proof_items.append(f"WhatsApp sent to {os.environ.get('USER_WHATSAPP_TO', '+919876543210')}")
             if proof.get("email", {}).get("status") == "sent":
-                proof_items.append(f"Email sent to {os.environ.get('USER_EMAIL', 'joelinternshipaitd@gmail.com')}")
+                proof_items.append(f"Email sent to {os.environ.get('USER_EMAIL', 'customer@example.com')}")
         except Exception:
             pass
 
@@ -1761,7 +1761,7 @@ def create_app(*, cfg: AppConfig | None = None) -> FastAPI:
                 if proof.get("whatsapp", {}).get("status") == "sent":
                     proof_items.append(f"WhatsApp sent to {os.environ.get('USER_WHATSAPP_TO', '+919876543210')}")
                 if proof.get("email", {}).get("status") == "sent":
-                    proof_items.append(f"Email sent to {os.environ.get('USER_EMAIL', 'joelinternshipaitd@gmail.com')}")
+                    proof_items.append(f"Email sent to {os.environ.get('USER_EMAIL', 'customer@example.com')}")
             except Exception:
                 pass
             if proof_items:
