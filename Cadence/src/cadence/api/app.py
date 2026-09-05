@@ -578,19 +578,33 @@ def _dispatch_real_proof_touch(
             auth_header = f"Basic {base64.b64encode(f'{api_key}:{api_secret}'.encode()).decode()}"
             headers = {"Authorization": auth_header}
             with httpx.Client(timeout=10.0) as client:
+                # 1. Attempt sending custom rich text body first (works if 24-hr session is open)
                 tw_res = client.post(
                     f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
                     headers=headers,
                     data={
                         "From": from_num,
                         "To": target_phone,
-                        "ContentSid": content_sid,
+                        "Body": text,
                     },
                 )
                 if tw_res.status_code in (200, 201):
-                    results["whatsapp"] = {"status": "sent", "sid": tw_res.json().get("sid")}
+                    results["whatsapp"] = {"status": "sent", "sid": tw_res.json().get("sid"), "type": "custom"}
                 else:
-                    results["whatsapp"] = {"status": "error", "code": tw_res.status_code, "body": tw_res.text[:200]}
+                    # 2. Fall back to verified sandbox template if outside 24-hr session window
+                    tw_res_fb = client.post(
+                        f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+                        headers=headers,
+                        data={
+                            "From": from_num,
+                            "To": target_phone,
+                            "ContentSid": content_sid,
+                        },
+                    )
+                    if tw_res_fb.status_code in (200, 201):
+                        results["whatsapp"] = {"status": "sent", "sid": tw_res_fb.json().get("sid"), "type": "template"}
+                    else:
+                        results["whatsapp"] = {"status": "error", "code": tw_res_fb.status_code, "body": tw_res_fb.text[:200]}
         except Exception as e:
             results["whatsapp"] = {"status": "exception", "detail": str(e)}
 
