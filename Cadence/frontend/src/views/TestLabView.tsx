@@ -218,26 +218,6 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
 
   const [replyText, setReplyText] = useState('25 tarikh ko paisa bhej dunga');
   const [replyResult, setReplyResult] = useState<{ status: 'idle' | 'running' | 'passed' | 'failed'; detail?: string }>({ status: 'idle' });
-  const [promises, setPromises] = useState<PromiseRow[] | null>(null);
-  const [promiseCounts, setPromiseCounts] = useState<{ open: number; kept: number; broken: number } | null>(null);
-  const [promisesLoading, setPromisesLoading] = useState(false);
-
-  const loadPromises = useCallback(async () => {
-    setPromisesLoading(true);
-    try {
-      const result = await api.getPromises();
-      setPromises(result.promises);
-      setPromiseCounts({ open: result.open_count, kept: result.kept_count, broken: result.broken_count });
-    } catch {
-      /* leave prior state; the card shows its own error on the next simulate click */
-    } finally {
-      setPromisesLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadPromises();
-  }, [loadPromises]);
 
   const runSimulateReply = useCallback(async () => {
     setReplyResult({ status: 'running' });
@@ -247,16 +227,15 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
       setReplyResult({
         status: result.accepted ? 'passed' : 'failed',
         detail: [
-          `kind: ${result.kind ?? 'n/a'}`,
-          result.commit_date ? `promised date: ${result.commit_date}` : '',
-          `${result.detail}`,
+          `Interpretation: ${result.kind === 'promised_payday' ? 'Promised Payday Commitment' : result.kind ?? 'Customer Reply'}`,
+          result.commit_date ? `Promised Date: ${result.commit_date}` : '',
+          `Action: ${result.detail}`,
         ].filter(Boolean).join('\n'),
       });
-      await loadPromises();
     } catch (e: any) {
       setReplyResult({ status: 'failed', detail: e?.message ?? 'simulate reply failed' });
     }
-  }, [replyText, latestReference, loadPromises]);
+  }, [replyText, latestReference]);
 
   const runDrill = useCallback(async (id: DrillId) => {
     setActiveDrill(id);
@@ -430,7 +409,7 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
           <ZapOff size={14} className={activeSection === 'chaos' ? "text-[var(--color-accent)]" : "text-[var(--color-ink-subtle)]"} />
           <span>4. Chaos & Safety</span>
           <Badge tone={activeSection === 'chaos' ? 'approved' : 'neutral'} className="text-[10px]">
-            5 Drills
+            4 Drills
           </Badge>
         </button>
       </div>
@@ -455,7 +434,7 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
           <Card className="p-5">
             <CardHeader
               title="Batch Recovery Benchmark (Track 03)"
-              subtitle="Run a calibrated Monte Carlo simulation across 100 Indian subscribers to compare Cadence's cause-aware recovery agent against Razorpay's static retry schedule."
+              subtitle="Run a realistic multi-subscriber simulation across 100 Indian subscribers to compare Cadence's intelligent recovery agent against standard static retry schedules."
               action={
                 <Button onClick={run} loading={loading} variant="primary">
                   <Play size={14} className="inline-block mr-1" />
@@ -485,7 +464,7 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
                   onChange={(e) => setUseMultiSeed(e.target.checked)}
                   className="rounded"
                 />
-                <span>5-Seed Mean (Seeds: 42, 7, 99, 123, 2024 for statistical rigor)</span>
+                <span>5-Batch Average (Runs across 5 randomized test groups for verified consistency)</span>
               </label>
             </div>
             {error && <p className="mt-3 text-[13px] text-[var(--color-rejected)]">{error}</p>}
@@ -496,7 +475,7 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
           ) : (
             <EmptyState
               title="Running benchmark simulation..."
-              description="Calculating Monte Carlo uplift comparing Cadence against default retry schedules."
+              description="Calculating recovery uplift comparing Cadence against default retry schedules."
             />
           )}
         </div>
@@ -549,6 +528,16 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
                   {prevention.detail ? ` · ${prevention.detail}` : ''}
                 </div>
               )}
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--color-line)] text-[12px] text-[var(--color-ink-muted)]">
+                <span>All scheduled pre-debit notices are tracked live in the Upcoming Payment Reminders panel on the Dashboard.</span>
+                <button
+                  type="button"
+                  onClick={() => { window.location.hash = 'dashboard'; }}
+                  className="text-[var(--color-accent)] hover:underline font-medium cursor-pointer"
+                >
+                  View in Dashboard &rarr;
+                </button>
+              </div>
             </div>
           </Card>
 
@@ -604,51 +593,16 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--color-line)]">
-                <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
-                  {promiseCounts && (
-                    <>
-                      <Badge tone="pending">{promiseCounts.open} pending</Badge>
-                      <Badge tone="approved">{promiseCounts.kept} kept</Badge>
-                      <Badge tone="rejected">{promiseCounts.broken} expired</Badge>
-                    </>
-                  )}
-                </div>
-                <Button variant="secondary" size="sm" onClick={loadPromises} loading={promisesLoading}>
-                  <RefreshCw size={12} /> Refresh
-                </Button>
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--color-line)] text-[12px] text-[var(--color-ink-muted)]">
+                <span>Active customer commitments are monitored live in the Customer Payday Commitments panel on the Dashboard.</span>
+                <button
+                  type="button"
+                  onClick={() => { window.location.hash = 'dashboard'; }}
+                  className="text-[var(--color-accent)] hover:underline font-medium cursor-pointer"
+                >
+                  View in Dashboard &rarr;
+                </button>
               </div>
-
-              {promises && promises.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-[12px]">
-                    <thead>
-                      <tr className="text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
-                        <th className="py-1.5 pr-3">Customer Reply</th>
-                        <th className="py-1.5 pr-3">Type</th>
-                        <th className="py-1.5 pr-3">Promised Date</th>
-                        <th className="py-1.5 pr-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {promises.map((row) => (
-                        <tr key={row.journey_id} className="border-t border-[var(--color-line)]">
-                          <td className="py-1.5 pr-3 max-w-[220px] truncate" title={row.reply_text}>{row.reply_text || '—'}</td>
-                          <td className="py-1.5 pr-3 font-mono">{row.kind}</td>
-                          <td className="py-1.5 pr-3 font-mono">{row.promised_date ?? '—'}</td>
-                          <td className="py-1.5 pr-3">
-                            <Badge tone={row.status === 'kept' ? 'approved' : row.status === 'broken' ? 'rejected' : 'pending'}>
-                              {row.status}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-[12px] text-[var(--color-ink-muted)]">No customer commitments recorded yet — simulate a reply above.</p>
-              )}
             </div>
           </Card>
 
@@ -656,13 +610,13 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
           <Card>
             <CardHeader
               title="System Resilience &amp; Safety Drills"
-              subtitle="Run live drills to verify that Cadence handles bank outages, duplicates, and emergency stops without human error."
-              action={<Badge tone="neutral">5 Safety Drills</Badge>}
+              subtitle="Run live drills to verify that Cadence handles bank outages, duplicates, and link expirations without human error."
+              action={<Badge tone="neutral">4 Safety Drills</Badge>}
             />
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <label className="text-[13px] text-[var(--color-ink-muted)]">
-                  <div className="mb-1">Subscription ID — for the first four drills</div>
+                  <div className="mb-1">Subscription ID — for bank alert &amp; outage drills</div>
                   <Input
                     value={subId}
                     onChange={(e) => setSubId(e.target.value)}
@@ -671,7 +625,7 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
                   />
                 </label>
                 <label className="text-[13px] text-[var(--color-ink-muted)]">
-                  <div className="mb-1">Reference ID — which payment link to act on</div>
+                  <div className="mb-1">Reference ID — for payment link cancellation</div>
                   <Input
                     value={refId}
                     onChange={(e) => setRefId(e.target.value)}
@@ -697,7 +651,7 @@ export const TestLabView: React.FC<TestLabProps> = ({ initialSection }) => {
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {(
-                  ['duplicate_webhook', 'inject_no_funds', 'reorder', 'kill_switch', 'force_expired'] as DrillId[]
+                  ['duplicate_webhook', 'inject_no_funds', 'reorder', 'force_expired'] as DrillId[]
                 ).map((id) => {
                   const meta = DRILL_META[id];
                   const Icon = meta.icon;
@@ -808,22 +762,22 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
       {multiSeed && (result.per_seed?.length ?? 0) > 0 && (
         <Card className="p-4 mt-4">
           <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold mb-3">
-            Per-seed transparency
+            Batch Breakdown (5 Randomized Test Groups)
           </div>
           <table className="w-full text-[12px] font-mono">
             <thead>
               <tr className="text-left text-[var(--color-ink-muted)]">
-                <th className="py-1 pr-3">seed</th>
-                <th className="py-1 pr-3">Razorpay default %</th>
-                <th className="py-1 pr-3">Cadence %</th>
-                <th className="py-1 pr-3">Cadence Rs.</th>
-                <th className="py-1 pr-3">Lift Rs.</th>
+                <th className="py-1 pr-3">Test Group</th>
+                <th className="py-1 pr-3">Standard Schedule %</th>
+                <th className="py-1 pr-3">Cadence AI %</th>
+                <th className="py-1 pr-3">Cadence Recovered</th>
+                <th className="py-1 pr-3">Revenue Gain</th>
               </tr>
             </thead>
             <tbody>
               {result.per_seed.map((row) => (
                 <tr key={row.seed} className="border-t border-[var(--color-line)]">
-                  <td className="py-1 pr-3 text-[var(--color-ink)]">{row.seed}</td>
+                  <td className="py-1 pr-3 text-[var(--color-ink)]">Batch #{row.seed}</td>
                   <td className="py-1 pr-3">{row.naive_recovery_pct.toFixed(1)}%</td>
                   <td className="py-1 pr-3 text-[var(--color-accent)] font-semibold">{row.cadence_recovery_pct.toFixed(1)}%</td>
                   <td className="py-1 pr-3">Rs.{row.cadence_recovered_inr.toFixed(0)}</td>
@@ -831,7 +785,7 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
                 </tr>
               ))}
               <tr className="border-t-2 border-[var(--color-line)] font-semibold">
-                <td className="py-1 pr-3">mean</td>
+                <td className="py-1 pr-3">Average</td>
                 <td className="py-1 pr-3">{result.mean_naive_recovery_pct.toFixed(1)}%</td>
                 <td className="py-1 pr-3 text-[var(--color-accent)]">{result.mean_cadence_recovery_pct.toFixed(1)}%</td>
                 <td className="py-1 pr-3">Rs.{result.per_seed.reduce((s, r) => s + r.cadence_recovered_inr, 0).toFixed(0)}</td>
@@ -880,18 +834,18 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
         <div className="border-t border-[var(--color-line)] mt-5 pt-4 flex items-center gap-3">
           <div className="flex-1">
             <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
-              Average improvement
+              Average Revenue Uplift
             </div>
             <div className="text-2xl font-semibold text-[var(--color-accent)] mt-1 font-mono">
               +{uplift.toFixed(1)}%
             </div>
             <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] mt-1">
-              calibrated outcome simulator &middot; not a live Razorpay cohort
+              Calibrated outcome simulation &middot; 5 test groups
             </div>
           </div>
           <div className="flex-1">
             <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
-              Recovered delta
+              Net Extra Revenue Won
             </div>
             <div className="text-2xl font-semibold text-[var(--color-ink)] mt-1 font-mono">
               Rs.{result.recovered_delta.toFixed(2)}
@@ -899,13 +853,13 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
           </div>
           <div className="flex-1">
             <div className="text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-semibold">
-              Fast-path %
+              Instant Rule Decisions
             </div>
             <div className="text-2xl font-semibold text-[var(--color-ink)] mt-1 font-mono">
               {result.fast_path_pct.toFixed(0)}%
             </div>
             <div className="text-[10px] text-[var(--color-ink-soft)] mt-1">
-              deterministic, no LLM
+              Deterministic (Zero AI token latency)
             </div>
           </div>
         </div>
@@ -914,7 +868,7 @@ const CompareResultView: React.FC<{ result: AgentCompare }> = ({ result }) => {
       <Card className="p-4 mt-4">
         <div className="text-[11px] text-[var(--color-ink-soft)] font-mono">
           source: {result.source} &middot; cohort: {result.cohort} &middot; n: {result.n} &middot;
-          {multiSeed ? ` seeds: ${result.seeds.join(',')} &middot; average improvement: +${result.mean_uplift_pct.toFixed(1)}%` : ` seed: ${result.seed}`}
+          {multiSeed ? ` test groups: ${result.seeds.join(', ')} &middot; average uplift: +${result.mean_uplift_pct.toFixed(1)}%` : ` test group: ${result.seed}`}
           &middot; runtime: {result.runtime_ms}ms
         </div>
       </Card>
