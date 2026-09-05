@@ -68,6 +68,31 @@ const JOURNEY_TONE: Record<string, BadgeTone> = {
   HUMAN_REVIEW: 'info',
 };
 
+const JOURNEY_LABEL: Record<string, string> = {
+  RECOVERED: 'Recovered (Paid)',
+  INTERVENING: 'Follow-up Sent',
+  OPENED: 'Case Opened',
+  CLASSIFIED: 'Failure Diagnosed',
+  WAITING_OUTCOME: 'Awaiting Payment',
+  CLOSED_UNRECOVERED: 'Unrecovered (Closed)',
+  HUMAN_REVIEW: 'Human Review',
+  ESCALATED: 'Escalated',
+};
+
+const PREDEBIT_LABEL: Record<string, string> = {
+  notified: 'Delivered',
+  quiet_hours: 'Paused (Night Quiet Hours)',
+  cooling_off: 'Paused (Bank Cooling-Off)',
+  mandate_invalid: 'Blocked (Invalid Mandate)',
+  pending: 'Scheduled',
+};
+
+const PROMISE_LABEL: Record<string, string> = {
+  kept: 'Paid as Promised',
+  broken: 'Expired (Unpaid)',
+  open: 'Awaiting Payday',
+};
+
 function inr(major: number): string {
   return inrFormatter.format(major);
 }
@@ -448,6 +473,11 @@ export const DashboardView: React.FC = () => {
   useEffect(() => {
     loadPromises();
     loadPredebit();
+    const id = setInterval(() => {
+      loadPromises();
+      loadPredebit();
+    }, 10000);
+    return () => clearInterval(id);
   }, [loadPromises, loadPredebit]);
 
   // Keep the open drawer in sync with the poll so a status flip is visible
@@ -534,7 +564,7 @@ export const DashboardView: React.FC = () => {
           <div className="p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[12px] text-[var(--color-ink-muted)]">
-                Tested across 5 seed cohorts of 50 subscribers to measure relative performance.
+                Tested across 5 randomized test groups (50 subscribers each) for verified statistical consistency.
               </p>
               <Button variant="secondary" size="sm" onClick={loadEvaluation} loading={evaluationLoading}>
                 <RefreshCw size={12} /> {evaluation ? 'Re-run benchmark' : 'Run benchmark'}
@@ -558,7 +588,7 @@ export const DashboardView: React.FC = () => {
                   </div>
                 </div>
                 <p className="font-mono text-[10.5px] text-[var(--color-ink-subtle)]">
-                  seeds: {evaluation.seeds.join(', ')} · {evaluation.n} subscribers per seed
+                  5 test batches (seeds: {evaluation.seeds.join(', ')}) · {evaluation.n} subscribers per batch
                 </p>
               </>
             )}
@@ -612,8 +642,8 @@ export const DashboardView: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               {predebit && (
                 <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
-                  <Badge tone="approved">{predebit.notified_count} notified</Badge>
-                  <Badge tone="pending">{predebit.suppressed_count} suppressed</Badge>
+                  <Badge tone="approved">{predebit.notified_count} delivered</Badge>
+                  <Badge tone="pending">{predebit.suppressed_count} held (quiet hours)</Badge>
                 </div>
               )}
               <Button variant="secondary" size="sm" onClick={loadPredebit} loading={predebitLoading}>
@@ -640,7 +670,7 @@ export const DashboardView: React.FC = () => {
                         <td className="py-1.5 pr-3 font-mono">{row.debit_at ? new Date(row.debit_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}</td>
                         <td className="py-1.5 pr-3">
                           <Badge tone={row.notified ? 'approved' : row.reason === 'pending' ? 'neutral' : 'pending'}>
-                            {row.notified ? 'notified' : row.reason}
+                            {row.notified ? 'Delivered' : (PREDEBIT_LABEL[row.reason] ?? row.reason)}
                           </Badge>
                         </td>
                       </tr>
@@ -664,9 +694,9 @@ export const DashboardView: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               {promises && (
                 <div className="flex items-center gap-2 text-[11.5px] text-[var(--color-ink-muted)]">
-                  <Badge tone="pending">{promises.open_count} pending</Badge>
-                  <Badge tone="approved">{promises.kept_count} kept</Badge>
-                  <Badge tone="rejected">{promises.broken_count} expired</Badge>
+                  <Badge tone="pending">{promises.open_count} awaiting payday</Badge>
+                  <Badge tone="approved">{promises.kept_count} paid as promised</Badge>
+                  <Badge tone="rejected">{promises.broken_count} expired without payment</Badge>
                 </div>
               )}
               <Button variant="secondary" size="sm" onClick={loadPromises} loading={promisesLoading}>
@@ -693,7 +723,7 @@ export const DashboardView: React.FC = () => {
                         <td className="py-1.5 pr-3 font-mono">{row.promised_date ?? '—'}</td>
                         <td className="py-1.5 pr-3">
                           <Badge tone={row.status === 'kept' ? 'approved' : row.status === 'broken' ? 'rejected' : 'pending'}>
-                            {row.status}
+                            {PROMISE_LABEL[row.status] ?? row.status}
                           </Badge>
                         </td>
                       </tr>
@@ -804,12 +834,12 @@ export const DashboardView: React.FC = () => {
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-[10.5px] uppercase tracking-wider text-[var(--color-ink-subtle)]">
                   <th scope="col" className="px-5 py-2.5 font-semibold">Amount</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Status</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Cadence</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">Payment Status</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">AI Recovery Status</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Created</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Reference id</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Customer</th>
-                  <th scope="col" className="px-5 py-2.5 font-semibold">Link</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">Reference ID</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">Customer ID</th>
+                  <th scope="col" className="px-5 py-2.5 font-semibold">Payment Link</th>
                 </tr>
               </thead>
               <tbody>
@@ -839,7 +869,7 @@ export const DashboardView: React.FC = () => {
                     <td className="px-3 py-2.5">
                       {r.journey_state ? (
                         <Badge tone={JOURNEY_TONE[r.journey_state] ?? 'neutral'}>
-                          {r.journey_state}
+                          {JOURNEY_LABEL[r.journey_state] ?? r.journey_state}
                         </Badge>
                       ) : (
                         <span className="text-[var(--color-ink-subtle)]">—</span>
@@ -847,9 +877,11 @@ export const DashboardView: React.FC = () => {
                     </td>
                     <td className="px-3 py-2.5 text-[var(--color-ink-muted)]">
                       <span className="numeric">{fmtDateTime(r.created_at)}</span>
-                      <span className="ml-1.5 text-[10.5px] text-[var(--color-ink-subtle)]">
-                        {relative(r.created_at)}
-                      </span>
+                      {relative(r.created_at) && (
+                        <span className="ml-1 text-[10.5px] text-[var(--color-ink-subtle)]">
+                          {' '}({relative(r.created_at)})
+                        </span>
+                      )}
                     </td>
                     <td className="max-w-[190px] truncate px-3 py-2.5 font-mono text-[11.5px] text-[var(--color-ink-muted)]"
                         title={r.reference_id}>
@@ -885,11 +917,10 @@ export const DashboardView: React.FC = () => {
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-line)] px-5 py-2.5 text-[11px] text-[var(--color-ink-subtle)]">
           <span className="inline-flex items-center gap-1">
-            <IndianRupee size={11} /> amounts in rupees, read from the local audit log
+            <IndianRupee size={11} /> Amounts in Indian Rupees (₹) verified from the tamper-evident history log.
           </span>
           <span>
-            Razorpay has no link for a single payment link, so &ldquo;Open Razorpay&rdquo; opens the
-            full list — search the plink id there.
+            Click &ldquo;Razorpay Dashboard&rdquo; above to view all live links in your merchant console.
           </span>
         </div>
       </Card>
