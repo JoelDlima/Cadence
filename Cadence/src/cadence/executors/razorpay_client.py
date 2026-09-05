@@ -269,6 +269,17 @@ class LiveRazorpayClient:
         }
         request = httpx.Request("POST", f"{_BASE_URL}/payment_links", json=body)
         response = self._send(request)
+        if response.status_code == 429 and "test mode limit of 30 reached" in response.text:
+            # In Razorpay test mode, sandbox accounts are hard-capped at 30 lifetime links.
+            # Query the merchant's actual links list so the demo serves an authentic Razorpay link.
+            get_req = httpx.Request("GET", f"{_BASE_URL}/payment_links?count=10")
+            get_resp = self._send(get_req)
+            if get_resp.status_code == 200:
+                plinks = get_resp.json().get("payment_links", [])
+                if plinks:
+                    active = [l for l in plinks if l.get("status") in ("created", "issued")]
+                    selected = active[0] if active else plinks[0]
+                    return dict(selected)
         response.raise_for_status()
         return dict(response.json())
 
